@@ -157,10 +157,6 @@ export function GameSearch({ isOpen, rowCategory, colCategory, onSelect, onClose
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-foreground truncate">{game.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {game.released?.split('-')[0] || 'N/A'}
-                      {game.genres?.length > 0 && ` • ${game.genres.slice(0, 2).map(g => g.name).join(', ')}`}
-                    </p>
                   </div>
                 </button>
               ))}

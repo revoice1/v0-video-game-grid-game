@@ -18,7 +18,6 @@ export async function GET(request: NextRequest) {
       id: g.id,
       name: g.name,
       background_image: g.background_image,
-      released: g.released ? g.released.split('-')[0] : null,
     }))
     return NextResponse.json({ results: safeResults })
   } catch (error) {
