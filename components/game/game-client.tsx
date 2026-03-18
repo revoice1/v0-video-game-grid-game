@@ -6,7 +6,7 @@ import { GameGrid } from './game-grid'
 import { GameSearch } from './game-search'
 import { ResultsModal } from './results-modal'
 import { HowToPlayModal } from './how-to-play-modal'
-import { getSessionId, saveGameState, loadGameState, clearGameState } from '@/lib/session'
+import { getSessionId, saveGameState, loadGameState, clearGameState, type CellGuessRecord } from '@/lib/session'
 import type { Puzzle, CellGuess, Game, Category } from '@/lib/types'
 import { Spinner } from '@/components/ui/spinner'
 
@@ -24,7 +24,9 @@ export function GameClient() {
   const [sessionId, setSessionId] = useState('')
 
   const score = guesses.filter(g => g?.isCorrect).length
-  const isComplete = guessesRemaining === 0 || guesses.every(g => g !== null)
+  // Game is over when out of guesses OR all cells filled (not necessarily all correct)
+  const gridFull = guesses.every(g => g !== null)
+  const isComplete = guessesRemaining === 0 || gridFull
 
   // Initialize session
   useEffect(() => {
@@ -55,8 +57,11 @@ export function GameClient() {
 
       // Restore saved state if it matches current puzzle
       if (savedState && savedState.puzzleId === puzzleData.id) {
-        // We'd need to reconstruct full guesses from saved game IDs
-        // For now, just restore the game state
+        // Reconstruct full CellGuess array from saved state
+        const restoredGuesses = savedState.guesses.map(g =>
+          g ? { gameId: g.gameId, gameName: g.gameName, gameImage: g.gameImage, isCorrect: g.isCorrect } : null
+        )
+        setGuesses(restoredGuesses)
         setGuessesRemaining(savedState.guessesRemaining)
         if (savedState.isComplete) {
           setShowResults(true)
@@ -128,10 +133,10 @@ export function GameClient() {
       setGuessesRemaining(newGuessesRemaining)
       setSelectedCell(null)
 
-      // Save state
+      // Save state with full guess objects for proper restoration
       saveGameState({
         puzzleId: puzzle.id,
-        guesses: newGuesses.map(g => g?.gameId || null),
+        guesses: newGuesses.map(g => g ? { gameId: g.gameId, gameName: g.gameName, gameImage: g.gameImage, isCorrect: g.isCorrect } : null),
         guessesRemaining: newGuessesRemaining,
         isComplete: newGuessesRemaining === 0 || newGuesses.every(g => g !== null),
       }, mode === 'daily')
