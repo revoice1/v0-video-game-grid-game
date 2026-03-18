@@ -18,9 +18,16 @@ export function getSessionId(): string {
 const DAILY_STATE_KEY = 'gamegrid_daily_state'
 const PRACTICE_STATE_KEY = 'gamegrid_practice_state'
 
+export interface CellGuessRecord {
+  gameId: number
+  gameName: string
+  gameImage: string | null
+  isCorrect: boolean
+}
+
 interface SavedGameState {
   puzzleId: string
-  guesses: (number | null)[] // game IDs
+  guesses: (CellGuessRecord | null)[]
   guessesRemaining: number
   isComplete: boolean
   date?: string
