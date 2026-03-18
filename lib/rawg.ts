@@ -56,34 +56,25 @@ export const POPULAR_TAGS: Category[] = [
   { type: 'tag', id: 8, name: 'First-Person', slug: 'first-person' },
 ]
 
-export const POPULAR_DEVELOPERS: Category[] = [
-  { type: 'developer', id: 405, name: 'Ubisoft', slug: 'ubisoft' },
-  { type: 'developer', id: 3524, name: 'Rockstar Games', slug: 'rockstar-games' },
-  { type: 'developer', id: 10681, name: 'Bethesda', slug: 'bethesda-softworks' },
-  { type: 'developer', id: 9023, name: 'FromSoftware', slug: 'fromsoftware' },
-  { type: 'developer', id: 16215, name: 'Naughty Dog', slug: 'naughty-dog' },
-  { type: 'developer', id: 18893, name: 'CD Projekt RED', slug: 'cd-projekt-red' },
-  { type: 'developer', id: 308, name: 'Square Enix', slug: 'square-enix' },
-  { type: 'developer', id: 3399, name: 'Valve', slug: 'valve-software' },
-  { type: 'developer', id: 4556, name: 'Capcom', slug: 'capcom' },
-  { type: 'developer', id: 290, name: 'Nintendo', slug: 'nintendo' },
-  { type: 'developer', id: 7683, name: 'Blizzard', slug: 'blizzard-entertainment' },
-  { type: 'developer', id: 10482, name: 'EA', slug: 'electronic-arts' },
-]
-
-export const POPULAR_PUBLISHERS: Category[] = [
-  { type: 'publisher', id: 354, name: 'Nintendo', slug: 'nintendo' },
-  { type: 'publisher', id: 2155, name: 'Rockstar Games', slug: 'rockstar-games' },
-  { type: 'publisher', id: 339, name: 'Electronic Arts', slug: 'electronic-arts' },
-  { type: 'publisher', id: 308, name: 'Square Enix', slug: 'square-enix' },
-  { type: 'publisher', id: 3408, name: 'Ubisoft', slug: 'ubisoft' },
-  { type: 'publisher', id: 918, name: 'Bethesda Softworks', slug: 'bethesda-softworks' },
-  { type: 'publisher', id: 2150, name: 'Activision', slug: 'activision' },
-  { type: 'publisher', id: 20987, name: 'Microsoft Studios', slug: 'microsoft-studios' },
-  { type: 'publisher', id: 10212, name: 'Sony Interactive', slug: 'sony-interactive-entertainment' },
-  { type: 'publisher', id: 4003, name: 'Capcom', slug: 'capcom' },
-  { type: 'publisher', id: 4, name: 'Sega', slug: 'sega' },
-  { type: 'publisher', id: 405, name: 'Bandai Namco', slug: 'bandai-namco-entertainment' },
+// Combined developer/publisher - matches if the company developed OR published the game
+// This handles cases like Nintendo where they publish games developed by others (Game Freak, HAL, etc.)
+export const COMPANIES: Category[] = [
+  { type: 'company', id: 354, name: 'Nintendo', slug: 'nintendo', developerId: 290, publisherId: 354 },
+  { type: 'company', id: 2155, name: 'Rockstar Games', slug: 'rockstar-games', developerId: 3524, publisherId: 2155 },
+  { type: 'company', id: 339, name: 'Electronic Arts', slug: 'electronic-arts', developerId: 10482, publisherId: 339 },
+  { type: 'company', id: 308, name: 'Square Enix', slug: 'square-enix', developerId: 308, publisherId: 308 },
+  { type: 'company', id: 3408, name: 'Ubisoft', slug: 'ubisoft', developerId: 405, publisherId: 3408 },
+  { type: 'company', id: 918, name: 'Bethesda', slug: 'bethesda-softworks', developerId: 10681, publisherId: 918 },
+  { type: 'company', id: 2150, name: 'Activision', slug: 'activision', developerId: 2150, publisherId: 2150 },
+  { type: 'company', id: 20987, name: 'Microsoft', slug: 'microsoft-studios', developerId: 20987, publisherId: 20987 },
+  { type: 'company', id: 10212, name: 'Sony', slug: 'sony-interactive-entertainment', developerId: 16215, publisherId: 10212 },
+  { type: 'company', id: 4003, name: 'Capcom', slug: 'capcom', developerId: 4556, publisherId: 4003 },
+  { type: 'company', id: 4, name: 'Sega', slug: 'sega', developerId: 4, publisherId: 4 },
+  { type: 'company', id: 405, name: 'Bandai Namco', slug: 'bandai-namco-entertainment', developerId: 405, publisherId: 405 },
+  { type: 'company', id: 9023, name: 'FromSoftware', slug: 'fromsoftware', developerId: 9023, publisherId: 9023 },
+  { type: 'company', id: 18893, name: 'CD Projekt RED', slug: 'cd-projekt-red', developerId: 18893, publisherId: 7411 },
+  { type: 'company', id: 3399, name: 'Valve', slug: 'valve-software', developerId: 3399, publisherId: 3399 },
+  { type: 'company', id: 7683, name: 'Blizzard', slug: 'blizzard-entertainment', developerId: 7683, publisherId: 7683 },
 ]
 
 // Get a random selection from an array
@@ -99,8 +90,7 @@ export function generatePuzzleCategories(): { rows: Category[], cols: Category[]
     GENRES,
     DECADES,
     POPULAR_TAGS,
-    POPULAR_DEVELOPERS,
-    POPULAR_PUBLISHERS,
+    COMPANIES,
   ]
   
   // Pick 2-3 random category types for rows and cols
@@ -146,6 +136,12 @@ function buildQueryParams(rowCat: Category, colCat: Category): URLSearchParams {
         break
       case 'publisher':
         params.append('publishers', String(cat.id))
+        break
+      case 'company':
+        // For company, search by publisher (more inclusive than developer)
+        if (cat.publisherId) {
+          params.append('publishers', String(cat.publisherId))
+        }
         break
     }
   }
@@ -213,6 +209,13 @@ export function gameMatchesCategory(game: Game, category: Category): boolean {
       return game.developers?.some(d => d.id === category.id) || false
     case 'publisher':
       return game.publishers?.some(p => p.id === category.id) || false
+    case 'company':
+      // Company matches if either developed OR published by them
+      const devId = category.developerId
+      const pubId = category.publisherId
+      const matchesDev = devId ? game.developers?.some(d => d.id === devId) : false
+      const matchesPub = pubId ? game.publishers?.some(p => p.id === pubId) : false
+      return matchesDev || matchesPub || false
     default:
       return false
   }

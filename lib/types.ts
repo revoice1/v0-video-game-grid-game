@@ -28,12 +28,16 @@ export type CategoryType =
   | 'publisher'
   | 'decade'
   | 'tag'
+  | 'company'
 
 export interface Category {
   type: CategoryType
   id: string | number
   name: string
   slug?: string
+  // For company type, these map to dev/publisher IDs in RAWG
+  developerId?: number
+  publisherId?: number
 }
 
 // Puzzle types
