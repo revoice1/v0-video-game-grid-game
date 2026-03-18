@@ -71,9 +71,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(newPuzzle)
     }
   } catch (error) {
-    console.error('Error in puzzle API:', error)
+    console.error('[v0] Error in puzzle API:', error)
+    // Return the error message for debugging
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to get puzzle' },
+      { error: `Failed to get puzzle: ${errorMessage}` },
       { status: 500 }
     )
   }

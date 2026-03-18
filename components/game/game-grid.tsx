@@ -39,10 +39,9 @@ export function GameGrid({
         
         {/* Rows with row headers and cells */}
         {rowCategories.map((rowCat, rowIndex) => (
-          <>
+          <div key={`row-${rowIndex}`} className="contents">
             {/* Row header */}
             <CategoryHeaderSimple 
-              key={`row-${rowIndex}`} 
               category={rowCat} 
               orientation="row" 
             />
@@ -61,7 +60,7 @@ export function GameGrid({
                 />
               )
             })}
-          </>
+          </div>
         ))}
       </div>
     </div>
