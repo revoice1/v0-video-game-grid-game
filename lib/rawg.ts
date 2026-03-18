@@ -167,7 +167,9 @@ export async function searchGames(query: string): Promise<Game[]> {
   })
   
   try {
-    const response = await fetch(`${BASE_URL}/games?${params}`)
+    const response = await fetch(`${BASE_URL}/games?${params}`, {
+      next: { revalidate: 300 } // Cache search results for 5 minutes
+    })
     if (!response.ok) throw new Error('Failed to search games')
     const data: RAWGResponse = await response.json()
     return data.results
@@ -182,7 +184,9 @@ export async function getGameDetails(gameId: number): Promise<Game | null> {
   if (!RAWG_API_KEY) return null
   
   try {
-    const response = await fetch(`${BASE_URL}/games/${gameId}?key=${RAWG_API_KEY}`)
+    const response = await fetch(`${BASE_URL}/games/${gameId}?key=${RAWG_API_KEY}`, {
+      next: { revalidate: 86400 } // Game metadata doesn't change day-to-day
+    })
     if (!response.ok) throw new Error('Failed to get game details')
     return await response.json()
   } catch (error) {
