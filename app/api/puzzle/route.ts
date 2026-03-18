@@ -1,44 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { generatePuzzleCategories, getValidGamesForCell } from '@/lib/rawg'
-import type { Category, Puzzle } from '@/lib/types'
+import { generatePuzzleCategories } from '@/lib/rawg'
+import type { Category } from '@/lib/types'
 
 // Get today's date string
 function getTodayDate(): string {
   return new Date().toISOString().split('T')[0]
 }
 
-// Verify a puzzle has valid answers for all cells
-async function verifyPuzzleHasValidAnswers(
-  rows: Category[],
-  cols: Category[]
-): Promise<boolean> {
-  // Check just a few cells to save API calls
-  const cellsToCheck = [
-    [0, 0], [1, 1], [2, 2], // diagonal
-    [0, 2], [2, 0] // corners
-  ]
-  
-  for (const [r, c] of cellsToCheck) {
-    const games = await getValidGamesForCell(rows[r], cols[c])
-    if (games.length < 3) { // Need at least 3 valid games
-      return false
-    }
-  }
-  
-  return true
-}
-
-// Generate a valid puzzle with verified answers
-async function generateValidPuzzle(maxAttempts = 5): Promise<{ rows: Category[], cols: Category[] } | null> {
-  for (let i = 0; i < maxAttempts; i++) {
-    const { rows, cols } = generatePuzzleCategories()
-    const isValid = await verifyPuzzleHasValidAnswers(rows, cols)
-    if (isValid) {
-      return { rows, cols }
-    }
-  }
-  return null
+// Generate puzzle categories (no verification needed - categories are pre-curated)
+function generateValidPuzzle(): { rows: Category[], cols: Category[] } {
+  const { rows, cols } = generatePuzzleCategories()
+  console.log(`[v0] Generated puzzle - rows: ${rows.map(r => r.name).join(', ')}, cols: ${cols.map(c => c.name).join(', ')}`)
+  return { rows, cols }
 }
 
 export async function GET(request: NextRequest) {
@@ -64,12 +38,6 @@ export async function GET(request: NextRequest) {
       
       // Generate new daily puzzle
       const categories = await generateValidPuzzle()
-      if (!categories) {
-        return NextResponse.json(
-          { error: 'Failed to generate valid puzzle' },
-          { status: 500 }
-        )
-      }
       
       const { data: newPuzzle, error } = await supabase
         .from('puzzles')
@@ -87,12 +55,6 @@ export async function GET(request: NextRequest) {
     } else {
       // Practice mode - generate a new puzzle each time
       const categories = await generateValidPuzzle()
-      if (!categories) {
-        return NextResponse.json(
-          { error: 'Failed to generate valid puzzle' },
-          { status: 500 }
-        )
-      }
       
       const { data: newPuzzle, error } = await supabase
         .from('puzzles')

@@ -238,17 +238,26 @@ export async function getValidGamesForCell(
   rowCategory: Category,
   colCategory: Category
 ): Promise<Game[]> {
-  if (!RAWG_API_KEY) return []
+  if (!RAWG_API_KEY) {
+    console.log('[v0] RAWG_API_KEY not set, returning empty array')
+    return []
+  }
   
   const params = buildQueryParams(rowCategory, colCategory)
+  const url = `${BASE_URL}/games?${params}`
   
   try {
-    const response = await fetch(`${BASE_URL}/games?${params}`)
-    if (!response.ok) throw new Error('Failed to get games')
+    const response = await fetch(url, { 
+      next: { revalidate: 3600 } // Cache for 1 hour
+    })
+    if (!response.ok) {
+      console.log(`[v0] RAWG API error: ${response.status} ${response.statusText}`)
+      return []
+    }
     const data: RAWGResponse = await response.json()
-    return data.results
+    return data.results || []
   } catch (error) {
-    console.error('Error getting valid games:', error)
+    console.error('[v0] Error getting valid games:', error)
     return []
   }
 }
