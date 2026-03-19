@@ -69,7 +69,7 @@ async function generateValidPuzzle(): Promise<{
         maxAttempts: plan.maxAttempts,
         sampleSize: VALIDATION_SAMPLE_SIZE,
       })
-      const cellMetadata = await getPuzzleCellMetadata(rows, cols, plan.minValidOptionsPerCell)
+      const cellMetadata = await computePuzzleCellMetadata(rows, cols, plan.minValidOptionsPerCell)
 
       console.log(
         `[v0] Generated puzzle - rows: ${rows.map(row => row.name).join(', ')} ` +
@@ -110,7 +110,7 @@ async function generateValidPuzzle(): Promise<{
   throw lastError ?? new Error('Failed to generate puzzle')
 }
 
-async function getPuzzleCellMetadata(
+async function computePuzzleCellMetadata(
   rows: Category[],
   cols: Category[],
   minValidOptionsPerCell = MIN_VALID_OPTIONS_PER_CELL
@@ -151,7 +151,22 @@ export async function GET(request: NextRequest) {
       const existingPuzzle = await getExistingDailyPuzzle(supabase, today)
 
       if (existingPuzzle) {
-        const cellMetadata = await getPuzzleCellMetadata(existingPuzzle.row_categories, existingPuzzle.col_categories)
+        // If cell_metadata was stored at creation time, serve it directly — no IGDB calls needed.
+        // For older rows that predate this column, compute once and backfill.
+        let cellMetadata: PuzzleCellMetadata[] = existingPuzzle.cell_metadata
+
+        if (!cellMetadata) {
+          console.log(`[v0] Backfilling cell_metadata for puzzle ${existingPuzzle.id}`)
+          cellMetadata = await computePuzzleCellMetadata(
+            existingPuzzle.row_categories,
+            existingPuzzle.col_categories
+          )
+          await supabase
+            .from('puzzles')
+            .update({ cell_metadata: cellMetadata })
+            .eq('id', existingPuzzle.id)
+        }
+
         return NextResponse.json({
           ...existingPuzzle,
           row_categories: sanitizeCategories(existingPuzzle.row_categories),
@@ -160,6 +175,7 @@ export async function GET(request: NextRequest) {
         })
       }
 
+      // No puzzle for today — generate one and persist cell_metadata alongside it
       const categories = await generateValidPuzzle()
 
       const { data: newPuzzle, error } = await supabase
@@ -169,18 +185,22 @@ export async function GET(request: NextRequest) {
           is_daily: true,
           row_categories: categories.rows,
           col_categories: categories.cols,
+          cell_metadata: categories.cellMetadata,
         })
         .select()
         .single()
 
       if (error) {
         if (error.code === '23505') {
+          // Race condition: another request already inserted today's puzzle
           const concurrentPuzzle = await getExistingDailyPuzzle(supabase, today)
           if (concurrentPuzzle) {
-            const cellMetadata = await getPuzzleCellMetadata(
-              concurrentPuzzle.row_categories,
-              concurrentPuzzle.col_categories
-            )
+            const cellMetadata: PuzzleCellMetadata[] =
+              concurrentPuzzle.cell_metadata ??
+              (await computePuzzleCellMetadata(
+                concurrentPuzzle.row_categories,
+                concurrentPuzzle.col_categories
+              ))
 
             return NextResponse.json({
               ...concurrentPuzzle,
@@ -204,6 +224,7 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // Practice mode — always generate fresh
     const categories = await generateValidPuzzle()
 
     const { data: newPuzzle, error } = await supabase
