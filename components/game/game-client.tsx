@@ -119,56 +119,57 @@ export function GameClient() {
     setShowResults(false)
     setDetailCell(null)
 
-    setLoadingProgress(8)
-    setLoadingStage(gameMode === 'daily' ? "Loading today's board..." : 'Warming up the puzzle generator...')
-
-    let progressTimer: ReturnType<typeof setInterval> | null = null
-
-    if (gameMode === 'practice') {
-      progressTimer = setInterval(() => {
-        setLoadingProgress(current => {
-          const next = Math.min(current + (current < 45 ? 11 : current < 72 ? 7 : 4), 92)
-          if (next < 35) setLoadingStage('Picking categories...')
-          else if (next < 68) setLoadingStage('Testing intersections...')
-          else setLoadingStage('Finalizing the board...')
-          return next
-        })
-      }, 700)
-    }
+    setLoadingProgress(0)
+    setLoadingStage(gameMode === 'daily' ? "Loading today's board..." : 'Starting puzzle generation...')
 
     try {
-      const response = await fetch(`/api/puzzle?mode=${gameMode}`)
-      const puzzleData = await response.json()
+      await new Promise<void>((resolve, reject) => {
+        const es = new EventSource(`/api/puzzle-stream?mode=${gameMode}`)
 
-      if (puzzleData.error) {
-        console.error('Puzzle error:', puzzleData.error)
-        return
-      }
+        es.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data)
+            if (msg.type === 'progress') {
+              setLoadingProgress(msg.pct)
+              if (msg.message) setLoadingStage(msg.message)
+            } else if (msg.type === 'puzzle') {
+              es.close()
+              const puzzleData = msg.puzzle
+              setPuzzle(puzzleData)
+              saveGameState({
+                puzzleId: puzzleData.id,
+                puzzle: puzzleData,
+                guesses: Array(9).fill(null),
+                guessesRemaining: MAX_GUESSES,
+                isComplete: false,
+              }, gameMode === 'daily')
+              if (savedState && savedState.puzzleId === puzzleData.id) {
+                const restoredGuesses = savedState.guesses.map(g =>
+                  g ? { gameId: g.gameId, gameName: g.gameName, gameImage: g.gameImage, isCorrect: g.isCorrect } : null
+                )
+                setGuesses(restoredGuesses)
+                setGuessesRemaining(savedState.guessesRemaining)
+                if (savedState.isComplete) setShowResults(true)
+              }
+              resolve()
+            } else if (msg.type === 'error') {
+              es.close()
+              reject(new Error(msg.message))
+            }
+          } catch (e) {
+            es.close()
+            reject(e)
+          }
+        }
 
-      setLoadingProgress(100)
-      setLoadingStage('Board ready.')
-      setPuzzle(puzzleData)
-
-      saveGameState({
-        puzzleId: puzzleData.id,
-        puzzle: puzzleData,
-        guesses: Array(9).fill(null),
-        guessesRemaining: MAX_GUESSES,
-        isComplete: false,
-      }, gameMode === 'daily')
-
-      if (savedState && savedState.puzzleId === puzzleData.id) {
-        const restoredGuesses = savedState.guesses.map(g =>
-          g ? { gameId: g.gameId, gameName: g.gameName, gameImage: g.gameImage, isCorrect: g.isCorrect } : null
-        )
-        setGuesses(restoredGuesses)
-        setGuessesRemaining(savedState.guessesRemaining)
-        if (savedState.isComplete) setShowResults(true)
-      }
+        es.onerror = () => {
+          es.close()
+          reject(new Error('Connection to puzzle stream lost'))
+        }
+      })
     } catch (error) {
       console.error('Failed to load puzzle:', error)
     } finally {
-      if (progressTimer) clearInterval(progressTimer)
       setIsLoading(false)
     }
   }, [])
@@ -423,21 +424,15 @@ export function GameClient() {
           <p className="mt-3 text-center text-lg font-semibold text-foreground">{loadingStage}</p>
           <p className="mt-2 text-center text-sm text-muted-foreground">
             {mode === 'daily'
-              ? loadingProgress < 10
-                ? 'Checking for today\'s puzzle...'
-                : loadingProgress < 75
-                  ? 'Generating today\'s puzzle and validating intersections.'
-                  : 'Almost done!'
+              ? 'Fetching today\'s puzzle...'
               : 'Generating a fresh practice puzzle and sanity-checking each intersection.'}
           </p>
-          {mode === 'practice' && (
-            <div className="mt-6 space-y-2">
-              <Progress value={loadingProgress} className="h-3" />
-              <p className="text-right text-xs font-medium text-muted-foreground">
-                {loadingProgress}% complete
-              </p>
-            </div>
-          )}
+          <div className="mt-6 space-y-2">
+            <Progress value={loadingProgress} className="h-3" />
+            <p className="text-right text-xs font-medium text-muted-foreground">
+              {loadingProgress}% complete
+            </p>
+          </div>
         </div>
       </div>
     )
