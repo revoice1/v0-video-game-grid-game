@@ -14,6 +14,29 @@ import { useToast } from '@/hooks/use-toast'
 
 const MAX_GUESSES = 9
 
+function getInitialDailyState() {
+  const savedState = loadGameState(true)
+  if (!savedState?.puzzle) {
+    return {
+      puzzle: null as Puzzle | null,
+      guesses: Array(9).fill(null) as (CellGuess | null)[],
+      guessesRemaining: MAX_GUESSES,
+      showResults: false,
+      isLoading: true,
+    }
+  }
+
+  return {
+    puzzle: savedState.puzzle,
+    guesses: savedState.guesses.map(g =>
+      g ? { gameId: g.gameId, gameName: g.gameName, gameImage: g.gameImage, isCorrect: g.isCorrect } : null
+    ) as (CellGuess | null)[],
+    guessesRemaining: savedState.guessesRemaining,
+    showResults: savedState.isComplete,
+    isLoading: false,
+  }
+}
+
 function getTimeUntilNextUtcMidnight(now = new Date()) {
   const nextReset = new Date(now)
   nextReset.setUTCHours(24, 0, 0, 0)
@@ -33,13 +56,14 @@ function getTimeUntilNextUtcMidnight(now = new Date()) {
 }
 
 export function GameClient() {
+  const initialDailyState = getInitialDailyState()
   const [mode, setMode] = useState<'daily' | 'practice'>('daily')
-  const [puzzle, setPuzzle] = useState<Puzzle | null>(null)
-  const [guesses, setGuesses] = useState<(CellGuess | null)[]>(Array(9).fill(null))
-  const [guessesRemaining, setGuessesRemaining] = useState(MAX_GUESSES)
+  const [puzzle, setPuzzle] = useState<Puzzle | null>(initialDailyState.puzzle)
+  const [guesses, setGuesses] = useState<(CellGuess | null)[]>(initialDailyState.guesses)
+  const [guessesRemaining, setGuessesRemaining] = useState(initialDailyState.guessesRemaining)
   const [selectedCell, setSelectedCell] = useState<number | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [showResults, setShowResults] = useState(false)
+  const [isLoading, setIsLoading] = useState(initialDailyState.isLoading)
+  const [showResults, setShowResults] = useState(initialDailyState.showResults)
   const [showHowToPlay, setShowHowToPlay] = useState(false)
   const [detailCell, setDetailCell] = useState<number | null>(null)
   const [sessionId, setSessionId] = useState('')
@@ -71,6 +95,23 @@ export function GameClient() {
 
   // Load puzzle
   const loadPuzzle = useCallback(async (gameMode: 'daily' | 'practice') => {
+    const savedState = loadGameState(gameMode === 'daily')
+
+    if (savedState?.puzzle) {
+      setPuzzle(savedState.puzzle)
+      setGuesses(
+        savedState.guesses.map(g =>
+          g ? { gameId: g.gameId, gameName: g.gameName, gameImage: g.gameImage, isCorrect: g.isCorrect } : null
+        )
+      )
+      setGuessesRemaining(savedState.guessesRemaining)
+      setSelectedCell(null)
+      setShowResults(savedState.isComplete)
+      setDetailCell(null)
+      setIsLoading(false)
+      return
+    }
+
     setIsLoading(true)
     setLoadingProgress(8)
     setLoadingStage('Warming up the puzzle generator...')
@@ -100,27 +141,6 @@ export function GameClient() {
     }
 
     try {
-      // Check for saved state first
-      const savedState = loadGameState(gameMode === 'daily')
-
-      if (savedState?.puzzle) {
-        setLoadingProgress(100)
-        setLoadingStage(
-          gameMode === 'daily' ? 'Restoring today\'s puzzle...' : 'Restoring your practice puzzle...'
-        )
-        setPuzzle(savedState.puzzle)
-
-        const restoredGuesses = savedState.guesses.map(g =>
-          g ? { gameId: g.gameId, gameName: g.gameName, gameImage: g.gameImage, isCorrect: g.isCorrect } : null
-        )
-        setGuesses(restoredGuesses)
-        setGuessesRemaining(savedState.guessesRemaining)
-        if (savedState.isComplete) {
-          setShowResults(true)
-        }
-        return
-      }
-
       startLoadingProgress()
       const response = await fetch(`/api/puzzle?mode=${gameMode}`)
       const puzzleData = await response.json()
@@ -141,7 +161,7 @@ export function GameClient() {
           guesses: Array(9).fill(null),
           guessesRemaining: MAX_GUESSES,
           isComplete: false,
-        }, false)
+        }, gameMode === 'daily')
       }
 
       // Restore saved state if it matches current puzzle
