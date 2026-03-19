@@ -3,6 +3,27 @@ import { createClient } from '@/lib/supabase/server'
 import { validateIGDBGameForCell } from '@/lib/igdb'
 import type { Category } from '@/lib/types'
 
+function serializeGameDetails(game: Awaited<ReturnType<typeof validateIGDBGameForCell>>['game']) {
+  return game ? {
+    id: game.id,
+    name: game.name,
+    slug: game.slug,
+    url: game.gameUrl,
+    background_image: game.background_image,
+    released: game.released,
+    metacritic: game.metacritic,
+    genres: game.genres?.map(genre => genre.name) ?? [],
+    platforms: game.platforms?.map(platform => platform.platform.name) ?? [],
+    developers: game.developers?.map(developer => developer.name) ?? [],
+    publishers: game.publishers?.map(publisher => publisher.name) ?? [],
+    tags: game.tags?.map(tag => tag.name) ?? [],
+    gameModes: game.igdb?.game_modes ?? [],
+    themes: game.igdb?.themes ?? [],
+    perspectives: game.igdb?.player_perspectives ?? [],
+    companies: game.igdb?.companies ?? [],
+  } : null
+}
+
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   
@@ -17,17 +38,32 @@ export async function POST(request: NextRequest) {
       sessionId,
       rowCategory,
       colCategory,
+      lookupOnly,
     } = body as {
-      puzzleId: string
-      cellIndex: number
+      puzzleId?: string
+      cellIndex?: number
       gameId: number
-      gameName: string
-      gameImage: string | null
-      sessionId: string
+      gameName?: string
+      gameImage?: string | null
+      sessionId?: string
       rowCategory: Category
       colCategory: Category
+      lookupOnly?: boolean
     }
-    
+
+    // Validate the guess
+    const { valid, game, matchesRow, matchesCol } = await validateIGDBGameForCell(gameId, rowCategory, colCategory)
+
+    if (lookupOnly) {
+      return NextResponse.json({
+        valid,
+        duplicate: false,
+        matchesRow,
+        matchesCol,
+        game: serializeGameDetails(game),
+      })
+    }
+
     const { data: existingGuess } = await supabase
       .from('guesses')
       .select('id')
@@ -45,9 +81,6 @@ export async function POST(request: NextRequest) {
         game: null,
       })
     }
-
-    // Validate the guess
-    const { valid, game, matchesRow, matchesCol } = await validateIGDBGameForCell(gameId, rowCategory, colCategory)
 
     if (!valid && game) {
       console.warn('[v0] Rejected guess details:', {
@@ -69,17 +102,41 @@ export async function POST(request: NextRequest) {
       })
     }
     
-    if (valid) {
-      // Record the guess
-      await supabase.from('guesses').insert({
-        puzzle_id: puzzleId,
-        cell_index: cellIndex,
-        game_id: gameId,
-        game_name: gameName,
-        game_image: gameImage,
-        session_id: sessionId,
-      })
-      
+    let recordedGuess = false
+    const { error: guessInsertError } = await supabase.from('guesses').insert({
+      puzzle_id: puzzleId,
+      cell_index: cellIndex,
+      game_id: gameId,
+      game_name: gameName,
+      game_image: gameImage,
+      session_id: sessionId,
+      is_correct: valid,
+    })
+
+    if (guessInsertError) {
+      console.warn('[v0] Guess insert with correctness failed, falling back:', guessInsertError.message)
+
+      if (valid) {
+        const { error: legacyGuessInsertError } = await supabase.from('guesses').insert({
+          puzzle_id: puzzleId,
+          cell_index: cellIndex,
+          game_id: gameId,
+          game_name: gameName,
+          game_image: gameImage,
+          session_id: sessionId,
+        })
+
+        if (legacyGuessInsertError) {
+          throw legacyGuessInsertError
+        }
+
+        recordedGuess = true
+      }
+    } else {
+      recordedGuess = true
+    }
+
+    if (valid && recordedGuess) {
       // Atomically increment answer stats with a single upsert
       await supabase.rpc('increment_answer_stat', {
         p_puzzle_id: puzzleId,
@@ -95,24 +152,7 @@ export async function POST(request: NextRequest) {
       duplicate: false,
       matchesRow,
       matchesCol,
-      game: game ? {
-        id: game?.id,
-        name: game?.name,
-        slug: game?.slug,
-        url: game?.gameUrl,
-        background_image: game?.background_image,
-        released: game?.released,
-        metacritic: game?.metacritic,
-        genres: game?.genres?.map(genre => genre.name) ?? [],
-        platforms: game?.platforms?.map(platform => platform.platform.name) ?? [],
-        developers: game?.developers?.map(developer => developer.name) ?? [],
-        publishers: game?.publishers?.map(publisher => publisher.name) ?? [],
-        tags: game?.tags?.map(tag => tag.name) ?? [],
-        gameModes: game?.igdb?.game_modes ?? [],
-        themes: game?.igdb?.themes ?? [],
-        perspectives: game?.igdb?.player_perspectives ?? [],
-        companies: game?.igdb?.companies ?? [],
-      } : null,
+      game: serializeGameDetails(game),
     })
   } catch (error) {
     console.error('Guess error:', error)

@@ -103,9 +103,11 @@ export function GameClient() {
       // Check for saved state first
       const savedState = loadGameState(gameMode === 'daily')
 
-      if (gameMode === 'practice' && savedState?.puzzle) {
+      if (savedState?.puzzle) {
         setLoadingProgress(100)
-        setLoadingStage('Restoring your practice puzzle...')
+        setLoadingStage(
+          gameMode === 'daily' ? 'Restoring today\'s puzzle...' : 'Restoring your practice puzzle...'
+        )
         setPuzzle(savedState.puzzle)
 
         const restoredGuesses = savedState.guesses.map(g =>
@@ -132,7 +134,7 @@ export function GameClient() {
       setLoadingStage('Board ready.')
       setPuzzle(puzzleData)
 
-      if (gameMode === 'practice') {
+      if (gameMode === 'practice' || gameMode === 'daily') {
         saveGameState({
           puzzleId: puzzleData.id,
           puzzle: puzzleData,
@@ -175,9 +177,84 @@ export function GameClient() {
     }
   }
 
+  const hydrateGuessDetails = useCallback(async (cellIndex: number) => {
+    if (!puzzle) return
+
+    const guess = guesses[cellIndex]
+    if (!guess) return
+
+    const alreadyHydrated =
+      guess.released !== undefined ||
+      guess.metacritic !== undefined ||
+      guess.genres !== undefined ||
+      guess.platforms !== undefined ||
+      guess.developers !== undefined ||
+      guess.publishers !== undefined ||
+      guess.tags !== undefined ||
+      guess.gameModes !== undefined ||
+      guess.themes !== undefined ||
+      guess.perspectives !== undefined ||
+      guess.companies !== undefined
+
+    if (alreadyHydrated) {
+      return
+    }
+
+    const rowCategory = puzzle.row_categories[Math.floor(cellIndex / 3)]
+    const colCategory = puzzle.col_categories[cellIndex % 3]
+
+    try {
+      const response = await fetch('/api/guess', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gameId: guess.gameId,
+          rowCategory,
+          colCategory,
+          lookupOnly: true,
+        }),
+      })
+
+      const result = await response.json()
+      if (!result.game) {
+        return
+      }
+
+      setGuesses(current =>
+        current.map((existingGuess, index) => {
+          if (index !== cellIndex || !existingGuess) {
+            return existingGuess
+          }
+
+          return {
+            ...existingGuess,
+            gameSlug: result.game.slug ?? existingGuess.gameSlug ?? null,
+            gameUrl: result.game.url ?? existingGuess.gameUrl ?? null,
+            released: result.game.released ?? null,
+            metacritic: result.game.metacritic ?? null,
+            genres: result.game.genres ?? [],
+            platforms: result.game.platforms ?? [],
+            developers: result.game.developers ?? [],
+            publishers: result.game.publishers ?? [],
+            tags: result.game.tags ?? [],
+            gameModes: result.game.gameModes ?? [],
+            themes: result.game.themes ?? [],
+            perspectives: result.game.perspectives ?? [],
+            companies: result.game.companies ?? [],
+            matchedRow: result.matchesRow,
+            matchedCol: result.matchesCol,
+          }
+        })
+      )
+    } catch (error) {
+      console.error('Failed to hydrate guess details:', error)
+    }
+  }, [guesses, puzzle])
+
   // Handle cell click
-  const handleCellClick = (index: number) => {
+  const handleCellClick = async (index: number) => {
     if (guesses[index] !== null) {
+      await hydrateGuessDetails(index)
       setDetailCell(index)
       return
     }
@@ -263,7 +340,7 @@ export function GameClient() {
       // Save state with full guess objects for proper restoration
       saveGameState({
         puzzleId: puzzle.id,
-        puzzle: mode === 'practice' ? puzzle : undefined,
+        puzzle,
         guesses: newGuesses.map(g => g ? { gameId: g.gameId, gameName: g.gameName, gameImage: g.gameImage, isCorrect: g.isCorrect } : null),
         guessesRemaining: newGuessesRemaining,
         isComplete: newGuessesRemaining === 0 || newGuesses.every(g => g !== null),
@@ -425,6 +502,8 @@ export function GameClient() {
         onClose={() => setShowResults(false)}
         guesses={guesses}
         puzzleId={puzzle.id}
+        rowCategories={puzzle.row_categories}
+        colCategories={puzzle.col_categories}
         isDaily={mode === 'daily'}
         onPlayAgain={handlePlayAgain}
       />

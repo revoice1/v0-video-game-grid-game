@@ -4,11 +4,25 @@ import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import type { CellGuess, AnswerStat } from '@/lib/types'
+import type { CellGuess, Category } from '@/lib/types'
 import Image from 'next/image'
 
+interface AnswerStat {
+  puzzle_id: string
+  cell_index: number
+  game_id: number
+  game_name: string
+  game_image: string | null
+  count: number
+}
+
+interface CellStatBucket {
+  correct: AnswerStat[]
+  incorrect: AnswerStat[]
+}
+
 interface CellStatsData {
-  [key: number]: AnswerStat[]
+  [key: number]: CellStatBucket
 }
 
 interface ResultsModalProps {
@@ -16,6 +30,8 @@ interface ResultsModalProps {
   onClose: () => void
   guesses: (CellGuess | null)[]
   puzzleId: string
+  rowCategories: Category[]
+  colCategories: Category[]
   isDaily: boolean
   onPlayAgain: () => void
 }
@@ -41,6 +57,8 @@ export function ResultsModal({
   onClose, 
   guesses, 
   puzzleId, 
+  rowCategories,
+  colCategories,
   isDaily, 
   onPlayAgain 
 }: ResultsModalProps) {
@@ -71,7 +89,7 @@ export function ResultsModal({
     const guess = guesses[cellIndex]
     if (!guess?.isCorrect || !stats) return null
     
-    const cellStats = stats[cellIndex] || []
+    const cellStats = stats[cellIndex]?.correct || []
     const totalForCell = cellStats.reduce((sum, s) => sum + s.count, 0)
     if (totalForCell === 0) return null
     
@@ -93,37 +111,11 @@ export function ResultsModal({
 
   const overallRarity = calculateOverallRarity()
 
-  // Get all answers across playerbase with their percentages
-  const getAllAnswersWithPercentages = () => {
-    if (!stats) return { top: [], bottom: [] }
-    
-    const allAnswers: { stat: AnswerStat; percentage: number; cellIndex: number }[] = []
-    
-    for (let i = 0; i < 9; i++) {
-      const cellStats = stats[i] || []
-      const totalForCell = cellStats.reduce((sum, s) => sum + s.count, 0)
-      
-      cellStats.forEach(stat => {
-        if (totalForCell > 0) {
-          allAnswers.push({
-            stat,
-            percentage: (stat.count / totalForCell) * 100,
-            cellIndex: i
-          })
-        }
-      })
-    }
-    
-    // Sort by percentage
-    const sorted = allAnswers.sort((a, b) => b.percentage - a.percentage)
-    
-    return {
-      top: sorted.slice(0, 10),
-      bottom: sorted.filter(a => a.stat.count <= 2).slice(-10).reverse()
-    }
+  const getCellLabel = (cellIndex: number) => {
+    const rowCategory = rowCategories[Math.floor(cellIndex / 3)]
+    const colCategory = colCategories[cellIndex % 3]
+    return `${rowCategory?.name ?? 'Row'} x ${colCategory?.name ?? 'Column'}`
   }
-
-  const { top: topAnswers, bottom: rarestAnswers } = getAllAnswersWithPercentages()
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -253,91 +245,109 @@ export function ResultsModal({
               ) : (
                 <>
                   {/* Most Popular Answers */}
-                  <div>
-                    <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-primary"></span>
-                      Most Popular Answers
-                    </h4>
-                    <div className="space-y-2">
-                      {topAnswers.length > 0 ? (
-                        topAnswers.map((item, i) => (
-                          <div 
-                            key={`${item.stat.game_id}-${item.cellIndex}`}
-                            className="flex items-center gap-3 p-2 rounded-lg bg-secondary/30 border border-border"
-                          >
-                            <span className="text-xs text-muted-foreground w-5">#{i + 1}</span>
-                            {item.stat.game_image ? (
-                              <Image
-                                src={item.stat.game_image}
-                                alt={item.stat.game_name}
-                                width={32}
-                                height={32}
-                                className="rounded object-cover"
-                              />
-                            ) : (
-                              <div className="w-8 h-8 bg-secondary rounded flex items-center justify-center text-xs">
-                                ?
+                  <div className="space-y-4">
+                    {Array.from({ length: 9 }, (_, cellIndex) => {
+                      const cellBucket = stats?.[cellIndex] ?? { correct: [], incorrect: [] }
+                      const totalCorrect = cellBucket.correct.reduce((sum, stat) => sum + stat.count, 0)
+                      const totalIncorrect = cellBucket.incorrect.reduce((sum, stat) => sum + stat.count, 0)
+
+                      return (
+                        <div
+                          key={cellIndex}
+                          className="rounded-xl border border-border bg-secondary/20 p-3"
+                        >
+                          <h4 className="font-semibold text-sm">{getCellLabel(cellIndex)}</h4>
+                          <div className="mt-3 grid gap-3 md:grid-cols-2">
+                            <div>
+                              <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-primary">
+                                Top Correct
+                              </p>
+                              <div className="space-y-2">
+                                {cellBucket.correct.length > 0 ? (
+                                  cellBucket.correct.slice(0, 5).map((stat, index) => {
+                                    const percentage = totalCorrect > 0 ? (stat.count / totalCorrect) * 100 : 0
+                                    return (
+                                      <div
+                                        key={`correct-${cellIndex}-${stat.game_id}`}
+                                        className="flex items-center gap-2 rounded-lg bg-background/60 p-2"
+                                      >
+                                        <span className="w-5 text-xs text-muted-foreground">#{index + 1}</span>
+                                        {stat.game_image ? (
+                                          <Image
+                                            src={stat.game_image}
+                                            alt={stat.game_name}
+                                            width={28}
+                                            height={28}
+                                            className="rounded object-cover"
+                                          />
+                                        ) : (
+                                          <div className="flex h-7 w-7 items-center justify-center rounded bg-secondary text-xs">?</div>
+                                        )}
+                                        <div className="min-w-0 flex-1">
+                                          <p className="truncate text-sm">{stat.game_name}</p>
+                                          <p className="text-xs text-muted-foreground">
+                                            {percentage < 1 ? '<1' : percentage.toFixed(0)}% of correct picks
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )
+                                  })
+                                ) : (
+                                  <p className="text-sm text-muted-foreground">No correct answers yet</p>
+                                )}
                               </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm truncate">{item.stat.game_name}</p>
-                              <p className="text-xs text-muted-foreground">Cell {item.cellIndex + 1}</p>
                             </div>
-                            <span className={cn('text-sm font-medium', getRarityClass(item.percentage))}>
-                              {item.percentage.toFixed(0)}%
-                            </span>
+
+                            <div>
+                              <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-destructive">
+                                Top Incorrect
+                              </p>
+                              <div className="space-y-2">
+                                {cellBucket.incorrect.length > 0 ? (
+                                  cellBucket.incorrect.slice(0, 5).map((stat, index) => {
+                                    const percentage = totalIncorrect > 0 ? (stat.count / totalIncorrect) * 100 : 0
+                                    return (
+                                      <div
+                                        key={`incorrect-${cellIndex}-${stat.game_id}`}
+                                        className="flex items-center gap-2 rounded-lg bg-background/60 p-2"
+                                      >
+                                        <span className="w-5 text-xs text-muted-foreground">#{index + 1}</span>
+                                        {stat.game_image ? (
+                                          <Image
+                                            src={stat.game_image}
+                                            alt={stat.game_name}
+                                            width={28}
+                                            height={28}
+                                            className="rounded object-cover"
+                                          />
+                                        ) : (
+                                          <div className="flex h-7 w-7 items-center justify-center rounded bg-secondary text-xs">?</div>
+                                        )}
+                                        <div className="min-w-0 flex-1">
+                                          <p className="truncate text-sm">{stat.game_name}</p>
+                                          <p className="text-xs text-muted-foreground">
+                                            {percentage < 1 ? '<1' : percentage.toFixed(0)}% of misses
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )
+                                  })
+                                ) : (
+                                  <p className="text-sm text-muted-foreground">No common misses yet</p>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        ))
-                      ) : (
-                        <p className="text-sm text-muted-foreground text-center py-4">No answers yet</p>
-                      )}
-                    </div>
+                        </div>
+                      )
+                    })}
                   </div>
 
-                  {/* Rarest Answers */}
-                  <div>
-                    <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full rarity-legendary"></span>
-                      Rarest Answers
-                    </h4>
-                    <div className="space-y-2">
-                      {rarestAnswers.length > 0 ? (
-                        rarestAnswers.map((item, i) => (
-                          <div 
-                            key={`rare-${item.stat.game_id}-${item.cellIndex}`}
-                            className="flex items-center gap-3 p-2 rounded-lg bg-secondary/30 border border-border"
-                          >
-                            <span className="text-xs rarity-legendary w-5">#{i + 1}</span>
-                            {item.stat.game_image ? (
-                              <Image
-                                src={item.stat.game_image}
-                                alt={item.stat.game_name}
-                                width={32}
-                                height={32}
-                                className="rounded object-cover"
-                              />
-                            ) : (
-                              <div className="w-8 h-8 bg-secondary rounded flex items-center justify-center text-xs">
-                                ?
-                              </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm truncate">{item.stat.game_name}</p>
-                              <p className="text-xs text-muted-foreground">Cell {item.cellIndex + 1}</p>
-                            </div>
-                            <div className="text-right">
-                              <span className="text-sm font-medium rarity-legendary">
-                                {item.percentage < 1 ? '<1' : item.percentage.toFixed(0)}%
-                              </span>
-                              <p className="text-xs text-muted-foreground">{item.stat.count} pick{item.stat.count !== 1 ? 's' : ''}</p>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-sm text-muted-foreground text-center py-4">No rare answers yet</p>
-                      )}
+                  {totalCompletions === 0 && (
+                    <div>
+                      <p className="text-sm text-muted-foreground text-center py-4">No answers yet</p>
                     </div>
-                  </div>
+                  )}
 
                   {/* Total players */}
                   <div className="text-center text-xs text-muted-foreground pt-2 border-t border-border">
