@@ -14,6 +14,24 @@ import { useToast } from '@/hooks/use-toast'
 
 const MAX_GUESSES = 9
 
+function getTimeUntilNextUtcMidnight(now = new Date()) {
+  const nextReset = new Date(now)
+  nextReset.setUTCHours(24, 0, 0, 0)
+
+  const diffMs = Math.max(0, nextReset.getTime() - now.getTime())
+  const totalSeconds = Math.floor(diffMs / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+
+  return {
+    hours,
+    minutes,
+    seconds,
+    label: `${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`,
+  }
+}
+
 export function GameClient() {
   const [mode, setMode] = useState<'daily' | 'practice'>('daily')
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null)
@@ -27,6 +45,7 @@ export function GameClient() {
   const [sessionId, setSessionId] = useState('')
   const [loadingProgress, setLoadingProgress] = useState(8)
   const [loadingStage, setLoadingStage] = useState('Warming up the puzzle generator...')
+  const [dailyResetLabel, setDailyResetLabel] = useState(() => getTimeUntilNextUtcMidnight().label)
   const { toast } = useToast()
 
   const score = guesses.filter(g => g?.isCorrect).length
@@ -37,6 +56,17 @@ export function GameClient() {
   // Initialize session
   useEffect(() => {
     setSessionId(getSessionId())
+  }, [])
+
+  useEffect(() => {
+    const updateResetCountdown = () => {
+      setDailyResetLabel(getTimeUntilNextUtcMidnight().label)
+    }
+
+    updateResetCountdown()
+    const timer = setInterval(updateResetCountdown, 1000)
+
+    return () => clearInterval(timer)
   }, [])
 
   // Load puzzle
@@ -345,6 +375,7 @@ export function GameClient() {
         mode={mode}
         guessesRemaining={guessesRemaining}
         score={score}
+        dailyResetLabel={mode === 'daily' ? dailyResetLabel : null}
         onModeChange={handleModeChange}
         onHowToPlay={() => setShowHowToPlay(true)}
         onNewPracticeGame={mode === 'practice' ? handlePlayAgain : undefined}
@@ -403,6 +434,7 @@ export function GameClient() {
         onClose={() => setShowHowToPlay(false)}
         minimumCellOptions={resolvedMinimumCellOptions}
         validationStatus={puzzle.validation_status}
+        dailyResetLabel={dailyResetLabel}
       />
 
       <GuessDetailsModal
