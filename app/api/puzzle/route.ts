@@ -215,7 +215,7 @@ export async function GET(request: NextRequest) {
             send({ type: 'progress', pct, message })
           }
 
-          const { rows, cols, rowFamilies, colFamilies } = await generatePuzzleCategories({
+          const { rows, cols } = await generatePuzzleCategories({
             minValidOptionsPerCell: plan.minValidOptionsPerCell,
             maxAttempts: plan.maxAttempts,
             sampleSize: VALIDATION_SAMPLE_SIZE,
