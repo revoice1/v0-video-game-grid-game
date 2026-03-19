@@ -20,6 +20,10 @@ export function getSessionId(): string {
 const DAILY_STATE_KEY = 'gamegrid_daily_state'
 const PRACTICE_STATE_KEY = 'gamegrid_practice_state'
 
+function getUtcDateKey(): string {
+  return new Date().toISOString().split('T')[0]
+}
+
 export interface CellGuessRecord {
   gameId: number
   gameName: string
@@ -40,7 +44,7 @@ export function saveGameState(state: SavedGameState, isDaily: boolean): void {
   if (typeof window === 'undefined') return
   
   const key = isDaily ? DAILY_STATE_KEY : PRACTICE_STATE_KEY
-  const saveState = isDaily ? { ...state, date: new Date().toDateString() } : state
+  const saveState = isDaily ? { ...state, date: getUtcDateKey() } : state
   localStorage.setItem(key, JSON.stringify(saveState))
 }
 
@@ -55,8 +59,8 @@ export function loadGameState(isDaily: boolean): SavedGameState | null {
   try {
     const state = JSON.parse(saved) as SavedGameState
     
-    // For daily, check if it's from today
-    if (isDaily && state.date !== new Date().toDateString()) {
+    // For daily, align the saved-state key with the server's UTC rollover.
+    if (isDaily && state.date !== getUtcDateKey()) {
       localStorage.removeItem(key)
       return null
     }

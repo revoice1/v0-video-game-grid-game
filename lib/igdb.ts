@@ -116,6 +116,11 @@ interface CellValidationCacheEntry {
   games: Game[]
 }
 
+interface CellCountCacheEntry {
+  expiresAt: number
+  count: number
+}
+
 export interface CellValidationResult {
   cellIndex: number
   rowCategory: Category
@@ -149,6 +154,7 @@ const IGDB_MIN_REQUEST_INTERVAL_MS = Number(
 )
 const IGDB_MAX_RETRIES = Number(process.env.IGDB_MAX_RETRIES ?? DEFAULT_IGDB_MAX_RETRIES)
 const cellValidationCache = new Map<string, CellValidationCacheEntry>()
+const cellCountCache = new Map<string, CellCountCacheEntry>()
 let igdbRequestQueue = Promise.resolve()
 let igdbNextRequestAt = 0
 
@@ -565,14 +571,53 @@ function buildDifficultyMetadata(
 export function buildPuzzleCellMetadata(
   validation: PuzzleValidationResult,
   minValidOptionsPerCell: number,
-  sampleSize = DEFAULT_CELL_SAMPLE_SIZE
+  sampleSize = DEFAULT_CELL_SAMPLE_SIZE,
+  treatSampleSizeAsCap = true
 ): PuzzleCellMetadata[] {
   return validation.cellResults.map(cell => ({
     cellIndex: cell.cellIndex,
     validOptionCount: cell.validOptionCount,
-    isCapped: cell.validOptionCount >= sampleSize,
+    isCapped: treatSampleSizeAsCap ? cell.validOptionCount >= sampleSize : false,
     ...buildDifficultyMetadata(cell.validOptionCount, minValidOptionsPerCell),
   }))
+}
+
+async function queryValidGamesForCell(
+  rowCategory: Category,
+  colCategory: Category,
+  limit: number,
+  offset = 0,
+  fields =
+    'name,slug,url,category,game_type,parent_game,first_release_date,total_rating,total_rating_count,cover.image_id,platforms.name,platforms.slug,genres.name,genres.slug,game_modes.name,themes.name,player_perspectives.name,involved_companies.company.name,keywords.name'
+): Promise<Game[]> {
+  const rowClause = buildIGDBWhereClause(rowCategory)
+  const colClause = buildIGDBWhereClause(colCategory)
+  const needsPostFilter = !rowClause || !colClause
+
+  const baseWhereParts = [buildOfficialGameWhereClause()]
+  if (rowClause) {
+    baseWhereParts.push(rowClause)
+  }
+  if (colClause) {
+    baseWhereParts.push(colClause)
+  }
+
+  const query = [
+    `fields ${fields};`,
+    `where ${baseWhereParts.join(' & ')};`,
+    `limit ${needsPostFilter ? limit * 3 : limit};`,
+    `offset ${offset};`,
+  ].join(' ')
+
+  const results = await queryIGDB<IGDBGame>('games', query)
+  const mappedGames = results.map(mapIGDBGameToGame)
+  const filteredGames = needsPostFilter
+    ? mappedGames.filter(
+        game => igdbGameMatchesCategory(game, rowCategory) && igdbGameMatchesCategory(game, colCategory)
+      )
+    : mappedGames
+
+  return Array.from(new Map(filteredGames.map(game => [game.id, game])).values())
 }
 
 async function getCategoryFamilies(): Promise<CategoryFamily[]> {
@@ -1157,34 +1202,8 @@ export async function getValidGamesForCell(
     return cachedEntry.games
   }
 
-  const rowClause = buildIGDBWhereClause(rowCategory)
-  const colClause = buildIGDBWhereClause(colCategory)
-  const needsPostFilter = !rowClause || !colClause
-
-  const baseWhereParts = [buildOfficialGameWhereClause()]
-  if (rowClause) {
-    baseWhereParts.push(rowClause)
-  }
-  if (colClause) {
-    baseWhereParts.push(colClause)
-  }
-
-  const query = [
-    'fields name,slug,url,category,game_type,parent_game,first_release_date,total_rating,total_rating_count,cover.image_id,platforms.name,platforms.slug,genres.name,genres.slug,game_modes.name,themes.name,player_perspectives.name,involved_companies.company.name,keywords.name;',
-    `where ${baseWhereParts.join(' & ')};`,
-    `limit ${needsPostFilter ? sampleSize * 3 : sampleSize};`,
-  ].join(' ')
-
   try {
-    const results = await queryIGDB<IGDBGame>('games', query)
-    const mappedGames = results.map(mapIGDBGameToGame)
-    const filteredGames = needsPostFilter
-      ? mappedGames.filter(
-          game => igdbGameMatchesCategory(game, rowCategory) && igdbGameMatchesCategory(game, colCategory)
-        )
-      : mappedGames
-
-    const games = Array.from(new Map(filteredGames.map(game => [game.id, game])).values()).slice(0, sampleSize)
+    const games = (await queryValidGamesForCell(rowCategory, colCategory, sampleSize, 0)).slice(0, sampleSize)
     cellValidationCache.set(cacheKey, {
       expiresAt: Date.now() + CELL_VALIDATION_CACHE_TTL_MS,
       games,
@@ -1197,6 +1216,67 @@ export async function getValidGamesForCell(
       games: [],
     })
     return []
+  }
+}
+
+export async function getValidGameCountForCell(
+  rowCategory: Category,
+  colCategory: Category
+): Promise<number> {
+  const pairRejectionReason = getPairRejectionReason(rowCategory, colCategory)
+  if (pairRejectionReason) {
+    cellCountCache.set(getCellCacheKey(rowCategory, colCategory, -1), {
+      expiresAt: Date.now() + CELL_VALIDATION_CACHE_TTL_MS,
+      count: 0,
+    })
+    return 0
+  }
+
+  const cacheKey = getCellCacheKey(rowCategory, colCategory, -1)
+  const cachedEntry = cellCountCache.get(cacheKey)
+  if (cachedEntry && cachedEntry.expiresAt > Date.now()) {
+    return cachedEntry.count
+  }
+
+  const pageSize = 500
+  const seenGameIds = new Set<number>()
+  let offset = 0
+
+  try {
+    while (true) {
+      const games = await queryValidGamesForCell(
+        rowCategory,
+        colCategory,
+        pageSize,
+        offset,
+        'id,name,slug,url,category,game_type,parent_game,first_release_date,total_rating,total_rating_count,cover.image_id,platforms.name,platforms.slug,genres.name,genres.slug,game_modes.name,themes.name,player_perspectives.name,involved_companies.company.name,keywords.name'
+      )
+
+      for (const game of games) {
+        seenGameIds.add(game.id)
+      }
+
+      if (games.length < pageSize) {
+        break
+      }
+
+      offset += pageSize
+    }
+
+    const count = seenGameIds.size
+    cellCountCache.set(cacheKey, {
+      expiresAt: Date.now() + CELL_VALIDATION_CACHE_TTL_MS,
+      count,
+    })
+    return count
+  } catch (error) {
+    console.error('[v0] Error getting IGDB valid game count:', error)
+    const fallbackCount = (await getValidGamesForCell(rowCategory, colCategory, DEFAULT_CELL_SAMPLE_SIZE)).length
+    cellCountCache.set(cacheKey, {
+      expiresAt: Date.now() + Math.min(CELL_VALIDATION_CACHE_TTL_MS, 1000 * 60 * 5),
+      count: fallbackCount,
+    })
+    return fallbackCount
   }
 }
 

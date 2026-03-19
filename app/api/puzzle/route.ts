@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { buildPuzzleCellMetadata, generatePuzzleCategories, validatePuzzleCategories } from '@/lib/igdb'
+import {
+  buildPuzzleCellMetadata,
+  generatePuzzleCategories,
+  getValidGameCountForCell,
+} from '@/lib/igdb'
 import type { Category, PuzzleCellMetadata } from '@/lib/types'
 
 export const revalidate = 3600
@@ -65,11 +69,7 @@ async function generateValidPuzzle(): Promise<{
         maxAttempts: plan.maxAttempts,
         sampleSize: VALIDATION_SAMPLE_SIZE,
       })
-      const cellMetadata = buildPuzzleCellMetadata(
-        validation,
-        plan.minValidOptionsPerCell,
-        VALIDATION_SAMPLE_SIZE
-      )
+      const cellMetadata = await getPuzzleCellMetadata(rows, cols, plan.minValidOptionsPerCell)
 
       console.log(
         `[v0] Generated puzzle - rows: ${rows.map(row => row.name).join(', ')} ` +
@@ -110,13 +110,33 @@ async function generateValidPuzzle(): Promise<{
   throw lastError ?? new Error('Failed to generate puzzle')
 }
 
-async function getPuzzleCellMetadata(rows: Category[], cols: Category[]): Promise<PuzzleCellMetadata[]> {
-  const validation = await validatePuzzleCategories(rows, cols, {
-    minValidOptionsPerCell: MIN_VALID_OPTIONS_PER_CELL,
-    sampleSize: VALIDATION_SAMPLE_SIZE,
-  })
+async function getPuzzleCellMetadata(
+  rows: Category[],
+  cols: Category[],
+  minValidOptionsPerCell = MIN_VALID_OPTIONS_PER_CELL
+): Promise<PuzzleCellMetadata[]> {
+  const exactCellResults = await Promise.all(
+    rows.flatMap((rowCategory, rowIndex) =>
+      cols.map(async (colCategory, colIndex) => ({
+        cellIndex: rowIndex * 3 + colIndex,
+        rowCategory,
+        colCategory,
+        validOptionCount: await getValidGameCountForCell(rowCategory, colCategory),
+      }))
+    )
+  )
 
-  return buildPuzzleCellMetadata(validation, MIN_VALID_OPTIONS_PER_CELL, VALIDATION_SAMPLE_SIZE)
+  const validation = {
+    valid: exactCellResults.every(cell => cell.validOptionCount >= minValidOptionsPerCell),
+    minValidOptionCount: exactCellResults.reduce(
+      (lowest, cell) => Math.min(lowest, cell.validOptionCount),
+      Number.POSITIVE_INFINITY
+    ),
+    cellResults: exactCellResults,
+    failedCells: exactCellResults.filter(cell => cell.validOptionCount < minValidOptionsPerCell),
+  }
+
+  return buildPuzzleCellMetadata(validation, minValidOptionsPerCell, VALIDATION_SAMPLE_SIZE, false)
 }
 
 export async function GET(request: NextRequest) {

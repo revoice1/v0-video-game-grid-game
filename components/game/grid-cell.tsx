@@ -2,7 +2,6 @@
 
 import { cn } from '@/lib/utils'
 import type { CellGuess, PuzzleCellMetadata } from '@/lib/types'
-import { Flame, type LucideIcon, Skull, Sparkles, Target, Trophy, WandSparkles } from 'lucide-react'
 import Image from 'next/image'
 
 interface GridCellProps {
@@ -20,28 +19,35 @@ const difficultyStyles: Record<NonNullable<PuzzleCellMetadata['difficulty']>, st
   tricky: 'bg-amber-500/85 text-black',
   fair: 'bg-sky-500/85 text-white',
   cozy: 'bg-emerald-500/85 text-white',
-  feast: 'bg-fuchsia-500/85 text-white',
+  feast: 'bg-violet-500/80 text-white',
 }
 
-const difficultyIcons: Record<
+const difficultyEmoji: Record<
   NonNullable<PuzzleCellMetadata['difficulty']>,
-  LucideIcon
+  string
 > = {
-  brutal: Skull,
-  spicy: Flame,
-  tricky: Sparkles,
-  fair: Target,
-  cozy: WandSparkles,
-  feast: Trophy,
+  brutal: '💀',
+  spicy: '🔥',
+  tricky: '🧩',
+  fair: '🎯',
+  cozy: '🛋️',
+  feast: '🏆',
 }
 
 export function GridCell({ guess, metadata, isSelected, isDisabled, onClick }: GridCellProps) {
   const hasGuess = guess !== null
   const isButtonDisabled = isDisabled && !hasGuess
   const possibleLabel = metadata
-    ? `${metadata.validOptionCount}${metadata.isCapped ? '+' : ''} possible`
+    ? metadata.validOptionCount > 99
+      ? '>99'
+      : `${metadata.validOptionCount}`
     : null
-  const DifficultyIcon = metadata ? difficultyIcons[metadata.difficulty] : null
+  const possibleTitle = metadata
+    ? metadata.isCapped
+      ? `${metadata.validOptionCount}+ sampled possible answers`
+      : `${metadata.validOptionCount} possible answers`
+    : null
+  const difficultyMarker = metadata ? difficultyEmoji[metadata.difficulty] : null
   
   return (
     <button
@@ -104,17 +110,17 @@ export function GridCell({ guess, metadata, isSelected, isDisabled, onClick }: G
             <>
               <span
                 className={cn(
-                  'absolute top-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] shadow-sm',
+                  'absolute top-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] shadow-sm',
                   difficultyStyles[metadata.difficulty]
                 )}
-                title={`${metadata.validOptionCount} possible answers`}
+                title={possibleTitle ?? undefined}
               >
-                {DifficultyIcon && <DifficultyIcon className="h-3 w-3" />}
+                {difficultyMarker && <span className="text-[11px] leading-none">{difficultyMarker}</span>}
                 {metadata.difficultyLabel}
               </span>
               <span
-                className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium text-white/90 shadow-sm"
-                title={`${metadata.validOptionCount} possible answers`}
+                className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/55 px-2.5 py-1 text-xs font-semibold text-white/90 shadow-sm"
+                title={possibleTitle ?? undefined}
               >
                 {possibleLabel}
               </span>

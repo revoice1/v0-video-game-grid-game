@@ -8,6 +8,7 @@ interface HowToPlayModalProps {
   onClose: () => void
   minimumCellOptions?: number | null
   validationStatus?: 'validated' | 'relaxed' | 'unvalidated'
+  dailyResetLabel?: string | null
 }
 
 export function HowToPlayModal({
@@ -15,6 +16,7 @@ export function HowToPlayModal({
   onClose,
   minimumCellOptions,
   validationStatus,
+  dailyResetLabel,
 }: HowToPlayModalProps) {
   const answerPoolCopy =
     typeof minimumCellOptions === 'number'
@@ -22,6 +24,9 @@ export function HowToPlayModal({
         ? `We still sanity-check the board, but this one was accepted with a lighter bar. Its thinnest cell currently shows about ${minimumCellOptions} possible answers.`
         : `Every cell is tested before the board goes live. On this puzzle, even the thinnest intersection shows about ${minimumCellOptions} possible answers.`
       : 'Every cell is checked before the board goes live so you are not walking into impossible intersections blind.'
+  const resetCopy = dailyResetLabel
+    ? `The Daily puzzle refreshes at midnight UTC, which is ${dailyResetLabel} from now in your browser.`
+    : 'The Daily puzzle refreshes at midnight UTC.'
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -97,6 +102,18 @@ export function HowToPlayModal({
             <div className="flex gap-3">
               <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
                 <span className="text-primary font-bold">6</span>
+              </div>
+              <div>
+                <p className="font-medium">Daily Reset</p>
+                <p className="text-sm text-muted-foreground">
+                  {resetCopy}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <span className="text-primary font-bold">7</span>
               </div>
               <div>
                 <p className="font-medium">Rarity Score</p>
