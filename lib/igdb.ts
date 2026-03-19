@@ -105,10 +105,20 @@ interface CategoryFamily {
   categories: Category[]
 }
 
+export type PuzzleProgressCallback = (event: {
+  stage: 'families' | 'attempt' | 'cell' | 'metadata' | 'done'
+  attempt?: number
+  maxAttempts?: number
+  cellIndex?: number    // 0-8 within current attempt
+  totalCells?: number
+  message?: string
+}) => void
+
 interface PuzzleGenerationOptions {
   minValidOptionsPerCell?: number
   maxAttempts?: number
   sampleSize?: number
+  onProgress?: PuzzleProgressCallback
 }
 
 interface CellValidationCacheEntry {
@@ -1283,11 +1293,13 @@ export async function getValidGameCountForCell(
 export async function validatePuzzleCategories(
   rows: Category[],
   cols: Category[],
-  options: PuzzleGenerationOptions = {}
+  options: PuzzleGenerationOptions = {},
+  onCellValidated?: (cellIndex: number, totalCells: number) => void
 ): Promise<PuzzleValidationResult> {
   const minValidOptionsPerCell = options.minValidOptionsPerCell ?? DEFAULT_MIN_VALID_OPTIONS
   const sampleSize = options.sampleSize ?? DEFAULT_CELL_SAMPLE_SIZE
   const cellResults: CellValidationResult[] = []
+  const totalCells = rows.length * cols.length
 
   for (const [rowIndex, rowCategory] of rows.entries()) {
     for (const [colIndex, colCategory] of cols.entries()) {
@@ -1300,6 +1312,7 @@ export async function validatePuzzleCategories(
           colCategory,
           validOptionCount: 0,
         })
+        onCellValidated?.(cellIndex, totalCells)
         continue
       }
 
@@ -1310,6 +1323,7 @@ export async function validatePuzzleCategories(
         colCategory,
         validOptionCount: new Set(validGames.map(game => game.id)).size,
       })
+      onCellValidated?.(cellIndex, totalCells)
     }
   }
 
@@ -1334,6 +1348,9 @@ export async function generatePuzzleCategories(
   const maxAttempts = options.maxAttempts ?? DEFAULT_MAX_GENERATION_ATTEMPTS
   const sampleSize = options.sampleSize ?? DEFAULT_CELL_SAMPLE_SIZE
 
+  const onProgress = options.onProgress
+
+  onProgress?.({ stage: 'families', message: 'Loading category data...' })
   const families = (await getCategoryFamilies()).filter(family => family.categories.length >= 3)
   if (families.length < 4) {
     throw new Error('Not enough IGDB category families available to generate a puzzle')
@@ -1342,6 +1359,7 @@ export async function generatePuzzleCategories(
   let bestAttempt: { rows: Category[]; cols: Category[]; validation: PuzzleValidationResult } | null = null
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    onProgress?.({ stage: 'attempt', attempt, maxAttempts, message: `Attempt ${attempt} of ${maxAttempts}: picking categories...` })
     const selectedFamilies = pickRandomItems(families, 4)
     const cols = buildAxisCategories(selectedFamilies[2], selectedFamilies[3], [])
     if (!cols) {
@@ -1355,6 +1373,8 @@ export async function generatePuzzleCategories(
     const validation = await validatePuzzleCategories(rows, cols, {
       minValidOptionsPerCell,
       sampleSize,
+    }, (cellIndex, totalCells) => {
+      onProgress?.({ stage: 'cell', attempt, maxAttempts, cellIndex, totalCells, message: `Attempt ${attempt}: checking intersection ${cellIndex + 1}/${totalCells}...` })
     })
 
     if (

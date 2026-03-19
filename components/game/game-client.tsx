@@ -113,75 +113,67 @@ export function GameClient() {
     }
 
     setIsLoading(true)
-    setLoadingProgress(8)
-    setLoadingStage('Warming up the puzzle generator...')
     setGuesses(Array(9).fill(null))
     setGuessesRemaining(MAX_GUESSES)
     setSelectedCell(null)
     setShowResults(false)
     setDetailCell(null)
-    let progressTimer: ReturnType<typeof setInterval> | null = null
 
-    const startLoadingProgress = () => {
-      progressTimer = setInterval(() => {
-        setLoadingProgress(current => {
-          const next = Math.min(current + (current < 45 ? 11 : current < 72 ? 7 : 4), 92)
-
-          if (next < 35) {
-            setLoadingStage('Picking categories...')
-          } else if (next < 68) {
-            setLoadingStage('Testing intersections...')
-          } else {
-            setLoadingStage('Finalizing the board...')
-          }
-
-          return next
-        })
-      }, 700)
-    }
+    setLoadingProgress(0)
+    setLoadingStage(gameMode === 'daily' ? "Loading today's board..." : 'Starting puzzle generation...')
 
     try {
-      startLoadingProgress()
-      const response = await fetch(`/api/puzzle?mode=${gameMode}`)
-      const puzzleData = await response.json()
-      
-      if (puzzleData.error) {
-        console.error('Puzzle error:', puzzleData.error)
-        return
-      }
+      await new Promise<void>((resolve, reject) => {
+        const es = new EventSource(`/api/puzzle-stream?mode=${gameMode}`)
 
-      setLoadingProgress(100)
-      setLoadingStage('Board ready.')
-      setPuzzle(puzzleData)
+        es.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data)
 
-      if (gameMode === 'practice' || gameMode === 'daily') {
-        saveGameState({
-          puzzleId: puzzleData.id,
-          puzzle: puzzleData,
-          guesses: Array(9).fill(null),
-          guessesRemaining: MAX_GUESSES,
-          isComplete: false,
-        }, gameMode === 'daily')
-      }
+            if (msg.type === 'progress') {
+              setLoadingProgress(msg.pct)
+              if (msg.message) setLoadingStage(msg.message)
+            } else if (msg.type === 'puzzle') {
+              es.close()
+              const puzzleData = msg.puzzle
+              setPuzzle(puzzleData)
+              saveGameState({
+                puzzleId: puzzleData.id,
+                puzzle: puzzleData,
+                guesses: Array(9).fill(null),
+                guessesRemaining: MAX_GUESSES,
+                isComplete: false,
+              }, gameMode === 'daily')
 
-      // Restore saved state if it matches current puzzle
-      if (savedState && savedState.puzzleId === puzzleData.id) {
-        // Reconstruct full CellGuess array from saved state
-        const restoredGuesses = savedState.guesses.map(g =>
-          g ? { gameId: g.gameId, gameName: g.gameName, gameImage: g.gameImage, isCorrect: g.isCorrect } : null
-        )
-        setGuesses(restoredGuesses)
-        setGuessesRemaining(savedState.guessesRemaining)
-        if (savedState.isComplete) {
-          setShowResults(true)
+              // Restore prior session state if puzzle ID matches
+              if (savedState && savedState.puzzleId === puzzleData.id) {
+                const restoredGuesses = savedState.guesses.map((g: any) =>
+                  g ? { gameId: g.gameId, gameName: g.gameName, gameImage: g.gameImage, isCorrect: g.isCorrect } : null
+                )
+                setGuesses(restoredGuesses)
+                setGuessesRemaining(savedState.guessesRemaining)
+                if (savedState.isComplete) setShowResults(true)
+              }
+
+              resolve()
+            } else if (msg.type === 'error') {
+              es.close()
+              reject(new Error(msg.message))
+            }
+          } catch (e) {
+            es.close()
+            reject(e)
+          }
         }
-      }
+
+        es.onerror = () => {
+          es.close()
+          reject(new Error('Connection to puzzle stream lost'))
+        }
+      })
     } catch (error) {
       console.error('Failed to load puzzle:', error)
     } finally {
-      if (progressTimer) {
-        clearInterval(progressTimer)
-      }
       setIsLoading(false)
     }
   }, [])
@@ -431,12 +423,16 @@ export function GameClient() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-full max-w-md rounded-2xl border border-border bg-card/70 p-6 shadow-xl backdrop-blur-sm">
           <p className="text-center text-sm font-semibold uppercase tracking-[0.24em] text-primary">
-            Building Grid
+            {mode === 'daily' ? 'Daily Puzzle' : 'Building Grid'}
           </p>
           <p className="mt-3 text-center text-lg font-semibold text-foreground">{loadingStage}</p>
           <p className="mt-2 text-center text-sm text-muted-foreground">
             {mode === 'daily'
-              ? 'Checking today\'s board and validating the trickiest cells.'
+              ? loadingProgress < 10
+                ? 'Checking for today\'s puzzle...'
+                : loadingProgress < 75
+                  ? 'Generating today\'s puzzle and validating intersections.'
+                  : 'Almost done!'
               : 'Generating a fresh practice puzzle and sanity-checking each intersection.'}
           </p>
           <div className="mt-6 space-y-2">
