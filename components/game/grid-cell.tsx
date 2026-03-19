@@ -38,14 +38,12 @@ export function GridCell({ guess, metadata, isSelected, isDisabled, onClick }: G
   const hasGuess = guess !== null
   const isButtonDisabled = isDisabled && !hasGuess
   const possibleLabel = metadata
-    ? metadata.isCapped
-      ? `${metadata.validOptionCount}+`
+    ? metadata.validOptionCount >= 1000
+      ? `${(metadata.validOptionCount / 1000).toFixed(1)}k`
       : `${metadata.validOptionCount}`
     : null
   const possibleTitle = metadata
-    ? metadata.isCapped
-      ? `${metadata.validOptionCount}+ sampled possible answers`
-      : `${metadata.validOptionCount} possible answers`
+    ? `${metadata.validOptionCount} possible answers`
     : null
   const difficultyMarker = metadata ? difficultyEmoji[metadata.difficulty] : null
   

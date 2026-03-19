@@ -585,15 +585,19 @@ function buildDifficultyMetadata(
   minValidOptionsPerCell: number,
   sampleSize = DEFAULT_CELL_SAMPLE_SIZE
 ): Pick<PuzzleCellMetadata, 'difficulty' | 'difficultyLabel'> {
-  // Cutoffs span min → sampleSize so the full difficulty spectrum is always reachable.
-  // With min=12, sampleSize=40: brutal≤14, spicy≤19, tricky≤26, fair≤33, cozy≤39, feast=40+
-  // With min=3,  sampleSize=40: brutal≤4,  spicy≤11, tricky≤19, fair≤27, cozy≤37, feast=38+
-  const range = sampleSize - minValidOptionsPerCell
-  const brutalCutoff = minValidOptionsPerCell + Math.ceil(range * 0.05)
-  const spicyCutoff  = minValidOptionsPerCell + Math.ceil(range * 0.25)
-  const trickyCutoff = minValidOptionsPerCell + Math.ceil(range * 0.50)
-  const fairCutoff   = minValidOptionsPerCell + Math.ceil(range * 0.75)
-  const cozyCutoff   = minValidOptionsPerCell + Math.ceil(range * 0.97)
+  // Fixed absolute cutoffs tuned to real IGDB intersection counts.
+  // These reflect what players will actually encounter across category pairs.
+  //   Brutal : < 20    — almost no valid answers, very hard
+  //   Spicy  : < 50    — handful of answers, challenging
+  //   Tricky : < 150   — limited options, requires knowledge
+  //   Fair   : < 400   — decent pool, fair game
+  //   Cozy   : < 1000  — lots of options, approachable
+  //   Feast  : 1000+   — huge pool, easy
+  const brutalCutoff = 20
+  const spicyCutoff  = 50
+  const trickyCutoff = 150
+  const fairCutoff   = 400
+  const cozyCutoff   = 1000
 
   if (validOptionCount <= brutalCutoff) {
     return { difficulty: 'brutal', difficultyLabel: 'Brutal' }
@@ -627,7 +631,7 @@ export function buildPuzzleCellMetadata(
   return validation.cellResults.map(cell => ({
     cellIndex: cell.cellIndex,
     validOptionCount: cell.validOptionCount,
-    isCapped: treatSampleSizeAsCap ? cell.validOptionCount >= sampleSize : false,
+    isCapped: false, // counts are exact via /count endpoint, never capped
     ...buildDifficultyMetadata(cell.validOptionCount, minValidOptionsPerCell, sampleSize),
   }))
 }
