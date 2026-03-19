@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import {
   buildPuzzleCellMetadata,
   generatePuzzleCategories,
+  getValidGameCountForCell,
   type PuzzleProgressCallback,
 } from '@/lib/igdb'
 import type { Category, PuzzleCellMetadata } from '@/lib/types'
@@ -48,6 +49,35 @@ async function getExistingDailyPuzzle(supabase: Awaited<ReturnType<typeof create
 }
 
 
+
+async function computePuzzleCellMetadata(
+  rows: Category[],
+  cols: Category[],
+  minValidOptionsPerCell: number,
+  onCell?: (cellIndex: number, total: number) => void
+): Promise<PuzzleCellMetadata[]> {
+  const total = rows.length * cols.length
+  const exactCellResults = await Promise.all(
+    rows.flatMap((rowCategory, rowIndex) =>
+      cols.map(async (colCategory, colIndex) => {
+        const cellIndex = rowIndex * 3 + colIndex
+        const validOptionCount = await getValidGameCountForCell(rowCategory, colCategory)
+        onCell?.(cellIndex, total)
+        return { cellIndex, rowCategory, colCategory, validOptionCount }
+      })
+    )
+  )
+  const validation = {
+    valid: exactCellResults.every(c => c.validOptionCount >= minValidOptionsPerCell),
+    minValidOptionCount: exactCellResults.reduce(
+      (low, c) => Math.min(low, c.validOptionCount),
+      Number.POSITIVE_INFINITY
+    ),
+    cellResults: exactCellResults,
+    failedCells: exactCellResults.filter(c => c.validOptionCount < minValidOptionsPerCell),
+  }
+  return buildPuzzleCellMetadata(validation, minValidOptionsPerCell, VALIDATION_SAMPLE_SIZE, false)
+}
 
 function sseEvent(data: object): string {
   return `data: ${JSON.stringify(data)}\n\n`
