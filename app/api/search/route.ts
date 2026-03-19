@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { searchGames } from '@/lib/rawg'
+import { searchIGDBGames } from '@/lib/igdb'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   }
   
   try {
-    const games = await searchGames(query)
+    const games = await searchIGDBGames(query)
     // Only return display fields — never expose validation metadata
     // (genres, platforms, tags, developers, publishers) which would let
     // players verify answers before submitting via the network tab.

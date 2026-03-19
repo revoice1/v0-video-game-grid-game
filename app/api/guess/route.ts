@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { validateGameForCell } from '@/lib/rawg'
+import { validateIGDBGameForCell } from '@/lib/igdb'
 import type { Category } from '@/lib/types'
 
 export async function POST(request: NextRequest) {
@@ -28,8 +28,46 @@ export async function POST(request: NextRequest) {
       colCategory: Category
     }
     
+    const { data: existingGuess } = await supabase
+      .from('guesses')
+      .select('id')
+      .eq('puzzle_id', puzzleId)
+      .eq('session_id', sessionId)
+      .eq('game_id', gameId)
+      .maybeSingle()
+
+    if (existingGuess) {
+      return NextResponse.json({
+        valid: false,
+        duplicate: true,
+        matchesRow: false,
+        matchesCol: false,
+        game: null,
+      })
+    }
+
     // Validate the guess
-    const { valid, game } = await validateGameForCell(gameId, rowCategory, colCategory)
+    const { valid, game, matchesRow, matchesCol } = await validateIGDBGameForCell(gameId, rowCategory, colCategory)
+
+    if (!valid && game) {
+      console.warn('[v0] Rejected guess details:', {
+        gameId,
+        gameName,
+        rowCategory,
+        colCategory,
+        matchesRow,
+        matchesCol,
+        genres: game.genres?.map(genre => `${genre.id}:${genre.name}`) ?? [],
+        platforms: game.platforms?.map(platform => `${platform.platform.id}:${platform.platform.name}`) ?? [],
+        developers: game.developers?.map(developer => `${developer.id}:${developer.name}`) ?? [],
+        publishers: game.publishers?.map(publisher => `${publisher.id}:${publisher.name}`) ?? [],
+        keywords: game.tags?.map(tag => `${tag.id}:${tag.name}`) ?? [],
+        igdbGameModes: game.igdb?.game_modes ?? [],
+        igdbThemes: game.igdb?.themes ?? [],
+        igdbPerspectives: game.igdb?.player_perspectives ?? [],
+        igdbCompanies: game.igdb?.companies ?? [],
+      })
+    }
     
     if (valid) {
       // Record the guess
@@ -54,10 +92,26 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       valid,
-      game: valid ? {
+      duplicate: false,
+      matchesRow,
+      matchesCol,
+      game: game ? {
         id: game?.id,
         name: game?.name,
+        slug: game?.slug,
+        url: game?.gameUrl,
         background_image: game?.background_image,
+        released: game?.released,
+        metacritic: game?.metacritic,
+        genres: game?.genres?.map(genre => genre.name) ?? [],
+        platforms: game?.platforms?.map(platform => platform.platform.name) ?? [],
+        developers: game?.developers?.map(developer => developer.name) ?? [],
+        publishers: game?.publishers?.map(publisher => publisher.name) ?? [],
+        tags: game?.tags?.map(tag => tag.name) ?? [],
+        gameModes: game?.igdb?.game_modes ?? [],
+        themes: game?.igdb?.themes ?? [],
+        perspectives: game?.igdb?.player_perspectives ?? [],
+        companies: game?.igdb?.companies ?? [],
       } : null,
     })
   } catch (error) {

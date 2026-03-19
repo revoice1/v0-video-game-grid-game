@@ -6,9 +6,11 @@ import { GameGrid } from './game-grid'
 import { GameSearch } from './game-search'
 import { ResultsModal } from './results-modal'
 import { HowToPlayModal } from './how-to-play-modal'
+import { GuessDetailsModal } from './guess-details-modal'
 import { getSessionId, saveGameState, loadGameState, clearGameState, type CellGuessRecord } from '@/lib/session'
 import type { Puzzle, CellGuess, Game, Category } from '@/lib/types'
-import { Spinner } from '@/components/ui/spinner'
+import { Progress } from '@/components/ui/progress'
+import { useToast } from '@/hooks/use-toast'
 
 const MAX_GUESSES = 9
 
@@ -21,7 +23,11 @@ export function GameClient() {
   const [isLoading, setIsLoading] = useState(true)
   const [showResults, setShowResults] = useState(false)
   const [showHowToPlay, setShowHowToPlay] = useState(false)
+  const [detailCell, setDetailCell] = useState<number | null>(null)
   const [sessionId, setSessionId] = useState('')
+  const [loadingProgress, setLoadingProgress] = useState(8)
+  const [loadingStage, setLoadingStage] = useState('Warming up the puzzle generator...')
+  const { toast } = useToast()
 
   const score = guesses.filter(g => g?.isCorrect).length
   // Game is over when out of guesses OR all cells filled (not necessarily all correct)
@@ -36,15 +42,54 @@ export function GameClient() {
   // Load puzzle
   const loadPuzzle = useCallback(async (gameMode: 'daily' | 'practice') => {
     setIsLoading(true)
+    setLoadingProgress(8)
+    setLoadingStage('Warming up the puzzle generator...')
     setGuesses(Array(9).fill(null))
     setGuessesRemaining(MAX_GUESSES)
     setSelectedCell(null)
     setShowResults(false)
+    setDetailCell(null)
+    let progressTimer: ReturnType<typeof setInterval> | null = null
+
+    const startLoadingProgress = () => {
+      progressTimer = setInterval(() => {
+        setLoadingProgress(current => {
+          const next = Math.min(current + (current < 45 ? 11 : current < 72 ? 7 : 4), 92)
+
+          if (next < 35) {
+            setLoadingStage('Picking categories...')
+          } else if (next < 68) {
+            setLoadingStage('Testing intersections...')
+          } else {
+            setLoadingStage('Finalizing the board...')
+          }
+
+          return next
+        })
+      }, 700)
+    }
 
     try {
       // Check for saved state first
       const savedState = loadGameState(gameMode === 'daily')
-      
+
+      if (gameMode === 'practice' && savedState?.puzzle) {
+        setLoadingProgress(100)
+        setLoadingStage('Restoring your practice puzzle...')
+        setPuzzle(savedState.puzzle)
+
+        const restoredGuesses = savedState.guesses.map(g =>
+          g ? { gameId: g.gameId, gameName: g.gameName, gameImage: g.gameImage, isCorrect: g.isCorrect } : null
+        )
+        setGuesses(restoredGuesses)
+        setGuessesRemaining(savedState.guessesRemaining)
+        if (savedState.isComplete) {
+          setShowResults(true)
+        }
+        return
+      }
+
+      startLoadingProgress()
       const response = await fetch(`/api/puzzle?mode=${gameMode}`)
       const puzzleData = await response.json()
       
@@ -52,8 +97,20 @@ export function GameClient() {
         console.error('Puzzle error:', puzzleData.error)
         return
       }
-      
+
+      setLoadingProgress(100)
+      setLoadingStage('Board ready.')
       setPuzzle(puzzleData)
+
+      if (gameMode === 'practice') {
+        saveGameState({
+          puzzleId: puzzleData.id,
+          puzzle: puzzleData,
+          guesses: Array(9).fill(null),
+          guessesRemaining: MAX_GUESSES,
+          isComplete: false,
+        }, false)
+      }
 
       // Restore saved state if it matches current puzzle
       if (savedState && savedState.puzzleId === puzzleData.id) {
@@ -70,6 +127,9 @@ export function GameClient() {
     } catch (error) {
       console.error('Failed to load puzzle:', error)
     } finally {
+      if (progressTimer) {
+        clearInterval(progressTimer)
+      }
       setIsLoading(false)
     }
   }, [])
@@ -87,13 +147,26 @@ export function GameClient() {
 
   // Handle cell click
   const handleCellClick = (index: number) => {
-    if (guesses[index] !== null || isComplete) return
+    if (guesses[index] !== null) {
+      setDetailCell(index)
+      return
+    }
+    if (isComplete) return
     setSelectedCell(index)
   }
 
   // Handle game selection
   const handleGameSelect = async (game: Game) => {
     if (selectedCell === null || !puzzle) return
+
+    if (guesses.some(guess => guess?.gameId === game.id)) {
+      toast({
+        variant: 'destructive',
+        title: 'Game already used',
+        description: 'Each game can only be used once per grid.',
+      })
+      return
+    }
 
     const rowIndex = Math.floor(selectedCell / 3)
     const colIndex = selectedCell % 3
@@ -117,12 +190,36 @@ export function GameClient() {
       })
 
       const result = await response.json()
+
+      if (result.duplicate) {
+        toast({
+          variant: 'destructive',
+          title: 'Game already used',
+          description: 'Each game can only be used once per grid.',
+        })
+        return
+      }
       
       const newGuess: CellGuess = {
         gameId: game.id,
         gameName: game.name,
+        gameSlug: result.game?.slug ?? game.slug ?? null,
+        gameUrl: result.game?.url ?? game.gameUrl ?? null,
         gameImage: game.background_image,
         isCorrect: result.valid,
+        released: result.game?.released ?? null,
+        metacritic: result.game?.metacritic ?? null,
+        genres: result.game?.genres ?? [],
+        platforms: result.game?.platforms ?? [],
+        developers: result.game?.developers ?? [],
+        publishers: result.game?.publishers ?? [],
+        tags: result.game?.tags ?? [],
+        gameModes: result.game?.gameModes ?? [],
+        themes: result.game?.themes ?? [],
+        perspectives: result.game?.perspectives ?? [],
+        companies: result.game?.companies ?? [],
+        matchedRow: result.matchesRow,
+        matchedCol: result.matchesCol,
       }
 
       const newGuesses = [...guesses]
@@ -136,6 +233,7 @@ export function GameClient() {
       // Save state with full guess objects for proper restoration
       saveGameState({
         puzzleId: puzzle.id,
+        puzzle: mode === 'practice' ? puzzle : undefined,
         guesses: newGuesses.map(g => g ? { gameId: g.gameId, gameName: g.gameName, gameImage: g.gameImage, isCorrect: g.isCorrect } : null),
         guessesRemaining: newGuessesRemaining,
         isComplete: newGuessesRemaining === 0 || newGuesses.every(g => g !== null),
@@ -160,6 +258,11 @@ export function GameClient() {
       }
     } catch (error) {
       console.error('Guess error:', error)
+      toast({
+        variant: 'destructive',
+        title: 'Guess failed',
+        description: 'Something went wrong while checking that game.',
+      })
     }
   }
 
@@ -181,13 +284,40 @@ export function GameClient() {
   }
 
   const { row: selectedRowCategory, col: selectedColCategory } = getSelectedCategories()
+  const detailGuess = detailCell !== null ? guesses[detailCell] : null
+  const detailRowCategory = detailCell !== null && puzzle
+    ? puzzle.row_categories[Math.floor(detailCell / 3)]
+    : null
+  const detailColCategory = detailCell !== null && puzzle
+    ? puzzle.col_categories[detailCell % 3]
+    : null
+  const minimumCellOptions = puzzle?.cell_metadata?.reduce(
+    (lowest, cell) => Math.min(lowest, cell.validOptionCount),
+    Number.POSITIVE_INFINITY
+  )
+  const resolvedMinimumCellOptions = Number.isFinite(minimumCellOptions ?? Number.NaN)
+    ? minimumCellOptions
+    : null
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Spinner className="w-8 h-8 mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading puzzle...</p>
+        <div className="w-full max-w-md rounded-2xl border border-border bg-card/70 p-6 shadow-xl backdrop-blur-sm">
+          <p className="text-center text-sm font-semibold uppercase tracking-[0.24em] text-primary">
+            Building Grid
+          </p>
+          <p className="mt-3 text-center text-lg font-semibold text-foreground">{loadingStage}</p>
+          <p className="mt-2 text-center text-sm text-muted-foreground">
+            {mode === 'daily'
+              ? 'Checking today\'s board and validating the trickiest cells.'
+              : 'Generating a fresh practice puzzle and sanity-checking each intersection.'}
+          </p>
+          <div className="mt-6 space-y-2">
+            <Progress value={loadingProgress} className="h-3" />
+            <p className="text-right text-xs font-medium text-muted-foreground">
+              {loadingProgress}% complete
+            </p>
+          </div>
         </div>
       </div>
     )
@@ -217,12 +347,23 @@ export function GameClient() {
         score={score}
         onModeChange={handleModeChange}
         onHowToPlay={() => setShowHowToPlay(true)}
+        onNewPracticeGame={mode === 'practice' ? handlePlayAgain : undefined}
       />
+
+      {puzzle.validation_status && puzzle.validation_status !== 'validated' && (
+        <div className="max-w-lg mx-auto mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          <p className="font-medium text-amber-200">Cross-sections are not fully validated</p>
+          <p className="mt-1 text-amber-100/90">
+            {puzzle.validation_message ?? 'This puzzle may contain weaker or less certain intersections than usual.'}
+          </p>
+        </div>
+      )}
 
       <GameGrid
         rowCategories={puzzle.row_categories}
         colCategories={puzzle.col_categories}
         guesses={guesses}
+        cellMetadata={puzzle.cell_metadata}
         selectedCell={selectedCell}
         isGameOver={isComplete}
         onCellClick={handleCellClick}
@@ -260,6 +401,16 @@ export function GameClient() {
       <HowToPlayModal
         isOpen={showHowToPlay}
         onClose={() => setShowHowToPlay(false)}
+        minimumCellOptions={resolvedMinimumCellOptions}
+        validationStatus={puzzle.validation_status}
+      />
+
+      <GuessDetailsModal
+        isOpen={detailCell !== null && detailGuess !== null}
+        onClose={() => setDetailCell(null)}
+        guess={detailGuess}
+        rowCategory={detailRowCategory}
+        colCategory={detailColCategory}
       />
 
       {/* Footer */}
@@ -267,12 +418,12 @@ export function GameClient() {
         <p>
           Game data from{' '}
           <a 
-            href="https://rawg.io" 
+            href="https://www.igdb.com" 
             target="_blank" 
             rel="noopener noreferrer"
             className="text-primary hover:underline"
           >
-            RAWG.io
+            IGDB
           </a>
         </p>
       </footer>

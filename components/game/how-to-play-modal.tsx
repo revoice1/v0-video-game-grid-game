@@ -6,9 +6,23 @@ import { Button } from '@/components/ui/button'
 interface HowToPlayModalProps {
   isOpen: boolean
   onClose: () => void
+  minimumCellOptions?: number | null
+  validationStatus?: 'validated' | 'relaxed' | 'unvalidated'
 }
 
-export function HowToPlayModal({ isOpen, onClose }: HowToPlayModalProps) {
+export function HowToPlayModal({
+  isOpen,
+  onClose,
+  minimumCellOptions,
+  validationStatus,
+}: HowToPlayModalProps) {
+  const answerPoolCopy =
+    typeof minimumCellOptions === 'number'
+      ? validationStatus === 'relaxed'
+        ? `We still sanity-check the board, but this one was accepted with a lighter bar. Its thinnest cell currently shows about ${minimumCellOptions} possible answers.`
+        : `Every cell is tested before the board goes live. On this puzzle, even the thinnest intersection shows about ${minimumCellOptions} possible answers.`
+      : 'Every cell is checked before the board goes live so you are not walking into impossible intersections blind.'
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md bg-card border-border">
@@ -39,7 +53,7 @@ export function HowToPlayModal({ isOpen, onClose }: HowToPlayModalProps) {
               <div>
                 <p className="font-medium">Categories</p>
                 <p className="text-sm text-muted-foreground">
-                  Categories include platforms (PS5, PC), genres (RPG, Action), developers, publishers, decades, and tags.
+                  Categories can include platforms, genres, decades, game modes, themes, and perspectives. Every answer has to satisfy both clues at once.
                 </p>
               </div>
             </div>
@@ -49,9 +63,9 @@ export function HowToPlayModal({ isOpen, onClose }: HowToPlayModalProps) {
                 <span className="text-primary font-bold">3</span>
               </div>
               <div>
-                <p className="font-medium">Limited Guesses</p>
+                <p className="font-medium">Answer Pools</p>
                 <p className="text-sm text-muted-foreground">
-                  You have 9 guesses total. Each incorrect answer still counts as a guess!
+                  {answerPoolCopy}
                 </p>
               </div>
             </div>
@@ -59,6 +73,30 @@ export function HowToPlayModal({ isOpen, onClose }: HowToPlayModalProps) {
             <div className="flex gap-3">
               <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
                 <span className="text-primary font-bold">4</span>
+              </div>
+              <div>
+                <p className="font-medium">Difficulty Hints</p>
+                <p className="text-sm text-muted-foreground">
+                  Empty cells show a vibe check on how tight the intersection is. Brutal means the pool is thin, while Cozy or Feast means you have room to freestyle.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <span className="text-primary font-bold">5</span>
+              </div>
+              <div>
+                <p className="font-medium">Limited Guesses</p>
+                <p className="text-sm text-muted-foreground">
+                  You have 9 guesses total, and every miss still burns one. Reusing the same game in multiple cells is not allowed.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <span className="text-primary font-bold">6</span>
               </div>
               <div>
                 <p className="font-medium">Rarity Score</p>
@@ -71,7 +109,7 @@ export function HowToPlayModal({ isOpen, onClose }: HowToPlayModalProps) {
 
           <div className="pt-4 border-t border-border">
             <p className="text-center text-xs text-muted-foreground mb-3">
-              Game data powered by RAWG.io
+              Game data powered by IGDB
             </p>
             <Button onClick={onClose} className="w-full">
               Got it!

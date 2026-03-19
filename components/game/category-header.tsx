@@ -8,58 +8,40 @@ interface CategoryHeaderProps {
   orientation: 'row' | 'col'
 }
 
-const categoryIcons: Record<string, string> = {
-  platform: '🎮',
-  genre: '🏷️',
-  developer: '👨‍💻',
-  publisher: '🏢',
-  decade: '📅',
-  tag: '🔖',
-}
-
 export function CategoryHeader({ category, orientation }: CategoryHeaderProps) {
   return (
     <div
       className={cn(
-        'category-header flex items-center justify-center p-2 rounded-lg',
-        'border border-border/50 backdrop-blur-sm',
-        orientation === 'col' && 'flex-col gap-1'
+        'category-header flex rounded-lg border border-border/50 p-3 backdrop-blur-sm',
+        orientation === 'col'
+          ? 'flex-col items-center justify-center gap-1 text-center'
+          : 'flex-col items-start justify-center gap-1.5 text-left'
       )}
     >
       <span className="text-xs text-muted-foreground capitalize">
         {category.type}
       </span>
-      <span 
-        className={cn(
-          'font-semibold text-foreground text-center leading-tight',
-          orientation === 'col' ? 'text-sm' : 'text-sm ml-1.5'
-        )}
-      >
+      <span className="text-sm font-semibold leading-snug text-foreground text-balance">
         {category.name}
       </span>
     </div>
   )
 }
 
-// Simple header without icons (cleaner look)
 export function CategoryHeaderSimple({ category, orientation }: CategoryHeaderProps) {
   return (
     <div
       className={cn(
-        'flex items-center justify-center p-3 rounded-lg',
-        'bg-secondary/50 border border-border/30',
-        orientation === 'col' && 'flex-col gap-0.5'
+        'flex rounded-xl border border-border/30 bg-secondary/50 p-3',
+        orientation === 'col'
+          ? 'flex-col items-center justify-center gap-1 text-center'
+          : 'flex-col items-start justify-center gap-1.5 text-left'
       )}
     >
-      <span 
-        className={cn(
-          'font-bold text-foreground text-center leading-tight text-balance',
-          orientation === 'col' ? 'text-sm' : 'text-sm'
-        )}
-      >
+      <span className="text-sm font-bold leading-snug text-foreground text-balance">
         {category.name}
       </span>
-      <span className="text-[10px] text-muted-foreground capitalize">
+      <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground/90">
         {category.type}
       </span>
     </div>

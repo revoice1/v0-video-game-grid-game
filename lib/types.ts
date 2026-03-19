@@ -1,8 +1,9 @@
-// Game and RAWG API types
+// Shared game and puzzle types
 export interface Game {
   id: number
   name: string
   slug: string
+  gameUrl?: string | null
   background_image: string | null
   released: string | null
   metacritic: number | null
@@ -11,13 +12,14 @@ export interface Game {
   developers?: { id: number; name: string; slug: string }[]
   publishers?: { id: number; name: string; slug: string }[]
   tags?: { id: number; name: string; slug: string }[]
-}
-
-export interface RAWGResponse {
-  count: number
-  next: string | null
-  previous: string | null
-  results: Game[]
+  igdb?: {
+    id: number
+    game_modes: string[]
+    themes: string[]
+    player_perspectives: string[]
+    companies: string[]
+    keywords: string[]
+  }
 }
 
 // Category types for the grid
@@ -29,13 +31,16 @@ export type CategoryType =
   | 'decade'
   | 'tag'
   | 'company'
+  | 'game_mode'
+  | 'theme'
+  | 'perspective'
 
 export interface Category {
   type: CategoryType
   id: string | number
   name: string
   slug?: string
-  // For company type, these map to dev/publisher IDs in RAWG
+  // Legacy company identifiers retained for older stored puzzles and local fallbacks
   developerId?: number
   publisherId?: number
 }
@@ -48,13 +53,39 @@ export interface Puzzle {
   row_categories: Category[]
   col_categories: Category[]
   created_at: string
+  validation_status?: 'validated' | 'relaxed' | 'unvalidated'
+  validation_message?: string | null
+  cell_metadata?: PuzzleCellMetadata[]
+}
+
+export interface PuzzleCellMetadata {
+  cellIndex: number
+  validOptionCount: number
+  isCapped?: boolean
+  difficulty: 'brutal' | 'spicy' | 'tricky' | 'fair' | 'cozy' | 'feast'
+  difficultyLabel: string
 }
 
 export interface CellGuess {
   gameId: number
   gameName: string
+  gameSlug?: string | null
+  gameUrl?: string | null
   gameImage: string | null
   isCorrect: boolean
+  released?: string | null
+  metacritic?: number | null
+  genres?: string[]
+  platforms?: string[]
+  developers?: string[]
+  publishers?: string[]
+  tags?: string[]
+  gameModes?: string[]
+  themes?: string[]
+  perspectives?: string[]
+  companies?: string[]
+  matchedRow?: boolean
+  matchedCol?: boolean
 }
 
 export interface GameState {

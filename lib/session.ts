@@ -1,3 +1,5 @@
+import type { Puzzle } from './types'
+
 // Session management for anonymous users
 const SESSION_KEY = 'gamegrid_session_id'
 
@@ -27,6 +29,7 @@ export interface CellGuessRecord {
 
 interface SavedGameState {
   puzzleId: string
+  puzzle?: Puzzle
   guesses: (CellGuessRecord | null)[]
   guessesRemaining: number
   isComplete: boolean

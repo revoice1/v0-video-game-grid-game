@@ -1,24 +1,52 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import type { CellGuess } from '@/lib/types'
+import type { CellGuess, PuzzleCellMetadata } from '@/lib/types'
+import { Flame, type LucideIcon, Skull, Sparkles, Target, Trophy, WandSparkles } from 'lucide-react'
 import Image from 'next/image'
 
 interface GridCellProps {
   index: number
   guess: CellGuess | null
+  metadata?: PuzzleCellMetadata
   isSelected: boolean
   isDisabled: boolean
   onClick: () => void
 }
 
-export function GridCell({ guess, isSelected, isDisabled, onClick }: GridCellProps) {
+const difficultyStyles: Record<NonNullable<PuzzleCellMetadata['difficulty']>, string> = {
+  brutal: 'bg-rose-500/85 text-white',
+  spicy: 'bg-orange-500/85 text-white',
+  tricky: 'bg-amber-500/85 text-black',
+  fair: 'bg-sky-500/85 text-white',
+  cozy: 'bg-emerald-500/85 text-white',
+  feast: 'bg-fuchsia-500/85 text-white',
+}
+
+const difficultyIcons: Record<
+  NonNullable<PuzzleCellMetadata['difficulty']>,
+  LucideIcon
+> = {
+  brutal: Skull,
+  spicy: Flame,
+  tricky: Sparkles,
+  fair: Target,
+  cozy: WandSparkles,
+  feast: Trophy,
+}
+
+export function GridCell({ guess, metadata, isSelected, isDisabled, onClick }: GridCellProps) {
   const hasGuess = guess !== null
+  const isButtonDisabled = isDisabled && !hasGuess
+  const possibleLabel = metadata
+    ? `${metadata.validOptionCount}${metadata.isCapped ? '+' : ''} possible`
+    : null
+  const DifficultyIcon = metadata ? difficultyIcons[metadata.difficulty] : null
   
   return (
     <button
       onClick={onClick}
-      disabled={isDisabled || hasGuess}
+      disabled={isButtonDisabled}
       className={cn(
         'game-cell aspect-square w-full rounded-lg border-2 border-border',
         'flex items-center justify-center overflow-hidden',
@@ -27,6 +55,7 @@ export function GridCell({ guess, isSelected, isDisabled, onClick }: GridCellPro
         isSelected && !hasGuess && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
         hasGuess && guess.isCorrect && 'correct border-primary/50',
         hasGuess && !guess.isCorrect && 'incorrect border-destructive/50',
+        hasGuess && 'cursor-pointer hover:brightness-110',
         !hasGuess && !isDisabled && 'cursor-pointer hover:border-primary/30',
         isDisabled && !hasGuess && 'opacity-50 cursor-not-allowed'
       )}
@@ -69,7 +98,29 @@ export function GridCell({ guess, isSelected, isDisabled, onClick }: GridCellPro
           )}
         </div>
       ) : (
-        <div className="w-8 h-8 rounded-full border-2 border-dashed border-muted-foreground/30" />
+        <div className="relative flex h-full w-full items-center justify-center">
+          <div className="w-8 h-8 rounded-full border-2 border-dashed border-muted-foreground/30" />
+          {metadata && (
+            <>
+              <span
+                className={cn(
+                  'absolute top-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] shadow-sm',
+                  difficultyStyles[metadata.difficulty]
+                )}
+                title={`${metadata.validOptionCount} possible answers`}
+              >
+                {DifficultyIcon && <DifficultyIcon className="h-3 w-3" />}
+                {metadata.difficultyLabel}
+              </span>
+              <span
+                className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium text-white/90 shadow-sm"
+                title={`${metadata.validOptionCount} possible answers`}
+              >
+                {possibleLabel}
+              </span>
+            </>
+          )}
+        </div>
       )}
     </button>
   )

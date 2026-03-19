@@ -2,12 +2,13 @@
 
 import { GridCell } from './grid-cell'
 import { CategoryHeaderSimple } from './category-header'
-import type { Category, CellGuess } from '@/lib/types'
+import type { Category, CellGuess, PuzzleCellMetadata } from '@/lib/types'
 
 interface GameGridProps {
   rowCategories: Category[]
   colCategories: Category[]
   guesses: (CellGuess | null)[]
+  cellMetadata?: PuzzleCellMetadata[]
   selectedCell: number | null
   isGameOver: boolean
   onCellClick: (index: number) => void
@@ -17,36 +18,31 @@ export function GameGrid({
   rowCategories,
   colCategories,
   guesses,
+  cellMetadata,
   selectedCell,
   isGameOver,
   onCellClick,
 }: GameGridProps) {
   return (
-    <div className="w-full max-w-lg mx-auto">
-      {/* Grid layout: 4x4 with headers */}
-      <div className="grid grid-cols-4 gap-2">
-        {/* Empty corner */}
+    <div className="w-full max-w-xl mx-auto">
+      <div className="grid grid-cols-4 gap-3 auto-rows-fr">
         <div className="aspect-square" />
-        
-        {/* Column headers */}
+
         {colCategories.map((cat, i) => (
-          <CategoryHeaderSimple 
-            key={`col-${i}`} 
-            category={cat} 
-            orientation="col" 
+          <CategoryHeaderSimple
+            key={`col-${i}`}
+            category={cat}
+            orientation="col"
           />
         ))}
-        
-        {/* Rows with row headers and cells */}
+
         {rowCategories.map((rowCat, rowIndex) => (
           <div key={`row-${rowIndex}`} className="contents">
-            {/* Row header */}
-            <CategoryHeaderSimple 
-              category={rowCat} 
-              orientation="row" 
+            <CategoryHeaderSimple
+              category={rowCat}
+              orientation="row"
             />
-            
-            {/* Cells for this row */}
+
             {colCategories.map((_, colIndex) => {
               const cellIndex = rowIndex * 3 + colIndex
               return (
@@ -54,6 +50,7 @@ export function GameGrid({
                   key={`cell-${cellIndex}`}
                   index={cellIndex}
                   guess={guesses[cellIndex]}
+                  metadata={cellMetadata?.find(cell => cell.cellIndex === cellIndex)}
                   isSelected={selectedCell === cellIndex}
                   isDisabled={isGameOver}
                   onClick={() => onCellClick(cellIndex)}
