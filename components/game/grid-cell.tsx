@@ -38,8 +38,8 @@ export function GridCell({ guess, metadata, isSelected, isDisabled, onClick }: G
   const hasGuess = guess !== null
   const isButtonDisabled = isDisabled && !hasGuess
   const possibleLabel = metadata
-    ? metadata.validOptionCount > 99
-      ? '>99'
+    ? metadata.isCapped
+      ? `${metadata.validOptionCount}+`
       : `${metadata.validOptionCount}`
     : null
   const possibleTitle = metadata

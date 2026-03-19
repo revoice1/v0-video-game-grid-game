@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import {
   buildPuzzleCellMetadata,
   generatePuzzleCategories,
-  getValidGameCountForCell,
   type PuzzleProgressCallback,
 } from '@/lib/igdb'
 import type { Category, PuzzleCellMetadata } from '@/lib/types'
@@ -48,34 +47,7 @@ async function getExistingDailyPuzzle(supabase: Awaited<ReturnType<typeof create
   return data
 }
 
-async function computePuzzleCellMetadata(
-  rows: Category[],
-  cols: Category[],
-  minValidOptionsPerCell = MIN_VALID_OPTIONS_PER_CELL,
-  onCell?: (cellIndex: number, total: number) => void
-): Promise<PuzzleCellMetadata[]> {
-  const total = rows.length * cols.length
-  const exactCellResults = await Promise.all(
-    rows.flatMap((rowCategory, rowIndex) =>
-      cols.map(async (colCategory, colIndex) => {
-        const cellIndex = rowIndex * 3 + colIndex
-        const validOptionCount = await getValidGameCountForCell(rowCategory, colCategory)
-        onCell?.(cellIndex, total)
-        return { cellIndex, rowCategory, colCategory, validOptionCount }
-      })
-    )
-  )
-  const validation = {
-    valid: exactCellResults.every(c => c.validOptionCount >= minValidOptionsPerCell),
-    minValidOptionCount: exactCellResults.reduce(
-      (low, c) => Math.min(low, c.validOptionCount),
-      Number.POSITIVE_INFINITY
-    ),
-    cellResults: exactCellResults,
-    failedCells: exactCellResults.filter(c => c.validOptionCount < minValidOptionsPerCell),
-  }
-  return buildPuzzleCellMetadata(validation, minValidOptionsPerCell, VALIDATION_SAMPLE_SIZE, false)
-}
+
 
 function sseEvent(data: object): string {
   return `data: ${JSON.stringify(data)}\n\n`
@@ -143,7 +115,7 @@ export async function GET(request: NextRequest) {
           let cellMetadata: PuzzleCellMetadata[] = existingPuzzle.cell_metadata
 
           if (!cellMetadata) {
-            // Pre-migration row — backfill once then never again
+            // Pre-migration row — compute exact counts once and backfill so this never runs again.
             await send({ type: 'progress', pct: 10, message: "Loading today's board..." })
             cellMetadata = await computePuzzleCellMetadata(
               existingPuzzle.row_categories,
@@ -155,7 +127,8 @@ export async function GET(request: NextRequest) {
                 message: `Validating cell ${cellIndex + 1}/${total}...`,
               })
             )
-            await supabase.from('puzzles').update({ cell_metadata: cellMetadata }).eq('id', existingPuzzle.id)
+            // Fire-and-forget the backfill — don't block the response on it
+            supabase.from('puzzles').update({ cell_metadata: cellMetadata }).eq('id', existingPuzzle.id).then()
           }
 
           await send({ type: 'progress', pct: 100, message: "Board ready." })
@@ -200,13 +173,14 @@ export async function GET(request: NextRequest) {
             onProgress,
           })
 
-          await send({ type: 'progress', pct: 75, message: 'Computing final cell counts...' })
+          // Get exact counts via the IGDB /count endpoint — one call per cell, no pagination.
+          await send({ type: 'progress', pct: 75, message: 'Getting exact cell counts...' })
           const cellMetadata = await computePuzzleCellMetadata(
             rows, cols, plan.minValidOptionsPerCell,
             (cellIndex, total) => send({
               type: 'progress',
               pct: 75 + Math.round((cellIndex + 1) / total * 20),
-              message: `Validating cell ${cellIndex + 1}/${total}...`,
+              message: `Counting answers for cell ${cellIndex + 1}/${total}...`,
             })
           )
 

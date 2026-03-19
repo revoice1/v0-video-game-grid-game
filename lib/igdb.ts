@@ -502,6 +502,41 @@ async function queryIGDB<T>(endpoint: string, body: string): Promise<T[]> {
   return []
 }
 
+async function queryIGDBCount(endpoint: string, whereClause: string): Promise<number | null> {
+  const accessToken = await getIGDBAccessToken()
+  if (!accessToken || !TWITCH_IGDB_CLIENT_ID) return null
+
+  for (let attempt = 1; attempt <= IGDB_MAX_RETRIES; attempt += 1) {
+    await scheduleIGDBRequest()
+
+    const response = await fetch(`https://api.igdb.com/v4/${endpoint}/count`, {
+      method: 'POST',
+      headers: {
+        'Client-ID': TWITCH_IGDB_CLIENT_ID,
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/json',
+      },
+      body: `where ${whereClause};`,
+      next: { revalidate: 86400 },
+    })
+
+    if (response.ok) {
+      const data = await response.json() as { count: number }
+      return data.count
+    }
+
+    if (response.status === 429 && attempt < IGDB_MAX_RETRIES) {
+      await sleep(1000 * attempt)
+      continue
+    }
+
+    console.error(`[v0] IGDB count query failed (${endpoint}): ${response.status}`)
+    return null
+  }
+
+  return null
+}
+
 async function fetchIGDBCategories(
   endpoint: 'platforms' | 'genres' | 'game_modes' | 'themes' | 'player_perspectives',
   allowedNames?: Set<string>
@@ -547,13 +582,18 @@ function buildFamily(
 
 function buildDifficultyMetadata(
   validOptionCount: number,
-  minValidOptionsPerCell: number
+  minValidOptionsPerCell: number,
+  sampleSize = DEFAULT_CELL_SAMPLE_SIZE
 ): Pick<PuzzleCellMetadata, 'difficulty' | 'difficultyLabel'> {
-  const brutalCutoff = Math.ceil(minValidOptionsPerCell * 1.1)
-  const spicyCutoff = Math.ceil(minValidOptionsPerCell * 1.6)
-  const trickyCutoff = Math.ceil(minValidOptionsPerCell * 2.25)
-  const fairCutoff = Math.ceil(minValidOptionsPerCell * 3.5)
-  const cozyCutoff = Math.ceil(minValidOptionsPerCell * 5.5)
+  // Cutoffs span min → sampleSize so the full difficulty spectrum is always reachable.
+  // With min=12, sampleSize=40: brutal≤14, spicy≤19, tricky≤26, fair≤33, cozy≤39, feast=40+
+  // With min=3,  sampleSize=40: brutal≤4,  spicy≤11, tricky≤19, fair≤27, cozy≤37, feast=38+
+  const range = sampleSize - minValidOptionsPerCell
+  const brutalCutoff = minValidOptionsPerCell + Math.ceil(range * 0.05)
+  const spicyCutoff  = minValidOptionsPerCell + Math.ceil(range * 0.25)
+  const trickyCutoff = minValidOptionsPerCell + Math.ceil(range * 0.50)
+  const fairCutoff   = minValidOptionsPerCell + Math.ceil(range * 0.75)
+  const cozyCutoff   = minValidOptionsPerCell + Math.ceil(range * 0.97)
 
   if (validOptionCount <= brutalCutoff) {
     return { difficulty: 'brutal', difficultyLabel: 'Brutal' }
@@ -588,7 +628,7 @@ export function buildPuzzleCellMetadata(
     cellIndex: cell.cellIndex,
     validOptionCount: cell.validOptionCount,
     isCapped: treatSampleSizeAsCap ? cell.validOptionCount >= sampleSize : false,
-    ...buildDifficultyMetadata(cell.validOptionCount, minValidOptionsPerCell),
+    ...buildDifficultyMetadata(cell.validOptionCount, minValidOptionsPerCell, sampleSize),
   }))
 }
 
@@ -1248,11 +1288,30 @@ export async function getValidGameCountForCell(
     return cachedEntry.count
   }
 
-  const pageSize = 500
-  const seenGameIds = new Set<number>()
-  let offset = 0
-
   try {
+    const rowClause = buildIGDBWhereClause(rowCategory)
+    const colClause = buildIGDBWhereClause(colCategory)
+
+    // If both categories have native IGDB where clauses, use the /count endpoint —
+    // a single API call that returns the exact total with no pagination needed.
+    if (rowClause && colClause) {
+      const whereClause = `${buildOfficialGameWhereClause()} & ${rowClause} & ${colClause}`
+      const count = await queryIGDBCount('games', whereClause)
+      if (count !== null) {
+        cellCountCache.set(cacheKey, {
+          expiresAt: Date.now() + CELL_VALIDATION_CACHE_TTL_MS,
+          count,
+        })
+        return count
+      }
+    }
+
+    // Fallback for categories that need post-filtering (e.g. decade) —
+    // paginate through results and count manually.
+    const pageSize = 500
+    const seenGameIds = new Set<number>()
+    let offset = 0
+
     while (true) {
       const games = await queryValidGamesForCell(
         rowCategory,
@@ -1261,15 +1320,8 @@ export async function getValidGameCountForCell(
         offset,
         'id,name,slug,url,category,game_type,parent_game,first_release_date,total_rating,total_rating_count,cover.image_id,platforms.name,platforms.slug,genres.name,genres.slug,game_modes.name,themes.name,player_perspectives.name,involved_companies.company.name,keywords.name'
       )
-
-      for (const game of games) {
-        seenGameIds.add(game.id)
-      }
-
-      if (games.length < pageSize) {
-        break
-      }
-
+      for (const game of games) seenGameIds.add(game.id)
+      if (games.length < pageSize) break
       offset += pageSize
     }
 
