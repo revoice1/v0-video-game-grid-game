@@ -7,6 +7,7 @@ export interface Game {
   background_image: string | null
   released: string | null
   metacritic: number | null
+  gameTypeLabel?: string | null
   genres: { id: number; name: string; slug: string }[]
   platforms: { platform: { id: number; name: string; slug: string } }[]
   developers?: { id: number; name: string; slug: string }[]

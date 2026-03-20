@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
       name: g.name,
       background_image: g.background_image,
       metacritic: g.metacritic,
+      gameTypeLabel: g.gameTypeLabel ?? null,
       released: shouldScrub('decade') ? null : g.released,
       genres: shouldScrub('genre') ? [] : g.genres,
       platforms: shouldScrub('platform') ? [] : g.platforms,
