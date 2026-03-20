@@ -108,7 +108,7 @@ interface CategoryFamily {
 }
 
 export type PuzzleProgressCallback = (event: {
-  stage: 'families' | 'attempt' | 'cell' | 'metadata' | 'done'
+  stage: 'families' | 'attempt' | 'cell' | 'metadata' | 'rejected' | 'done'
   attempt?: number
   maxAttempts?: number
   cellIndex?: number    // 0-8 within current attempt
@@ -153,6 +153,7 @@ export interface PuzzleGenerationResult {
   rowFamilies: CategoryFamily[]
   colFamilies: CategoryFamily[]
   validation: PuzzleValidationResult
+  cellMetadata: PuzzleCellMetadata[]
 }
 
 const CELL_VALIDATION_CACHE_TTL_MS = Number(
@@ -1433,6 +1434,32 @@ export async function generatePuzzleCategories(
     }
 
     if (validation.valid) {
+      const exactCellResults = await Promise.all(
+        rows.flatMap((rowCategory, rowIndex) =>
+          cols.map(async (colCategory, colIndex) => ({
+            cellIndex: rowIndex * 3 + colIndex,
+            rowCategory,
+            colCategory,
+            validOptionCount: await getValidGameCountForCell(rowCategory, colCategory),
+          }))
+        )
+      )
+      const exactValidation: PuzzleValidationResult = {
+        valid: exactCellResults.every(cell => cell.validOptionCount >= minValidOptionsPerCell),
+        minValidOptionCount: exactCellResults.reduce(
+          (lowest, cell) => Math.min(lowest, cell.validOptionCount),
+          Number.POSITIVE_INFINITY
+        ),
+        cellResults: exactCellResults,
+        failedCells: exactCellResults.filter(cell => cell.validOptionCount < minValidOptionsPerCell),
+      }
+      const cellMetadata = buildPuzzleCellMetadata(
+        exactValidation,
+        minValidOptionsPerCell,
+        sampleSize,
+        false
+      )
+
       console.log(
         `[v0] Generated validated IGDB puzzle on attempt ${attempt} with min ${validation.minValidOptionCount} valid options per cell`
       )
@@ -1444,7 +1471,8 @@ export async function generatePuzzleCategories(
         cols,
         rowFamilies: [selectedFamilies[0], selectedFamilies[1]],
         colFamilies: [selectedFamilies[2], selectedFamilies[3]],
-        validation,
+        validation: exactValidation,
+        cellMetadata,
       }
     }
 
@@ -1454,6 +1482,17 @@ export async function generatePuzzleCategories(
           .map(cell => `[${cell.rowCategory.name} x ${cell.colCategory.name}: ${cell.validOptionCount}]`)
           .join(', ')
     )
+    const funniestFailure = validation.failedCells[0]
+    if (funniestFailure) {
+      onProgress?.({
+        stage: 'rejected',
+        attempt,
+        maxAttempts,
+        message:
+          `${funniestFailure.rowCategory.name} x ${funniestFailure.colCategory.name} rejected ` +
+          `(${funniestFailure.validOptionCount} valid)`,
+      })
+    }
   }
 
   const failureSummary = bestAttempt

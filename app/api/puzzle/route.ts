@@ -88,12 +88,11 @@ async function generateValidPuzzle(): Promise<{
 
   for (const plan of plans) {
     try {
-      const { rows, cols, rowFamilies, colFamilies } = await generatePuzzleCategories({
+      const { rows, cols, rowFamilies, colFamilies, cellMetadata } = await generatePuzzleCategories({
         minValidOptionsPerCell: plan.minValidOptionsPerCell,
         maxAttempts: plan.maxAttempts,
         sampleSize: VALIDATION_SAMPLE_SIZE,
       })
-      const cellMetadata = await computePuzzleCellMetadata(rows, cols, plan.minValidOptionsPerCell)
 
       console.log(
         `[v0] Generated puzzle - rows: ${rows.map(row => row.name).join(', ')} ` +

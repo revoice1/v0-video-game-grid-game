@@ -48,8 +48,6 @@ async function getExistingDailyPuzzle(supabase: Awaited<ReturnType<typeof create
   return data
 }
 
-
-
 async function computePuzzleCellMetadata(
   rows: Category[],
   cols: Category[],
@@ -83,11 +81,6 @@ function sseEvent(data: object): string {
   return `data: ${JSON.stringify(data)}\n\n`
 }
 
-// Progress budget:
-//   0–5%  : fetching category families
-//   5–75% : generation attempts (subdivided per cell within each attempt)
-//   75–95%: final cell metadata computation
-//   95–100%: DB write
 function generationProgress(
   event: Parameters<PuzzleProgressCallback>[0],
   maxAttempts: number
@@ -113,6 +106,13 @@ function generationProgress(
       const pct = 75 + ((event.cellIndex ?? 0) + 1) / (event.totalCells ?? 9) * 20
       return { pct: Math.round(pct), message: `Validating cell ${(event.cellIndex ?? 0) + 1}/${event.totalCells ?? 9}...` }
     }
+    case 'rejected': {
+      const pct = 5 + ((event.attempt ?? 1) - 1) / maxAttempts * 70
+      return {
+        pct: Math.round(Math.max(8, pct)),
+        message: event.message ?? `Attempt ${event.attempt}/${maxAttempts} rejected`,
+      }
+    }
     default:
       return { pct: 0, message: '' }
   }
@@ -121,9 +121,6 @@ function generationProgress(
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const mode = searchParams.get('mode') || 'daily'
-
-  // createClient() calls cookies() from next/headers — must happen inside the
-  // request handler before returning the Response or detaching async work.
   const supabase = await createClient()
 
   const encoder = new TextEncoder()
@@ -145,7 +142,6 @@ export async function GET(request: NextRequest) {
           let cellMetadata: PuzzleCellMetadata[] = existingPuzzle.cell_metadata
 
           if (!cellMetadata) {
-            // Pre-migration row — compute exact counts once and backfill so this never runs again.
             await send({ type: 'progress', pct: 10, message: "Loading today's board..." })
             cellMetadata = await computePuzzleCellMetadata(
               existingPuzzle.row_categories,
@@ -157,11 +153,10 @@ export async function GET(request: NextRequest) {
                 message: `Validating cell ${cellIndex + 1}/${total}...`,
               })
             )
-            // Fire-and-forget the backfill — don't block the response on it
             supabase.from('puzzles').update({ cell_metadata: cellMetadata }).eq('id', existingPuzzle.id).then()
           }
 
-          await send({ type: 'progress', pct: 100, message: "Board ready." })
+          await send({ type: 'progress', pct: 100, message: 'Board ready.' })
           await send({
             type: 'puzzle',
             puzzle: {
@@ -175,7 +170,6 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // No existing puzzle (first daily load of the day, or practice) — generate
       await send({ type: 'progress', pct: 0, message: 'Starting puzzle generation...' })
 
       const plans = getGenerationPlans()
@@ -196,23 +190,12 @@ export async function GET(request: NextRequest) {
             send({ type: 'progress', pct, message })
           }
 
-          const { rows, cols } = await generatePuzzleCategories({
+          const { rows, cols, cellMetadata } = await generatePuzzleCategories({
             minValidOptionsPerCell: plan.minValidOptionsPerCell,
             maxAttempts: plan.maxAttempts,
             sampleSize: VALIDATION_SAMPLE_SIZE,
             onProgress,
           })
-
-          // Get exact counts via the IGDB /count endpoint — one call per cell, no pagination.
-          await send({ type: 'progress', pct: 75, message: 'Getting exact cell counts...' })
-          const cellMetadata = await computePuzzleCellMetadata(
-            rows, cols, plan.minValidOptionsPerCell,
-            (cellIndex, total) => send({
-              type: 'progress',
-              pct: 75 + Math.round((cellIndex + 1) / total * 20),
-              message: `Counting answers for cell ${cellIndex + 1}/${total}...`,
-            })
-          )
 
           categories = {
             rows,
@@ -242,7 +225,6 @@ export async function GET(request: NextRequest) {
 
       if (error) {
         if (error.code === '23505' && mode === 'daily') {
-          // Race condition — another request already inserted today's puzzle
           const existing = await getExistingDailyPuzzle(supabase, getTodayDate())
           if (existing) {
             const cellMetadata: PuzzleCellMetadata[] = existing.cell_metadata ?? categories.cellMetadata
