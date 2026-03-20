@@ -142,7 +142,6 @@ export function ResultsModal({
   }
 
   const overallRarity = calculateOverallRarity()
-
   const getCellLabel = (cellIndex: number) => {
     const rowCategory = rowCategories[Math.floor(cellIndex / 3)]
     const colCategory = colCategories[cellIndex % 3]

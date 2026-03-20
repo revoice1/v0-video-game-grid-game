@@ -4,14 +4,30 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
 
+function AchievementEggIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 3.5c-3.5 0-6.5 3.95-6.5 8.55C5.5 16.5 8.2 20 12 20s6.5-3.5 6.5-7.95C18.5 7.45 15.5 3.5 12 3.5Z"
+        fill="currentColor"
+      />
+      <circle cx="9.25" cy="10.1" r="1.2" fill="hsl(var(--background))" fillOpacity="0.9" />
+      <circle cx="14.6" cy="13.25" r="1.05" fill="hsl(var(--background))" fillOpacity="0.9" />
+      <circle cx="11.35" cy="16" r="0.95" fill="hsl(var(--background))" fillOpacity="0.9" />
+    </svg>
+  )
+}
+
 interface GameHeaderProps {
   mode: 'daily' | 'practice'
   guessesRemaining: number
   score: number
   dailyResetLabel?: string | null
   isHowToPlayOpen?: boolean
+  isAchievementsOpen?: boolean
   onModeChange: (mode: 'daily' | 'practice') => void
   onHowToPlay: () => void
+  onAchievements: () => void
   onNewPracticeGame?: () => void
 }
 
@@ -21,8 +37,10 @@ export function GameHeader({
   score, 
   dailyResetLabel,
   isHowToPlayOpen = false,
+  isAchievementsOpen = false,
   onModeChange,
   onHowToPlay,
+  onAchievements,
   onNewPracticeGame,
 }: GameHeaderProps) {
   return (
@@ -108,6 +126,21 @@ export function GameHeader({
                   New Game
                 </Button>
               )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onAchievements}
+                aria-label="Achievements"
+                title="Achievements"
+                className={cn(
+                  'border px-2.5 transition-colors',
+                  isAchievementsOpen
+                    ? 'border-foreground bg-foreground text-background hover:bg-foreground/90 hover:text-background'
+                    : 'border-border bg-secondary/30 text-foreground hover:bg-secondary/60'
+                )}
+              >
+                <AchievementEggIcon className="h-4 w-4" />
+              </Button>
               <Button 
                 variant="ghost" 
                 size="sm"

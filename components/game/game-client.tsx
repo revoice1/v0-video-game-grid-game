@@ -7,12 +7,326 @@ import { GameSearch } from './game-search'
 import { ResultsModal } from './results-modal'
 import { HowToPlayModal } from './how-to-play-modal'
 import { GuessDetailsModal } from './guess-details-modal'
+import { AchievementsModal } from './achievements-modal'
 import { getSessionId, saveGameState, loadGameState, clearGameState, type CellGuessRecord } from '@/lib/session'
+import { unlockAchievement } from '@/lib/achievements'
 import type { Puzzle, CellGuess, Game, Category } from '@/lib/types'
 import { Progress } from '@/components/ui/progress'
 import { useToast } from '@/hooks/use-toast'
 
 const MAX_GUESSES = 9
+type EasterEggPieceKind =
+  | 'chex'
+  | 'goop'
+  | 'fox'
+  | 'sword'
+  | 'spellcard'
+  | 'dust'
+  | 'photo'
+  | 'pokeball'
+
+interface EasterEggParticle {
+  id: string
+  left: string
+  delay: string
+  duration: string
+  size: string
+  rotate: string
+  drift: string
+  kind: EasterEggPieceKind
+}
+
+interface EasterEggDefinition {
+  triggerNames: string[]
+  achievementId?: string
+  durationMs: number
+  density: number
+  pieceKinds: EasterEggPieceKind[]
+  renderPiece: (particle: EasterEggParticle) => React.ReactNode
+}
+
+interface ActiveEasterEgg {
+  burstId: number
+  durationMs: number
+  renderPiece: EasterEggDefinition['renderPiece']
+  particles: EasterEggParticle[]
+}
+
+function createSeededRandom(seed: number) {
+  let value = seed % 2147483647
+
+  if (value <= 0) {
+    value += 2147483646
+  }
+
+  return () => {
+    value = (value * 16807) % 2147483647
+    return (value - 1) / 2147483646
+  }
+}
+
+function createFallingParticles(
+  density: number,
+  pieceKinds: EasterEggPieceKind[],
+  seed: number
+): EasterEggParticle[] {
+  const random = createSeededRandom(seed)
+
+  return Array.from({ length: density }, (_, index) => {
+    const sizePx = Math.round(14 + random() * 22)
+    const delayMs = Math.round(random() * 2000)
+    const durationMs = Math.round(3400 + random() * 1700)
+    const rotation = Math.round(-30 + random() * 60)
+    const driftPx = Math.round(-18 + random() * 36)
+    const kind = pieceKinds[Math.floor(random() * pieceKinds.length)]
+
+    return {
+      id: `${seed}-${index}`,
+      left: `${Math.round(2 + random() * 96)}%`,
+      delay: `${delayMs}ms`,
+      duration: `${durationMs}ms`,
+      size: `${sizePx}px`,
+      rotate: `${rotation}deg`,
+      drift: `${driftPx}px`,
+      kind,
+    }
+  })
+}
+
+function parseMs(value: string): number {
+  return Number.parseInt(value.replace('ms', ''), 10)
+}
+
+function getEasterEggLifetimeMs(
+  definition: EasterEggDefinition,
+  particles: EasterEggParticle[]
+): number {
+  const longestParticleMs = particles.reduce((longest, particle) => {
+    return Math.max(longest, parseMs(particle.delay) + parseMs(particle.duration))
+  }, 0)
+
+  return Math.max(definition.durationMs, longestParticleMs)
+}
+
+const EASTER_EGG_DEFINITIONS: EasterEggDefinition[] = [
+  {
+    triggerNames: ['chex quest'],
+    achievementId: 'chex-mix',
+    durationMs: 5000,
+    density: 42,
+    pieceKinds: ['chex', 'goop'],
+    renderPiece: (particle) => {
+      if (particle.kind === 'chex') {
+        return (
+          <div
+            className="rounded-[28%] border-2 border-[#D18D32] bg-[#F6C35B] shadow-[0_6px_18px_rgba(246,195,91,0.35)]"
+            style={{
+              width: particle.size,
+              height: particle.size,
+              clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
+            }}
+          />
+        )
+      }
+
+      return (
+        <div
+          className="rounded-full bg-[#7DFF72] shadow-[0_6px_18px_rgba(125,255,114,0.4)]"
+          style={{
+            width: particle.size,
+            height: `calc(${particle.size} * 0.85)`,
+          }}
+        />
+      )
+    },
+  },
+  {
+    triggerNames: ['tunic'],
+    achievementId: 'golden-path',
+    durationMs: 5000,
+    density: 34,
+    pieceKinds: ['fox', 'sword'],
+    renderPiece: (particle) => {
+      if (particle.kind === 'fox') {
+        return (
+          <div
+            className="relative"
+            style={{
+              width: particle.size,
+              height: `calc(${particle.size} * 1.05)`,
+            }}
+          >
+            <div
+              className="absolute left-1/2 top-[10%] h-[68%] w-[68%] -translate-x-1/2 rounded-full border border-[#D86F2C] bg-[#F59A44] shadow-[0_8px_22px_rgba(245,154,68,0.3)]"
+            />
+            <div className="absolute left-[18%] top-[2%] h-[34%] w-[24%] -rotate-[18deg] rounded-t-[85%] rounded-b-[20%] border border-[#D86F2C] bg-[#F59A44]" />
+            <div className="absolute right-[18%] top-[2%] h-[34%] w-[24%] rotate-[18deg] rounded-t-[85%] rounded-b-[20%] border border-[#D86F2C] bg-[#F59A44]" />
+            <div className="absolute left-[31%] top-[17%] h-[11%] w-[11%] rounded-full bg-[#FFF3DE]" />
+            <div className="absolute right-[31%] top-[17%] h-[11%] w-[11%] rounded-full bg-[#FFF3DE]" />
+            <div className="absolute left-1/2 top-[34%] h-[26%] w-[34%] -translate-x-1/2 rounded-full bg-[#FFF3DE]" />
+            <div className="absolute left-[36%] top-[43%] h-[5%] w-[5%] rounded-full bg-[#3B2415]" />
+            <div className="absolute right-[36%] top-[43%] h-[5%] w-[5%] rounded-full bg-[#3B2415]" />
+          </div>
+        )
+      }
+
+      return (
+        <div
+          className="relative"
+          style={{
+            width: particle.size,
+            height: `calc(${particle.size} * 1.25)`,
+          }}
+        >
+          <div className="absolute left-1/2 top-0 h-[18%] w-[22%] -translate-x-1/2 rounded-t-full rounded-b-[20%] border border-[#B58B47] bg-[#E8D38B]" />
+          <div className="absolute left-1/2 top-[16%] h-[10%] w-[58%] -translate-x-1/2 rounded-full border border-[#B58B47] bg-[#E8D38B]" />
+          <div className="absolute left-1/2 top-[23%] h-[52%] w-[22%] -translate-x-1/2 rounded-full border border-[#74CFC0] bg-[#B7FFF3] shadow-[0_6px_18px_rgba(116,207,192,0.35)]" />
+          <div
+            className="absolute left-1/2 top-[68%] h-[28%] w-[34%] -translate-x-1/2 border border-[#74CFC0] bg-[#B7FFF3]"
+            style={{ clipPath: 'polygon(50% 100%, 0% 0%, 100% 0%)' }}
+          />
+        </div>
+      )
+    },
+  },
+  {
+    triggerNames: ['phantom dust'],
+    achievementId: 'dust-to-dust',
+    durationMs: 5200,
+    density: 38,
+    pieceKinds: ['spellcard', 'dust'],
+    renderPiece: (particle) => {
+      if (particle.kind === 'spellcard') {
+        return (
+          <div
+            className="relative rounded-[18%] border border-[#8D7DF8] bg-[#171B31] shadow-[0_8px_22px_rgba(95,84,201,0.35)]"
+            style={{
+              width: particle.size,
+              height: `calc(${particle.size} * 1.28)`,
+            }}
+          >
+            <div className="absolute inset-x-[14%] top-[12%] h-[18%] rounded-md bg-[#63E0C4]/20" />
+            <div
+              className="absolute left-1/2 top-[27%] h-[28%] w-[44%] -translate-x-1/2 bg-[#63E0C4] shadow-[0_0_12px_rgba(99,224,196,0.5)]"
+              style={{
+                clipPath:
+                  'polygon(50% 0%, 72% 26%, 100% 50%, 72% 74%, 50% 100%, 28% 74%, 0% 50%, 28% 26%)',
+              }}
+            />
+            <div className="absolute inset-x-[18%] bottom-[16%] h-[8%] rounded-full bg-[#8D7DF8]/45" />
+          </div>
+        )
+      }
+
+      return (
+        <div
+          className="relative"
+          style={{
+            width: particle.size,
+            height: particle.size,
+          }}
+        >
+          <div className="absolute inset-[14%] rounded-full bg-[#8F6BFF]/55 blur-[2px]" />
+          <div className="absolute inset-x-[28%] top-[10%] bottom-[10%] rounded-full bg-[#63E0C4]/85 blur-[1px]" />
+          <div className="absolute inset-y-[28%] left-[10%] right-[10%] rounded-full bg-[#63E0C4]/65 blur-[1px]" />
+        </div>
+      )
+    },
+  },
+  {
+    triggerNames: ['pokemon snap', 'pokémon snap'],
+    achievementId: 'snap-happy',
+    durationMs: 5000,
+    density: 34,
+    pieceKinds: ['photo', 'pokeball'],
+    renderPiece: (particle) => {
+      if (particle.kind === 'photo') {
+        return (
+          <div
+            className="relative rounded-[14%] border border-[#EADDBB] bg-[#FFF7E5] shadow-[0_8px_22px_rgba(255,247,229,0.35)]"
+            style={{
+              width: particle.size,
+              height: `calc(${particle.size} * 1.2)`,
+            }}
+          >
+            <div className="absolute inset-x-[10%] top-[10%] bottom-[22%] rounded-[10%] bg-[#8ED8FF]" />
+            <div className="absolute left-[18%] bottom-[30%] h-[28%] w-[24%] rounded-full bg-[#FFE36D]" />
+            <div
+              className="absolute bottom-[28%] right-[14%] h-[34%] w-[42%] bg-[#5CC07A]"
+              style={{ clipPath: 'polygon(50% 0%, 100% 100%, 0% 100%)' }}
+            />
+            <div className="absolute inset-x-[22%] bottom-[8%] h-[6%] rounded-full bg-[#D1C2A1]" />
+          </div>
+        )
+      }
+
+      return (
+        <div
+          className="relative rounded-full border border-[#1F2432] shadow-[0_8px_20px_rgba(31,36,50,0.28)]"
+          style={{
+            width: particle.size,
+            height: particle.size,
+            background: 'linear-gradient(to bottom, #FF6B6B 0 48%, #F9F9F9 48% 100%)',
+          }}
+        >
+          <div className="absolute inset-x-0 top-1/2 h-[10%] -translate-y-1/2 bg-[#1F2432]" />
+          <div className="absolute left-1/2 top-1/2 h-[30%] w-[30%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#1F2432] bg-[#F9F9F9]" />
+          <div className="absolute left-1/2 top-1/2 h-[12%] w-[12%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#1F2432]" />
+        </div>
+      )
+    },
+  },
+]
+
+function getEasterEggDefinition(gameName: string): EasterEggDefinition | null {
+  const normalizedName = gameName.trim().toLowerCase()
+
+  return EASTER_EGG_DEFINITIONS.find(definition =>
+    definition.triggerNames.includes(normalizedName)
+  ) ?? null
+}
+
+function EasterEggCelebration({ burstId, renderPiece, particles }: ActiveEasterEgg) {
+  return (
+    <div className="pointer-events-none fixed inset-0 z-[80] overflow-hidden">
+      <style>{`
+        @keyframes easter-egg-fall {
+          0% {
+            transform: translate3d(0, -14vh, 0) rotate(var(--rotation));
+            opacity: 0;
+          }
+          10% {
+            opacity: 1;
+          }
+          100% {
+            transform: translate3d(var(--drift), 112vh, 0) rotate(calc(var(--rotation) + 140deg));
+            opacity: 0.95;
+          }
+        }
+      `}</style>
+      {particles.map((particle) => {
+        return (
+          <div
+            key={`${burstId}-${particle.id}`}
+            className="absolute top-0"
+            style={{
+              left: particle.left,
+              animationName: 'easter-egg-fall',
+              animationDelay: particle.delay,
+              animationDuration: particle.duration,
+              animationTimingFunction: 'linear',
+              animationFillMode: 'both',
+              ['--rotation' as string]: particle.rotate,
+              ['--drift' as string]: particle.drift,
+            }}
+          >
+            {renderPiece(particle)}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 interface PuzzleStreamMessage {
   type: 'progress' | 'puzzle' | 'error'
@@ -90,18 +404,33 @@ export function GameClient() {
   const [isLoading, setIsLoading] = useState(true)
   const [showResults, setShowResults] = useState(false)
   const [showHowToPlay, setShowHowToPlay] = useState(false)
+  const [showAchievements, setShowAchievements] = useState(false)
   const [detailCell, setDetailCell] = useState<number | null>(null)
   const [sessionId, setSessionId] = useState('')
   const [loadingProgress, setLoadingProgress] = useState(8)
   const [loadingStage, setLoadingStage] = useState('Warming up the puzzle generator...')
   const [loadingAttempts, setLoadingAttempts] = useState<LoadingAttempt[]>([])
   const [dailyResetLabel, setDailyResetLabel] = useState(() => getTimeUntilNextUtcMidnight().label)
+  const [activeEasterEgg, setActiveEasterEgg] = useState<ActiveEasterEgg | null>(null)
   const { toast } = useToast()
 
   const score = guesses.filter(g => g?.isCorrect).length
   // Game is over when out of guesses OR all cells filled (not necessarily all correct)
   const gridFull = guesses.every(g => g !== null)
   const isComplete = guessesRemaining === 0 || gridFull
+
+  const unlockAchievementWithToast = useCallback((achievementId: string) => {
+    const result = unlockAchievement(achievementId)
+
+    if (!result.unlocked || !result.achievement) {
+      return
+    }
+
+    toast({
+      title: `Achievement Unlocked: ${result.achievement.title}`,
+      description: result.achievement.description,
+    })
+  }, [toast])
 
   // Initialize session
   useEffect(() => {
@@ -118,6 +447,18 @@ export function GameClient() {
 
     return () => clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    if (!activeEasterEgg) {
+      return
+    }
+
+    const timer = setTimeout(() => {
+      setActiveEasterEgg(null)
+    }, activeEasterEgg.durationMs)
+
+    return () => clearTimeout(timer)
+  }, [activeEasterEgg])
 
   // Load puzzle
   const loadPuzzle = useCallback(async (gameMode: 'daily' | 'practice') => {
@@ -444,6 +785,28 @@ export function GameClient() {
       const newGuesses = [...guesses]
       newGuesses[selectedCell] = newGuess
       setGuesses(newGuesses)
+
+      const easterEggDefinition = getEasterEggDefinition(game.name)
+
+      if (easterEggDefinition) {
+        const burstId = Date.now()
+        const particles = createFallingParticles(
+          easterEggDefinition.density,
+          easterEggDefinition.pieceKinds,
+          burstId
+        )
+
+        setActiveEasterEgg({
+          burstId,
+          durationMs: getEasterEggLifetimeMs(easterEggDefinition, particles),
+          renderPiece: easterEggDefinition.renderPiece,
+          particles,
+        })
+
+        if (easterEggDefinition.achievementId) {
+          unlockAchievementWithToast(easterEggDefinition.achievementId)
+        }
+      }
       
       const newGuessesRemaining = guessesRemaining - 1
       setGuessesRemaining(newGuessesRemaining)
@@ -462,6 +825,11 @@ export function GameClient() {
       if (newGuessesRemaining === 0 || newGuesses.every(g => g !== null)) {
         // Record completion
         const finalScore = newGuesses.filter(g => g?.isCorrect).length
+
+        if (finalScore === 9) {
+          unlockAchievementWithToast('perfect-grid')
+        }
+
         await fetch('/api/stats', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -634,13 +1002,17 @@ export function GameClient() {
 
   return (
     <main id="top" className="min-h-screen py-6 px-4">
+      {activeEasterEgg && <EasterEggCelebration {...activeEasterEgg} />}
+
       <GameHeader
         mode={mode}
         guessesRemaining={guessesRemaining}
         score={score}
         dailyResetLabel={mode === 'daily' ? dailyResetLabel : null}
         isHowToPlayOpen={showHowToPlay}
+        isAchievementsOpen={showAchievements}
         onModeChange={handleModeChange}
+        onAchievements={() => setShowAchievements(true)}
         onHowToPlay={() => setShowHowToPlay(true)}
         onNewPracticeGame={mode === 'practice' ? handlePlayAgain : undefined}
       />
@@ -703,6 +1075,11 @@ export function GameClient() {
         minimumCellOptions={resolvedMinimumCellOptions}
         validationStatus={puzzle.validation_status}
         dailyResetLabel={dailyResetLabel}
+      />
+
+      <AchievementsModal
+        isOpen={showAchievements}
+        onClose={() => setShowAchievements(false)}
       />
 
       <GuessDetailsModal
