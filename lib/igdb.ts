@@ -1480,7 +1480,7 @@ export async function generatePuzzleCategories(
               colCategory: colCategory.name,
               validOptionCount,
               passed: validOptionCount >= minValidOptionsPerCell,
-              message: `Attempt ${attempt}: counting answers for ${rowCategory.name} x ${colCategory.name}...`,
+              message: `Attempt ${attempt}: counting answers for\n${rowCategory.name} x ${colCategory.name}`,
             })
 
             return {

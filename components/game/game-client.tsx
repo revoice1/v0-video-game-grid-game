@@ -51,6 +51,18 @@ function buildAttemptIntersections(rows: string[], cols: string[]): LoadingInter
   })))
 }
 
+function getIntersectionLabelClass(label: string): string {
+  if (label.length > 42) {
+    return 'text-[10px]'
+  }
+
+  if (label.length > 30) {
+    return 'text-[11px]'
+  }
+
+  return 'text-xs'
+}
+
 function getTimeUntilNextUtcMidnight(now = new Date()) {
   const nextReset = new Date(now)
   nextReset.setUTCHours(24, 0, 0, 0)
@@ -517,7 +529,7 @@ export function GameClient() {
           <p className="text-center text-sm font-semibold uppercase tracking-[0.24em] text-primary">
             {mode === 'daily' ? 'Daily Puzzle' : 'Building Grid'}
           </p>
-          <p className="mt-3 text-center text-lg font-semibold text-foreground">{loadingStage}</p>
+          <p className="mt-3 whitespace-pre-line text-center text-lg font-semibold text-foreground">{loadingStage}</p>
           <p className="mt-2 text-center text-sm text-muted-foreground">
             {mode === 'daily'
               ? loadingProgress < 10
@@ -561,7 +573,9 @@ export function GameClient() {
                         key={`${activeAttempt.attempt}-${intersection.label}`}
                         className="flex items-center justify-between rounded-lg border border-border/70 bg-background/40 px-3 py-2 text-xs"
                       >
-                        <span className="pr-3 text-foreground/90">{intersection.label}</span>
+                        <span className={`pr-3 text-foreground/90 whitespace-nowrap ${getIntersectionLabelClass(intersection.label)}`}>
+                          {intersection.label}
+                        </span>
                         <span className="shrink-0 text-muted-foreground">
                           {intersection.status === 'passed' && 'OK'}
                           {intersection.status === 'failed' && `X${typeof intersection.validOptionCount === 'number' ? ` ${intersection.validOptionCount}` : ''}`}
