@@ -639,6 +639,7 @@ export function GameClient() {
         guessesRemaining={guessesRemaining}
         score={score}
         dailyResetLabel={mode === 'daily' ? dailyResetLabel : null}
+        isHowToPlayOpen={showHowToPlay}
         onModeChange={handleModeChange}
         onHowToPlay={() => setShowHowToPlay(true)}
         onNewPracticeGame={mode === 'practice' ? handlePlayAgain : undefined}
@@ -689,6 +690,7 @@ export function GameClient() {
         onClose={() => setShowResults(false)}
         guesses={guesses}
         puzzleId={puzzle.id}
+        puzzleDate={puzzle.date}
         rowCategories={puzzle.row_categories}
         colCategories={puzzle.col_categories}
         isDaily={mode === 'daily'}

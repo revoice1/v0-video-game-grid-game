@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useToast } from '@/hooks/use-toast'
 import type { CellGuess, Category } from '@/lib/types'
 import Image from 'next/image'
 
@@ -30,6 +31,7 @@ interface ResultsModalProps {
   onClose: () => void
   guesses: (CellGuess | null)[]
   puzzleId: string
+  puzzleDate?: string | null
   rowCategories: Category[]
   colCategories: Category[]
   isDaily: boolean
@@ -52,11 +54,40 @@ function getRarityLabel(percentage: number): string {
   return 'Common'
 }
 
+function getShareEmoji(guess: CellGuess | null): string {
+  if (!guess) return '⬜'
+  return guess.isCorrect ? '🟩' : '🟥'
+}
+
+function buildShareText(
+  guesses: (CellGuess | null)[],
+  isDaily: boolean,
+  puzzleDate?: string | null
+): string {
+  const score = guesses.filter(guess => guess?.isCorrect).length
+  const label = isDaily
+    ? `GameGrid Daily${puzzleDate ? ` ${puzzleDate}` : ''}`
+    : 'GameGrid Practice'
+  const rows = [0, 1, 2].map(rowIndex =>
+    guesses
+      .slice(rowIndex * 3, rowIndex * 3 + 3)
+      .map(getShareEmoji)
+      .join('')
+  )
+
+  return [
+    `${label} | ${score}/9`,
+    ...rows,
+    'https://www.gamegrid.games/',
+  ].join('\n')
+}
+
 export function ResultsModal({ 
   isOpen, 
   onClose, 
   guesses, 
   puzzleId, 
+  puzzleDate,
   rowCategories,
   colCategories,
   isDaily, 
@@ -66,6 +97,7 @@ export function ResultsModal({
   const [totalCompletions, setTotalCompletions] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'your-results' | 'playerbase'>('your-results')
+  const { toast } = useToast()
 
   const correctGuesses = guesses.filter(g => g?.isCorrect).length
   const score = correctGuesses
@@ -115,6 +147,25 @@ export function ResultsModal({
     const rowCategory = rowCategories[Math.floor(cellIndex / 3)]
     const colCategory = colCategories[cellIndex % 3]
     return `${rowCategory?.name ?? 'Row'} x ${colCategory?.name ?? 'Column'}`
+  }
+
+  const handleCopyResults = async () => {
+    const shareText = buildShareText(guesses, isDaily, puzzleDate)
+
+    try {
+      await navigator.clipboard.writeText(shareText)
+      toast({
+        title: 'Results copied',
+        description: 'Your spoiler-free results are ready to share.',
+      })
+    } catch (error) {
+      console.error('Failed to copy results:', error)
+      toast({
+        title: 'Copy failed',
+        description: 'Could not copy your results to the clipboard.',
+        variant: 'destructive',
+      })
+    }
   }
 
   return (
@@ -361,6 +412,13 @@ export function ResultsModal({
 
         {/* Actions - fixed at bottom */}
         <div className="flex gap-3 pt-4 border-t border-border flex-shrink-0">
+          <Button
+            variant="outline"
+            onClick={handleCopyResults}
+            className="flex-1"
+          >
+            Copy Results
+          </Button>
           {!isDaily && (
             <Button onClick={onPlayAgain} className="flex-1">
               New Game
@@ -369,7 +427,7 @@ export function ResultsModal({
           <Button
             variant="outline"
             onClick={onClose}
-            className={isDaily ? 'flex-1' : ''}
+            className="flex-1"
           >
             Close
           </Button>
