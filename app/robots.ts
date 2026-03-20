@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: '*',
       allow: '/',
     },
-    sitemap: 'https://gamegrid.games/sitemap.xml',
-    host: 'https://gamegrid.games',
+    sitemap: 'https://www.gamegrid.games/sitemap.xml',
+    host: 'https://www.gamegrid.games',
   }
 }
