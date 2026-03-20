@@ -18,6 +18,11 @@ interface IGDBPlatform {
   slug?: string
 }
 
+interface IGDBReleaseDate {
+  date?: number | null
+  platform?: IGDBPlatform | null
+}
+
 interface IGDBGenre {
   id: number
   name: string
@@ -49,6 +54,7 @@ export interface IGDBGame {
   total_rating_count?: number | null
   cover?: IGDBCover | null
   platforms?: IGDBPlatform[]
+  release_dates?: IGDBReleaseDate[]
   genres?: IGDBGenre[]
   game_modes?: IGDBNamedEntity[]
   themes?: IGDBNamedEntity[]
@@ -418,6 +424,16 @@ function buildCoverUrl(imageId?: string): string | null {
   return `https://images.igdb.com/igdb/image/upload/t_cover_big/${imageId}.jpg`
 }
 
+function getOriginalPlatformName(game: IGDBGame): string | null {
+  const datedReleasePlatforms = (game.release_dates ?? [])
+    .filter((releaseDate): releaseDate is IGDBReleaseDate & { date: number; platform: IGDBPlatform } =>
+      typeof releaseDate.date === 'number' && Boolean(releaseDate.platform?.name)
+    )
+    .sort((left, right) => left.date - right.date)
+
+  return datedReleasePlatforms[0]?.platform.name ?? null
+}
+
 function getGameTypeLabel(gameType?: number | null): string | null {
   if (typeof gameType !== 'number') {
     return null
@@ -669,7 +685,7 @@ async function queryValidGamesForCell(
   limit: number,
   offset = 0,
   fields =
-    'name,slug,url,category,game_type,parent_game,first_release_date,rating,aggregated_rating,total_rating,total_rating_count,cover.image_id,platforms.name,platforms.slug,genres.name,genres.slug,game_modes.name,themes.name,player_perspectives.name,involved_companies.company.name,keywords.name'
+    'name,slug,url,category,game_type,parent_game,first_release_date,rating,aggregated_rating,total_rating,total_rating_count,cover.image_id,platforms.name,platforms.slug,release_dates.date,release_dates.platform.name,release_dates.platform.slug,genres.name,genres.slug,game_modes.name,themes.name,player_perspectives.name,involved_companies.company.name,keywords.name'
 ): Promise<Game[]> {
   const rowClause = buildIGDBWhereClause(rowCategory)
   const colClause = buildIGDBWhereClause(colCategory)
@@ -865,6 +881,7 @@ function mapIGDBGameToGame(game: IGDBGame): Game {
     released: formatIGDBDate(game.first_release_date),
     metacritic: getMetacriticScore(game.total_rating),
     gameTypeLabel: getGameTypeLabel(game.game_type),
+    originalPlatformName: getOriginalPlatformName(game),
     genres,
     platforms,
     developers: companies.map(company => ({
@@ -1108,7 +1125,7 @@ export async function searchIGDBGames(query: string): Promise<Game[]> {
 
   const runSearch = async (searchTerm: string, limit = 30) => {
     const searchQuery = [
-      'fields name,slug,url,category,game_type,parent_game,first_release_date,rating,aggregated_rating,total_rating,total_rating_count,cover.image_id,platforms.name,platforms.slug,genres.name,genres.slug,game_modes.name,themes.name,player_perspectives.name,involved_companies.company.name,keywords.name;',
+      'fields name,slug,url,category,game_type,parent_game,first_release_date,rating,aggregated_rating,total_rating,total_rating_count,cover.image_id,platforms.name,platforms.slug,release_dates.date,release_dates.platform.name,release_dates.platform.slug,genres.name,genres.slug,game_modes.name,themes.name,player_perspectives.name,involved_companies.company.name,keywords.name;',
       `where ${buildSearchGameWhereClause()};`,
       `search "${escapeIGDBSearch(searchTerm)}";`,
       `limit ${limit};`,
@@ -1144,7 +1161,7 @@ export async function getIGDBGameDetails(gameId: number): Promise<Game | null> {
   }
 
   const query = [
-    'fields name,slug,url,category,game_type,parent_game,first_release_date,rating,aggregated_rating,total_rating,total_rating_count,cover.image_id,platforms.name,platforms.slug,genres.name,genres.slug,game_modes.name,themes.name,player_perspectives.name,involved_companies.company.name,keywords.name;',
+    'fields name,slug,url,category,game_type,parent_game,first_release_date,rating,aggregated_rating,total_rating,total_rating_count,cover.image_id,platforms.name,platforms.slug,release_dates.date,release_dates.platform.name,release_dates.platform.slug,genres.name,genres.slug,game_modes.name,themes.name,player_perspectives.name,involved_companies.company.name,keywords.name;',
     `where id = ${gameId} & ${buildOfficialGameWhereClause()};`,
     'limit 1;',
   ].join(' ')
@@ -1338,7 +1355,7 @@ export async function getValidGameCountForCell(
         colCategory,
         pageSize,
         offset,
-        'id,name,slug,url,category,game_type,parent_game,first_release_date,rating,aggregated_rating,total_rating,total_rating_count,cover.image_id,platforms.name,platforms.slug,genres.name,genres.slug,game_modes.name,themes.name,player_perspectives.name,involved_companies.company.name,keywords.name'
+        'id,name,slug,url,category,game_type,parent_game,first_release_date,rating,aggregated_rating,total_rating,total_rating_count,cover.image_id,platforms.name,platforms.slug,release_dates.date,release_dates.platform.name,release_dates.platform.slug,genres.name,genres.slug,game_modes.name,themes.name,player_perspectives.name,involved_companies.company.name,keywords.name'
       )
       for (const game of games) seenGameIds.add(game.id)
       if (games.length < pageSize) break

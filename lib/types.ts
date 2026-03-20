@@ -8,6 +8,7 @@ export interface Game {
   released: string | null
   metacritic: number | null
   gameTypeLabel?: string | null
+  originalPlatformName?: string | null
   genres: { id: number; name: string; slug: string }[]
   platforms: { platform: { id: number; name: string; slug: string } }[]
   developers?: { id: number; name: string; slug: string }[]

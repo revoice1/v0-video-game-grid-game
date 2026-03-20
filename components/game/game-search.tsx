@@ -79,6 +79,10 @@ function getDisplayPlatformName(platformName: string): string {
 }
 
 function getPreferredPlatform(game: Game): string | null {
+  if (game.originalPlatformName) {
+    return getDisplayPlatformName(game.originalPlatformName)
+  }
+
   if (!game.platforms?.length) {
     return null
   }
