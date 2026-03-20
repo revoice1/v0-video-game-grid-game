@@ -343,7 +343,7 @@ const PLATFORM_ALIAS_GROUPS: Record<string, string[]> = {
 }
 
 const GAME_TYPE_LABELS: Record<number, string> = {
-  0: 'Main Game',
+  0: 'Original',
   8: 'Remake',
   9: 'Remaster',
   10: 'Expanded Game',

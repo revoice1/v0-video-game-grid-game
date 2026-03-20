@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 interface GameHeaderProps {
   mode: 'daily' | 'practice'
@@ -28,14 +29,19 @@ export function GameHeader({
     <header className="w-full">
       <div className="max-w-lg mx-auto">
         {/* Title */}
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">
-            <span className="text-primary">Game</span>
-            <span className="text-foreground">Grid</span>
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            The video game trivia challenge
-          </p>
+        <div className="relative mb-6">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold tracking-tight">
+              <span className="text-primary">Game</span>
+              <span className="text-foreground">Grid</span>
+            </h1>
+            <p className="mt-1 text-sm text-foreground/75">
+              The video game trivia challenge
+            </p>
+          </div>
+          <div className="absolute right-0 top-0 pt-0.5">
+            <ThemeToggle />
+          </div>
         </div>
 
         {/* Mode tabs */}

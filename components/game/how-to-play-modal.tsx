@@ -30,7 +30,7 @@ export function HowToPlayModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md bg-card border-border">
+      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto bg-card border-border">
         <DialogHeader>
           <DialogTitle className="text-center text-xl font-bold">
             How to Play
@@ -114,6 +114,18 @@ export function HowToPlayModal({
             <div className="flex gap-3">
               <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
                 <span className="text-primary font-bold">7</span>
+              </div>
+              <div>
+                <p className="font-medium">Release Tags</p>
+                <p className="text-sm text-muted-foreground">
+                  Search results may show a type tag like Original, Re-release, Remake, Remaster, or Port. These are just quick IGDB-based clues about which version you are looking at, not a hint about whether an answer is valid.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <span className="text-primary font-bold">8</span>
               </div>
               <div>
                 <p className="font-medium">Rarity Score</p>
