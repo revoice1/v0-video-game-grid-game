@@ -379,15 +379,6 @@ function escapeIGDBSearch(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
 }
 
-function getReleaseYear(released: string | null | undefined): number | null {
-  if (!released) {
-    return null
-  }
-
-  const year = Number(released.split('-')[0])
-  return Number.isFinite(year) ? year : null
-}
-
 function formatIGDBDate(timestamp?: number | null): string | null {
   if (!timestamp) {
     return null
