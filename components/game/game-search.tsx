@@ -6,6 +6,89 @@ import { cn } from '@/lib/utils'
 import type { Game, Category } from '@/lib/types'
 import Image from 'next/image'
 
+const PLATFORM_LABELS: Record<string, string> = {
+  'Family Computer': 'NES',
+  'Family Computer Disk System': 'NES',
+  'Nintendo Entertainment System': 'NES',
+  'Super Famicom': 'SNES',
+  'Super Nintendo Entertainment System': 'SNES',
+  'Sega Mega Drive/Genesis': 'Genesis',
+  'Dreamcast': 'Dreamcast',
+  'Game Boy': 'Game Boy',
+  'Game Boy Advance': 'GBA',
+  'Nintendo DS': 'DS',
+  'Nintendo 3DS': '3DS',
+  'Nintendo 64': 'N64',
+  'Nintendo GameCube': 'GameCube',
+  'Nintendo Switch': 'Switch',
+  'Nintendo Switch 2': 'Switch 2',
+  'PlayStation (Original)': 'PS1',
+  'PlayStation 2': 'PS2',
+  'PlayStation 3': 'PS3',
+  'PlayStation 4': 'PS4',
+  'PlayStation 5': 'PS5',
+  'PlayStation Portable': 'PSP',
+  'PlayStation Vita': 'Vita',
+  'Xbox (Original)': 'Xbox',
+  'Xbox 360': 'Xbox 360',
+  'Xbox One': 'Xbox One',
+  'Xbox Series X|S': 'Series X|S',
+  'DOS': 'PC',
+  'PC (Windows/DOS)': 'PC',
+  'PC (Microsoft Windows)': 'PC',
+}
+
+const PLATFORM_PREFERENCE = [
+  'Atari 2600',
+  'Family Computer',
+  'Family Computer Disk System',
+  'Nintendo Entertainment System',
+  'Super Famicom',
+  'Super Nintendo Entertainment System',
+  'Sega Mega Drive/Genesis',
+  'Sega Saturn',
+  'Dreamcast',
+  'Game Boy',
+  'Game Boy Advance',
+  'Nintendo DS',
+  'Nintendo 3DS',
+  'Nintendo 64',
+  'Nintendo GameCube',
+  'Wii',
+  'Wii U',
+  'Nintendo Switch',
+  'Nintendo Switch 2',
+  'PlayStation (Original)',
+  'PlayStation 2',
+  'PlayStation 3',
+  'DOS',
+  'PC (Windows/DOS)',
+  'PC (Microsoft Windows)',
+  'PlayStation 4',
+  'PlayStation 5',
+  'PlayStation Portable',
+  'PlayStation Vita',
+  'Xbox (Original)',
+  'Xbox 360',
+  'Xbox One',
+  'Xbox Series X|S',
+]
+
+function getDisplayPlatformName(platformName: string): string {
+  return PLATFORM_LABELS[platformName] ?? platformName
+}
+
+function getPreferredPlatform(game: Game): string | null {
+  if (!game.platforms?.length) {
+    return null
+  }
+
+  const platforms = game.platforms.map(({ platform }) => platform.name)
+  const rankedPlatform = PLATFORM_PREFERENCE.find(platformName => platforms.includes(platformName))
+
+  return getDisplayPlatformName(rankedPlatform ?? platforms[0])
+}
+
 interface GameSearchProps {
   isOpen: boolean
   puzzleId: string
@@ -87,12 +170,15 @@ export function GameSearch({ isOpen, puzzleId, rowCategory, colCategory, onSelec
   if (!isOpen) return null
 
   const getResultMetadata = (game: Game) => {
+    const preferredPlatform = getPreferredPlatform(game)
+
     return [
       game.released ? { label: 'Year', value: game.released.slice(0, 4) } : null,
       game.metacritic !== null ? { label: 'Score', value: `${game.metacritic}` } : null,
+      game.gameTypeLabel ? { label: 'Type', value: game.gameTypeLabel } : null,
       game.genres?.[0]?.name ? { label: 'Genre', value: game.genres[0].name } : null,
-      game.platforms?.[0]?.platform.name
-        ? { label: 'Platform', value: game.platforms[0].platform.name }
+      preferredPlatform
+        ? { label: 'Platform', value: preferredPlatform }
         : null,
     ].filter((item): item is { label: string; value: string } => item !== null)
   }

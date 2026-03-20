@@ -633,7 +633,7 @@ export function GameClient() {
   }
 
   return (
-    <main className="min-h-screen py-6 px-4">
+    <main id="top" className="min-h-screen py-6 px-4">
       <GameHeader
         mode={mode}
         guessesRemaining={guessesRemaining}

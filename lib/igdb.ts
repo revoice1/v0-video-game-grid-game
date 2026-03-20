@@ -77,9 +77,9 @@ const DEFAULT_CELL_VALIDATION_CACHE_TTL_MS = 1000 * 60 * 60 * 6
 const DEFAULT_CATEGORY_FAMILY_CACHE_TTL_MS = 1000 * 60 * 60 * 12
 const DEFAULT_IGDB_MIN_REQUEST_INTERVAL_MS = 350
 const DEFAULT_IGDB_MAX_RETRIES = 3
-const ALLOWED_GAME_TYPES = [0, 8, 9, 11] as const
+const ALLOWED_GAME_TYPES = [0, 8, 9, 10, 11] as const
 const ALLOWED_GAME_TYPE_SET = new Set<number>(ALLOWED_GAME_TYPES)
-const REJECTED_GAME_TYPE_SET = new Set<number>([1, 2, 3, 4, 5, 6, 7, 10, 12, 13, 14])
+const REJECTED_GAME_TYPE_SET = new Set<number>([1, 2, 3, 4, 5, 6, 7, 12, 13, 14])
 const UNOFFICIAL_NAME_PATTERNS = [
   /\bgoogle translated\b/i,
   /\bchapter\s+\d+\b/i,
@@ -336,6 +336,14 @@ const PLATFORM_ALIAS_GROUPS: Record<string, string[]> = {
   'pc windows dos': ['pc microsoft windows', 'dos'],
 }
 
+const GAME_TYPE_LABELS: Record<number, string> = {
+  0: 'Main Game',
+  8: 'Remake',
+  9: 'Remaster',
+  10: 'Expanded Game',
+  11: 'Port',
+}
+
 function normalizeName(value: string): string {
   return value
     .toLowerCase()
@@ -408,6 +416,14 @@ function buildCoverUrl(imageId?: string): string | null {
   }
 
   return `https://images.igdb.com/igdb/image/upload/t_cover_big/${imageId}.jpg`
+}
+
+function getGameTypeLabel(gameType?: number | null): string | null {
+  if (typeof gameType !== 'number') {
+    return null
+  }
+
+  return GAME_TYPE_LABELS[gameType] ?? null
 }
 
 function sleep(ms: number): Promise<void> {
@@ -848,6 +864,7 @@ function mapIGDBGameToGame(game: IGDBGame): Game {
     background_image: buildCoverUrl(game.cover?.image_id),
     released: formatIGDBDate(game.first_release_date),
     metacritic: getMetacriticScore(game.total_rating),
+    gameTypeLabel: getGameTypeLabel(game.game_type),
     genres,
     platforms,
     developers: companies.map(company => ({
