@@ -43,6 +43,8 @@ export interface IGDBGame {
   game_type?: number | null
   parent_game?: number | null
   first_release_date?: number | null
+  rating?: number | null
+  aggregated_rating?: number | null
   total_rating?: number | null
   total_rating_count?: number | null
   cover?: IGDBCover | null
@@ -222,7 +224,7 @@ const FALLBACK_PLATFORMS: Category[] = [
   { type: 'platform', id: 7, name: 'PlayStation (Original)', slug: 'ps' },
   { type: 'platform', id: 8, name: 'PlayStation 2', slug: 'ps2' },
   { type: 'platform', id: 9, name: 'PlayStation 3', slug: 'ps3' },
-  { type: 'platform', id: 6, name: 'PC (Microsoft Windows)', slug: 'pc' },
+  { type: 'platform', id: 6, name: 'PC (Windows/DOS)', slug: 'pc' },
   { type: 'platform', id: 48, name: 'PlayStation 4', slug: 'ps4--1' },
   { type: 'platform', id: 167, name: 'PlayStation 5', slug: 'ps5' },
   { type: 'platform', id: 38, name: 'PlayStation Portable', slug: 'psp' },
@@ -267,7 +269,7 @@ const PLATFORM_RELEASE_YEAR: Record<string, number> = {
   playstation: 1994,
   'playstation 2': 2000,
   'playstation 3': 2006,
-  'pc microsoft windows': 1985,
+  'pc windows dos': 1985,
   'playstation 4': 2013,
   'playstation 5': 2020,
   'playstation portable': 2004,
@@ -298,7 +300,7 @@ const PLATFORM_VALID_DECADES: Record<string, string[]> = {
   playstation: ['1990'],
   'playstation 2': ['2000'],
   'playstation 3': ['2000', '2010'],
-  'pc microsoft windows': ['1990', '2000', '2010', '2020'],
+  'pc windows dos': ['1990', '2000', '2010', '2020'],
   'playstation 4': ['2010', '2020'],
   'playstation 5': ['2020'],
   'playstation portable': ['2000', '2010'],
@@ -320,6 +322,11 @@ const TAG_ALIAS_GROUPS: Record<string, string[]> = {
   exploration: ['exploration', 'open world'],
   'third person': ['third person'],
   'first person': ['first person'],
+}
+
+const PLATFORM_ALIAS_GROUPS: Record<string, string[]> = {
+  'pc microsoft windows': ['pc microsoft windows', 'dos'],
+  'pc windows dos': ['pc microsoft windows', 'dos'],
 }
 
 function normalizeName(value: string): string {
@@ -425,6 +432,12 @@ async function scheduleIGDBRequest(): Promise<void> {
 function getTagAliases(name: string): Set<string> {
   const normalized = normalizeName(name)
   const aliases = TAG_ALIAS_GROUPS[normalized] ?? [normalized]
+  return new Set(aliases.map(normalizeName))
+}
+
+function getPlatformAliases(name: string): Set<string> {
+  const normalized = normalizeName(name)
+  const aliases = PLATFORM_ALIAS_GROUPS[normalized] ?? [normalized]
   return new Set(aliases.map(normalizeName))
 }
 
@@ -642,7 +655,7 @@ async function queryValidGamesForCell(
   limit: number,
   offset = 0,
   fields =
-    'name,slug,url,category,game_type,parent_game,first_release_date,total_rating,total_rating_count,cover.image_id,platforms.name,platforms.slug,genres.name,genres.slug,game_modes.name,themes.name,player_perspectives.name,involved_companies.company.name,keywords.name'
+    'name,slug,url,category,game_type,parent_game,first_release_date,rating,aggregated_rating,total_rating,total_rating_count,cover.image_id,platforms.name,platforms.slug,genres.name,genres.slug,game_modes.name,themes.name,player_perspectives.name,involved_companies.company.name,keywords.name'
 ): Promise<Game[]> {
   const rowClause = buildIGDBWhereClause(rowCategory)
   const colClause = buildIGDBWhereClause(colCategory)
@@ -713,7 +726,7 @@ async function getCategoryFamilies(): Promise<CategoryFamily[]> {
 function buildIGDBWhereClause(category: Category): string | null {
   switch (category.type) {
     case 'platform':
-      return `platforms = (${category.id})`
+      return getPlatformAliases(category.name).size > 1 ? null : `platforms = (${category.id})`
     case 'genre':
       return `genres = (${category.id})`
     case 'game_mode':
@@ -873,6 +886,10 @@ function hasDisqualifyingKeywords(game: IGDBGame): boolean {
   return (game.keywords ?? []).some(keyword => DISQUALIFYING_KEYWORDS.has(normalizeName(keyword.name)))
 }
 
+function hasRecognizedRating(game: IGDBGame): boolean {
+  return game.rating != null || game.aggregated_rating != null
+}
+
 function isOfficialCatalogGame(game: IGDBGame): boolean {
   if (!game.first_release_date) {
     return false
@@ -890,6 +907,10 @@ function isOfficialCatalogGame(game: IGDBGame): boolean {
     return false
   }
 
+  if (!hasRecognizedRating(game)) {
+    return false
+  }
+
   if (hasDisqualifyingKeywords(game)) {
     return false
   }
@@ -902,6 +923,7 @@ function buildOfficialGameWhereClause(): string {
     'version_parent = null',
     'first_release_date != null',
     'involved_companies != null',
+    '(rating != null | aggregated_rating != null)',
     `game_type = (${ALLOWED_GAME_TYPES.join(',')})`,
   ].join(' & ')
 }
@@ -911,6 +933,7 @@ function buildSearchGameWhereClause(): string {
     'version_parent = null',
     'first_release_date != null',
     'involved_companies != null',
+    '(rating != null | aggregated_rating != null)',
   ].join(' & ')
 }
 
@@ -1063,18 +1086,6 @@ function scoreSearchCandidate(candidate: IGDBGame, query: string): number {
   return score
 }
 
-function isDerivativeTitle(candidateName: string, anchorName: string): boolean {
-  const normalizedCandidate = normalizeName(candidateName)
-  const normalizedAnchor = normalizeName(anchorName)
-
-  if (normalizedCandidate === normalizedAnchor || !normalizedCandidate.startsWith(normalizedAnchor)) {
-    return false
-  }
-
-  const suffix = normalizedCandidate.slice(normalizedAnchor.length).trim()
-  return suffix.length > 0
-}
-
 export async function searchIGDBGames(query: string): Promise<Game[]> {
   if (!query.trim()) {
     return []
@@ -1082,7 +1093,7 @@ export async function searchIGDBGames(query: string): Promise<Game[]> {
 
   const runSearch = async (searchTerm: string, limit = 30) => {
     const searchQuery = [
-      'fields name,slug,url,category,game_type,parent_game,first_release_date,total_rating,total_rating_count,cover.image_id,involved_companies.company.name,keywords.name;',
+      'fields name,slug,url,category,game_type,parent_game,first_release_date,rating,aggregated_rating,total_rating,total_rating_count,cover.image_id,platforms.name,platforms.slug,genres.name,genres.slug,game_modes.name,themes.name,player_perspectives.name,involved_companies.company.name,keywords.name;',
       `where ${buildSearchGameWhereClause()};`,
       `search "${escapeIGDBSearch(searchTerm)}";`,
       `limit ${limit};`,
@@ -1109,21 +1120,7 @@ export async function searchIGDBGames(query: string): Promise<Game[]> {
     .filter(isOfficialCatalogGame)
     .sort((left, right) => scoreSearchCandidate(right, query) - scoreSearchCandidate(left, query))
 
-  const exactMatch = filteredResults.find(
-    result => normalizeName(result.name) === normalizeName(query)
-  )
-
-  const dedupedResults = exactMatch
-    ? filteredResults.filter(result => {
-        if (result.id === exactMatch.id) {
-          return true
-        }
-
-        return !isDerivativeTitle(result.name, exactMatch.name)
-      })
-    : filteredResults
-
-  return dedupedResults.slice(0, 15).map(mapIGDBGameToGame)
+  return filteredResults.slice(0, 15).map(mapIGDBGameToGame)
 }
 
 export async function getIGDBGameDetails(gameId: number): Promise<Game | null> {
@@ -1132,7 +1129,7 @@ export async function getIGDBGameDetails(gameId: number): Promise<Game | null> {
   }
 
   const query = [
-    'fields name,slug,url,category,game_type,parent_game,first_release_date,total_rating,total_rating_count,cover.image_id,platforms.name,platforms.slug,genres.name,genres.slug,game_modes.name,themes.name,player_perspectives.name,involved_companies.company.name,keywords.name;',
+    'fields name,slug,url,category,game_type,parent_game,first_release_date,rating,aggregated_rating,total_rating,total_rating_count,cover.image_id,platforms.name,platforms.slug,genres.name,genres.slug,game_modes.name,themes.name,player_perspectives.name,involved_companies.company.name,keywords.name;',
     `where id = ${gameId} & ${buildOfficialGameWhereClause()};`,
     'limit 1;',
   ].join(' ')
@@ -1188,7 +1185,11 @@ function matchesTagBucket(game: Game, categoryName: string): boolean {
 export function igdbGameMatchesCategory(game: Game, category: Category): boolean {
   switch (category.type) {
     case 'platform':
-      return game.platforms?.some(platform => normalizeName(platform.platform.name) === normalizeName(category.name)) || false
+      return (
+        game.platforms?.some(platform =>
+          getPlatformAliases(category.name).has(normalizeName(platform.platform.name))
+        ) || false
+      )
     case 'genre':
       return game.genres?.some(genre => normalizeName(genre.name) === normalizeName(category.name)) || false
     case 'decade': {
@@ -1322,7 +1323,7 @@ export async function getValidGameCountForCell(
         colCategory,
         pageSize,
         offset,
-        'id,name,slug,url,category,game_type,parent_game,first_release_date,total_rating,total_rating_count,cover.image_id,platforms.name,platforms.slug,genres.name,genres.slug,game_modes.name,themes.name,player_perspectives.name,involved_companies.company.name,keywords.name'
+        'id,name,slug,url,category,game_type,parent_game,first_release_date,rating,aggregated_rating,total_rating,total_rating_count,cover.image_id,platforms.name,platforms.slug,genres.name,genres.slug,game_modes.name,themes.name,player_perspectives.name,involved_companies.company.name,keywords.name'
       )
       for (const game of games) seenGameIds.add(game.id)
       if (games.length < pageSize) break

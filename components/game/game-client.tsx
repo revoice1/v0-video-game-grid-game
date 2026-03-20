@@ -480,6 +480,7 @@ export function GameClient() {
 
       <GameSearch
         isOpen={selectedCell !== null}
+        puzzleId={puzzle.id}
         rowCategory={selectedRowCategory}
         colCategory={selectedColCategory}
         onSelect={handleGameSelect}
