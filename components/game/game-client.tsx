@@ -15,6 +15,7 @@ import {
   type VersusTurnTimerOption,
 } from './versus-setup-modal'
 import { getSessionId, saveGameState, loadGameState, clearGameState, type CellGuessRecord } from '@/lib/session'
+import { useSearchConfirmPreference } from '@/lib/ui-preferences'
 import { unlockAchievement } from '@/lib/achievements'
 import { EASTER_EGGS, type EasterEggConfig, type EasterEggPieceKind } from '@/lib/easter-eggs'
 import type { Puzzle, CellGuess, Game, Category } from '@/lib/types'
@@ -94,6 +95,21 @@ interface VersusRecord {
 interface PendingFinalSteal {
   defender: TicTacToePlayer
   cellIndex: number
+}
+
+declare global {
+  interface Window {
+    __gameGridDev?: {
+      triggerEasterEgg: (gameName: string) => boolean
+      triggerPerfectCelebration: () => void
+      triggerStealShowdown: (options?: {
+        successful?: boolean
+        attackerScore?: number
+        defenderScore?: number
+      }) => void
+      triggerStealMiss: () => void
+    }
+  }
 }
 
 function getNextPlayer(player: TicTacToePlayer): TicTacToePlayer {
@@ -301,7 +317,7 @@ function StealShowdownOverlay({
   }, [lowEffects, revealedDefenderDigits])
 
   return (
-    <div className="fixed inset-0 z-[80]">
+    <div data-testid="steal-showdown-overlay" className="fixed inset-0 z-[80]">
       <div className={cn(
         'absolute inset-0 transition-all duration-300',
         !lowEffects && 'backdrop-blur-[3px]',
@@ -441,7 +457,7 @@ function StealShowdownOverlay({
 
 function StealMissSplash({ burstId }: ActiveStealMissSplash) {
   return (
-    <div key={burstId} className="pointer-events-none fixed inset-0 z-[90] grid place-items-center p-4">
+    <div key={burstId} data-testid="steal-miss-splash" className="pointer-events-none fixed inset-0 z-[90] grid place-items-center p-4">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(239,68,68,0.12),transparent_28%),rgba(0,0,0,0.18)]" />
       <div className="steal-miss-splash select-none px-6 text-center font-black uppercase italic tracking-[0.08em] text-[#ff6262] drop-shadow-[0_10px_28px_rgba(0,0,0,0.78)]">
         Wasted
@@ -1212,7 +1228,7 @@ function getEasterEggDefinition(gameName: string): EasterEggDefinition | null {
 
 function EasterEggCelebration({ burstId, renderPiece, particles }: ActiveEasterEgg) {
   return (
-    <div className="pointer-events-none fixed inset-0 z-[80] overflow-hidden">
+    <div data-testid="easter-egg-celebration" className="pointer-events-none fixed inset-0 z-[80] overflow-hidden">
       <style>{`
         @keyframes easter-egg-fall {
           0% {
@@ -1255,7 +1271,7 @@ function EasterEggCelebration({ burstId, renderPiece, particles }: ActiveEasterE
 
 function PerfectGridCelebration({ burstId, particles }: ActivePerfectCelebration) {
   return (
-    <div className="pointer-events-none fixed inset-0 z-[90] overflow-hidden">
+    <div data-testid="perfect-grid-celebration" className="pointer-events-none fixed inset-0 z-[90] overflow-hidden">
       <style>{`
         @keyframes perfect-grid-fall {
           0% {
@@ -1418,6 +1434,7 @@ export function GameClient() {
   const skipNextVersusAutoLoadRef = useRef(false)
   const skipNextPracticeAutoLoadRef = useRef(false)
   const [mode, setMode] = useState<GameMode>('daily')
+  const [loadedPuzzleMode, setLoadedPuzzleMode] = useState<GameMode | null>(null)
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null)
   const [guesses, setGuesses] = useState<(CellGuess | null)[]>(Array(9).fill(null))
   const [guessesRemaining, setGuessesRemaining] = useState(MAX_GUESSES)
@@ -1454,6 +1471,7 @@ export function GameClient() {
   const [pendingFinalSteal, setPendingFinalSteal] = useState<PendingFinalSteal | null>(null)
   const [lockImpactCell, setLockImpactCell] = useState<number | null>(null)
   const [animationQuality, setAnimationQuality] = useState<AnimationQuality>('high')
+  const { enabled: confirmBeforeSelect } = useSearchConfirmPreference()
   const { toast } = useToast()
 
   const score = guesses.filter(g => g?.isCorrect).length
@@ -1469,6 +1487,75 @@ export function GameClient() {
   // Game is over when out of guesses OR all cells filled (not necessarily all correct)
   const gridFull = guesses.every(g => g !== null)
   const isComplete = isVersusMode ? winner !== null : guessesRemaining === 0 || gridFull
+
+  const triggerEasterEggCelebration = useCallback((gameName: string) => {
+    const easterEggDefinition = getEasterEggDefinition(gameName)
+
+    if (!easterEggDefinition) {
+      return false
+    }
+
+    const burstId = Date.now()
+    const particles = createFallingParticles(
+      scaleParticleDensity(easterEggDefinition.density, animationQuality),
+      easterEggDefinition.pieceKinds,
+      burstId
+    )
+
+    setActiveEasterEgg({
+      burstId,
+      durationMs: getEasterEggLifetimeMs(easterEggDefinition, particles),
+      renderPiece: easterEggDefinition.renderPiece,
+      particles,
+    })
+
+    return true
+  }, [animationQuality])
+
+  const triggerPerfectCelebration = useCallback(() => {
+    const burstId = Date.now()
+    const particles = createFallingParticles(3, ['chex'], burstId).map((particle, index) => ({
+      ...particle,
+      left: ['18%', '50%', '82%'][index] ?? particle.left,
+      delay: `${index * 160}ms`,
+      size: `${32 + index * 6}px`,
+      duration: `${2600 + index * 180}ms`,
+      drift: `${index === 1 ? 0 : index === 0 ? -12 : 12}px`,
+      rotate: `${index === 1 ? -6 : index === 0 ? -14 : 10}deg`,
+      variant: index === 1 ? 'g-white' as const : 'g-green' as const,
+    }))
+
+    setActivePerfectCelebration({
+      burstId,
+      durationMs: 2800,
+      particles,
+    })
+  }, [])
+
+  const triggerStealShowdownPreview = useCallback((options?: {
+    successful?: boolean
+    attackerScore?: number
+    defenderScore?: number
+  }) => {
+    setActiveStealShowdown({
+      burstId: Date.now(),
+      durationMs: STEAL_SHOWDOWN_DURATION_MS,
+      defenderName: 'Defender',
+      defenderScore: options?.defenderScore ?? 82,
+      attackerName: 'Challenger',
+      attackerScore: options?.attackerScore ?? 76,
+      rule: versusStealRule,
+      successful: options?.successful ?? true,
+      lowEffects: animationQuality === 'low',
+    })
+  }, [animationQuality, versusStealRule])
+
+  const triggerStealMissPreview = useCallback(() => {
+    setActiveStealMissSplash({
+      burstId: Date.now(),
+      durationMs: 900,
+    })
+  }, [])
 
   const unlockAchievementWithToast = useCallback((achievementId: string) => {
     const result = unlockAchievement(achievementId)
@@ -1588,9 +1675,9 @@ export function GameClient() {
     gameMode: GameMode,
     customFilters?: VersusCategoryFilters
   ) => {
-    const shouldPersist = gameMode !== 'versus'
+    const shouldPersist = true
     const streamMode = gameMode === 'daily' ? 'daily' : 'practice'
-    const savedState = shouldPersist ? loadGameState(gameMode === 'daily') : null
+    const savedState = loadGameState(gameMode)
     const effectiveFilters =
       gameMode === 'versus'
         ? (customFilters ?? versusCategoryFilters)
@@ -1599,17 +1686,18 @@ export function GameClient() {
           : undefined
 
     if (savedState?.puzzle) {
+      setLoadedPuzzleMode(gameMode)
       setPuzzle(savedState.puzzle)
-      setGuesses(
-        savedState.guesses.map(g =>
-          g ? { gameId: g.gameId, gameName: g.gameName, gameImage: g.gameImage, isCorrect: g.isCorrect } : null
-        )
-      )
+      setGuesses(savedState.guesses as (CellGuess | null)[])
       setGuessesRemaining(savedState.guessesRemaining)
-      setCurrentPlayer('x')
-      setStealableCell(null)
-      setWinner(null)
-      setPendingFinalSteal(null)
+      setCurrentPlayer(savedState.currentPlayer ?? 'x')
+      setStealableCell(savedState.stealableCell ?? null)
+      setWinner(savedState.winner ?? null)
+      setPendingFinalSteal(savedState.pendingFinalSteal ?? null)
+      setVersusCategoryFilters((savedState.versusCategoryFilters as VersusCategoryFilters) ?? {})
+      setVersusStealRule(savedState.versusStealRule ?? 'lower')
+      setVersusTimerOption(savedState.versusTimerOption ?? 'none')
+      setTurnTimeLeft(savedState.turnTimeLeft ?? null)
       setLockImpactCell(null)
       setSelectedCell(null)
       setShowResults(savedState.isComplete)
@@ -1735,6 +1823,7 @@ export function GameClient() {
 
       setLoadingProgress(100)
       setLoadingStage('Board ready.')
+      setLoadedPuzzleMode(gameMode)
       setPuzzle(puzzleData)
 
       if (shouldPersist) {
@@ -1744,14 +1833,23 @@ export function GameClient() {
           guesses: Array(9).fill(null),
           guessesRemaining: MAX_GUESSES,
           isComplete: false,
-        }, gameMode === 'daily')
+          ...(gameMode === 'versus'
+            ? {
+                currentPlayer: 'x' as const,
+                stealableCell: null,
+                winner: null,
+                pendingFinalSteal: null,
+                versusCategoryFilters: effectiveFilters ?? {},
+                versusStealRule,
+                versusTimerOption,
+                turnTimeLeft: versusTimerOption === 'none' ? null : versusTimerOption,
+              }
+            : {}),
+        }, gameMode)
       }
 
       if (savedState && savedState.puzzleId === puzzleData.id) {
-        const restoredGuesses = savedState.guesses.map(g =>
-          g ? { gameId: g.gameId, gameName: g.gameName, gameImage: g.gameImage, isCorrect: g.isCorrect } : null
-        )
-        setGuesses(restoredGuesses)
+        setGuesses(savedState.guesses as (CellGuess | null)[])
         setGuessesRemaining(savedState.guessesRemaining)
         if (savedState.isComplete) setShowResults(true)
       }
@@ -1785,6 +1883,69 @@ export function GameClient() {
     practiceCategoryFilters,
     toast,
     versusCategoryFilters,
+    versusStealRule,
+    versusTimerOption,
+  ])
+
+  useEffect(() => {
+    if (mode !== 'versus' || !puzzle || loadedPuzzleMode !== 'versus') {
+      return
+    }
+
+    saveGameState({
+      puzzleId: puzzle.id,
+      puzzle,
+      guesses,
+      guessesRemaining,
+      isComplete,
+      currentPlayer,
+      stealableCell,
+      winner,
+      pendingFinalSteal,
+      versusCategoryFilters,
+      versusStealRule,
+      versusTimerOption,
+      turnTimeLeft,
+    }, 'versus')
+  }, [
+    currentPlayer,
+    guesses,
+    guessesRemaining,
+    isComplete,
+    mode,
+    loadedPuzzleMode,
+    pendingFinalSteal,
+    puzzle,
+    stealableCell,
+    turnTimeLeft,
+    versusCategoryFilters,
+    versusStealRule,
+    versusTimerOption,
+    winner,
+  ])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || process.env.NODE_ENV === 'production') {
+      return
+    }
+
+    window.__gameGridDev = {
+      triggerEasterEgg: triggerEasterEggCelebration,
+      triggerPerfectCelebration,
+      triggerStealShowdown: triggerStealShowdownPreview,
+      triggerStealMiss: triggerStealMissPreview,
+    }
+
+    return () => {
+      if (window.__gameGridDev) {
+        delete window.__gameGridDev
+      }
+    }
+  }, [
+    triggerEasterEggCelebration,
+    triggerPerfectCelebration,
+    triggerStealMissPreview,
+    triggerStealShowdownPreview,
   ])
 
   useEffect(() => {
@@ -1808,14 +1969,18 @@ export function GameClient() {
       return
     }
 
+    if (loadedPuzzleMode === mode && puzzle) {
+      return
+    }
+
     loadPuzzle(mode)
-  }, [loadPuzzle, mode, showPracticeStartOptions, showVersusStartOptions])
+  }, [loadPuzzle, loadedPuzzleMode, mode, puzzle, showPracticeStartOptions, showVersusStartOptions])
 
   // Handle mode change
   const handleModeChange = (newMode: GameMode) => {
     if (newMode !== mode) {
       if (newMode === 'practice') {
-        const hasSavedPracticeState = Boolean(loadGameState(false)?.puzzle)
+        const hasSavedPracticeState = Boolean(loadGameState('practice')?.puzzle)
         setShowVersusStartOptions(false)
         setShowVersusSetup(false)
         setVersusSetupError(null)
@@ -1823,6 +1988,7 @@ export function GameClient() {
         setPracticeSetupError(null)
 
         if (!hasSavedPracticeState) {
+          setLoadedPuzzleMode(null)
           setPuzzle(null)
           setGuesses(Array(9).fill(null))
           setSelectedCell(null)
@@ -1834,17 +2000,24 @@ export function GameClient() {
           setShowPracticeStartOptions(false)
         }
       } else if (newMode === 'versus') {
-        setPuzzle(null)
-        setGuesses(Array(9).fill(null))
-        setSelectedCell(null)
-        setShowResults(false)
-        setWinner(null)
-        setStealableCell(null)
         setShowPracticeStartOptions(false)
         setShowPracticeSetup(false)
         setPracticeSetupError(null)
-        setShowVersusStartOptions(true)
         setVersusSetupError(null)
+        const hasSavedVersusState = Boolean(loadGameState('versus')?.puzzle)
+
+        if (!hasSavedVersusState) {
+          setLoadedPuzzleMode(null)
+          setPuzzle(null)
+          setGuesses(Array(9).fill(null))
+          setSelectedCell(null)
+          setShowResults(false)
+          setWinner(null)
+          setStealableCell(null)
+          setShowVersusStartOptions(true)
+        } else {
+          setShowVersusStartOptions(false)
+        }
       } else {
         setShowPracticeStartOptions(false)
         setShowPracticeSetup(false)
@@ -1867,7 +2040,7 @@ export function GameClient() {
     setShowPracticeSetup(false)
     setShowPracticeStartOptions(false)
     skipNextPracticeAutoLoadRef.current = true
-    clearGameState(false)
+    clearGameState('practice')
     loadPuzzle('practice', filters)
   }
 
@@ -2184,19 +2357,7 @@ export function GameClient() {
       const easterEggDefinition = getEasterEggDefinition(game.name)
 
       if (easterEggDefinition) {
-        const burstId = Date.now()
-        const particles = createFallingParticles(
-          scaleParticleDensity(easterEggDefinition.density, animationQuality),
-          easterEggDefinition.pieceKinds,
-          burstId
-        )
-
-        setActiveEasterEgg({
-          burstId,
-          durationMs: getEasterEggLifetimeMs(easterEggDefinition, particles),
-          renderPiece: easterEggDefinition.renderPiece,
-          particles,
-        })
+        triggerEasterEggCelebration(game.name)
 
         if (easterEggDefinition.achievementId) {
           unlockAchievementWithToast(easterEggDefinition.achievementId)
@@ -2215,7 +2376,7 @@ export function GameClient() {
           guesses: newGuesses.map(g => g ? { gameId: g.gameId, gameName: g.gameName, gameImage: g.gameImage, isCorrect: g.isCorrect } : null),
           guessesRemaining: newGuessesRemaining,
           isComplete: newGuessesRemaining === 0 || newGuesses.every(g => g !== null),
-        }, mode === 'daily')
+        }, mode)
       }
 
       if (mode === 'versus') {
@@ -2265,24 +2426,7 @@ export function GameClient() {
 
         if (finalScore === 9) {
           unlockAchievementWithToast('perfect-grid')
-
-          const burstId = Date.now()
-          const particles = createFallingParticles(3, ['chex'], burstId).map((particle, index) => ({
-            ...particle,
-            left: ['18%', '50%', '82%'][index] ?? particle.left,
-            delay: `${index * 160}ms`,
-            size: `${32 + index * 6}px`,
-            duration: `${2600 + index * 180}ms`,
-            drift: `${index === 1 ? 0 : index === 0 ? -12 : 12}px`,
-            rotate: `${index === 1 ? -6 : index === 0 ? -14 : 10}deg`,
-            variant: index === 1 ? 'g-white' as const : 'g-green' as const,
-          }))
-
-          setActivePerfectCelebration({
-            burstId,
-            durationMs: 2800,
-            particles,
-          })
+          triggerPerfectCelebration()
         }
 
         if (mode === 'daily') {
@@ -2313,12 +2457,13 @@ export function GameClient() {
   // Handle starting a fresh non-daily board
   const handleNewGame = () => {
     if (mode === 'practice') {
-      clearGameState(false)
+      clearGameState('practice')
       skipNextPracticeAutoLoadRef.current = true
       loadPuzzle('practice', practiceCategoryFilters)
       return
     }
 
+    clearGameState('versus')
     setShowVersusStartOptions(false)
     skipNextVersusAutoLoadRef.current = true
     loadPuzzle('versus', versusCategoryFilters)
@@ -2514,7 +2659,7 @@ export function GameClient() {
                     setPracticeSetupError(null)
                     setShowPracticeStartOptions(false)
                     skipNextPracticeAutoLoadRef.current = true
-                    clearGameState(false)
+                    clearGameState('practice')
                     loadPuzzle('practice', {})
                     return
                   }
@@ -2523,6 +2668,7 @@ export function GameClient() {
                   setVersusSetupError(null)
                   setShowVersusStartOptions(false)
                   skipNextVersusAutoLoadRef.current = true
+                  clearGameState('versus')
                   loadPuzzle('versus', {})
                 }}
                 className="rounded-2xl border border-border bg-secondary/40 px-4 py-4 text-left transition-colors hover:bg-secondary/65"
@@ -2656,6 +2802,11 @@ export function GameClient() {
         selectedCell={selectedCell}
         stealableCell={isVersusMode ? stealableCell : null}
         currentPlayer={isVersusMode ? currentPlayer : null}
+        score={!isVersusMode ? score : undefined}
+        guessesRemaining={!isVersusMode ? guessesRemaining : undefined}
+        winner={isVersusMode ? winner : null}
+        turnTimerLabel={isVersusMode ? turnTimerLabel : null}
+        versusRecord={versusRecord}
         lockImpactCell={isVersusMode ? lockImpactCell : null}
         isGameOver={isComplete}
         onCellClick={handleCellClick}
@@ -2695,6 +2846,8 @@ export function GameClient() {
         isOpen={selectedCell !== null}
         puzzleId={mode === 'daily' ? puzzle.id : undefined}
         hideScores={mode === 'versus'}
+        confirmBeforeSelect={confirmBeforeSelect}
+        lowEffects={animationQuality === 'low'}
         activeCategoryTypes={activeCategoryTypes}
         rowCategory={selectedRowCategory}
         colCategory={selectedColCategory}

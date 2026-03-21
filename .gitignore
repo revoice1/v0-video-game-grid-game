@@ -17,5 +17,7 @@ node_modules/
 *.tsbuildinfo
 .next-dev*.log
 .next-dev.log
+playwright-report/
+test-results/
 .DS_Store
 .vercel

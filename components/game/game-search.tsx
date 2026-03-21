@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { Check, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { Game, Category } from '@/lib/types'
@@ -97,6 +98,8 @@ interface GameSearchProps {
   isOpen: boolean
   puzzleId?: string
   hideScores?: boolean
+  confirmBeforeSelect?: boolean
+  lowEffects?: boolean
   activeCategoryTypes?: Category['type'][]
   rowCategory: Category | null
   colCategory: Category | null
@@ -108,6 +111,8 @@ export function GameSearch({
   isOpen,
   puzzleId,
   hideScores = false,
+  confirmBeforeSelect = false,
+  lowEffects = false,
   activeCategoryTypes = [],
   rowCategory,
   colCategory,
@@ -118,10 +123,14 @@ export function GameSearch({
   const [results, setResults] = useState<Game[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [pendingConfirmationId, setPendingConfirmationId] = useState<number | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const resultRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const resultRefs = useRef<Array<HTMLDivElement | null>>([])
   const activeCategoryTypesKey = [...activeCategoryTypes].sort().join(',')
+  const pendingConfirmationGame = pendingConfirmationId !== null
+    ? results.find((game) => game.id === pendingConfirmationId) ?? null
+    : null
 
   // Focus input when opened
   useEffect(() => {
@@ -129,6 +138,7 @@ export function GameSearch({
       setQuery('')
       setResults([])
       setSelectedIndex(0)
+      setPendingConfirmationId(null)
       setTimeout(() => inputRef.current?.focus(), 100)
     }
   }, [isOpen])
@@ -163,9 +173,11 @@ export function GameSearch({
       const data = await response.json()
       setResults(data.results || [])
       setSelectedIndex(0)
+      setPendingConfirmationId(null)
     } catch (error) {
       console.error('Search error:', error)
       setResults([])
+      setPendingConfirmationId(null)
     } finally {
       setIsLoading(false)
     }
@@ -192,18 +204,60 @@ export function GameSearch({
     })
   }, [isOpen, results.length, selectedIndex])
 
+  useEffect(() => {
+    if (pendingConfirmationId === null) {
+      return
+    }
+
+    if (!results.some((game) => game.id === pendingConfirmationId)) {
+      setPendingConfirmationId(null)
+    }
+  }, [pendingConfirmationId, results])
+
+  const handleSelect = useCallback((game: Game) => {
+    if (!confirmBeforeSelect) {
+      onSelect(game)
+      return
+    }
+
+    setPendingConfirmationId(game.id)
+  }, [confirmBeforeSelect, onSelect])
+
+  const handleConfirm = useCallback(() => {
+    if (!pendingConfirmationGame) {
+      return
+    }
+
+    onSelect(pendingConfirmationGame)
+  }, [onSelect, pendingConfirmationGame])
+
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
+      if (pendingConfirmationId !== null) {
+        setPendingConfirmationId(null)
+      }
       setSelectedIndex(i => Math.min(i + 1, results.length - 1))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
+      if (pendingConfirmationId !== null) {
+        setPendingConfirmationId(null)
+      }
       setSelectedIndex(i => Math.max(i - 1, 0))
     } else if (e.key === 'Enter' && results[selectedIndex]) {
       e.preventDefault()
-      onSelect(results[selectedIndex])
+      if (pendingConfirmationGame?.id === results[selectedIndex].id) {
+        handleConfirm()
+        return
+      }
+
+      handleSelect(results[selectedIndex])
     } else if (e.key === 'Escape') {
+      if (pendingConfirmationId !== null) {
+        setPendingConfirmationId(null)
+        return
+      }
       onClose()
     }
   }
@@ -228,7 +282,10 @@ export function GameSearch({
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+        className={cn(
+          'absolute inset-0 bg-background/80',
+          lowEffects ? 'backdrop-blur-0' : 'backdrop-blur-sm'
+        )}
         onClick={onClose}
       />
 
@@ -275,54 +332,108 @@ export function GameSearch({
             <div className="py-2">
               {results.map((game, index) => {
                 const metadata = getResultMetadata(game)
+                const isPendingConfirmation = pendingConfirmationId === game.id
+                const isDimmed = pendingConfirmationId !== null && !isPendingConfirmation
 
                 return (
-                  <button
+                  <div
                     key={game.id}
                     ref={(element) => {
                       resultRefs.current[index] = element
                     }}
-                    onClick={() => onSelect(game)}
                     className={cn(
-                      'w-full flex items-center gap-3 px-4 py-2 text-left',
-                      'transition-colors duration-100',
-                      index === selectedIndex ? 'bg-primary/20' : 'hover:bg-secondary/50'
+                      'relative w-full text-left transition-[opacity,transform] duration-150',
+                      isDimmed && 'opacity-30 saturate-50',
+                      isPendingConfirmation && 'z-10'
                     )}
                   >
-                    <div className="relative w-10 h-10 rounded overflow-hidden flex-shrink-0 bg-secondary">
-                      {game.background_image ? (
-                        <Image
-                          src={game.background_image}
-                          alt={game.name}
-                          fill
-                          className="object-cover"
-                          sizes="40px"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
-                          ?
-                        </div>
+                    <button
+                      type="button"
+                      onClick={() => handleSelect(game)}
+                      className={cn(
+                        'flex w-full items-center gap-3 px-4 py-2 text-left transition-[background-color,box-shadow] duration-150',
+                        index === selectedIndex ? 'bg-primary/20' : 'hover:bg-secondary/50',
+                        isPendingConfirmation && 'bg-primary/10 shadow-[0_0_0_1px_rgba(34,197,94,0.3)]'
                       )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground truncate">{game.name}</p>
-                      {metadata.length > 0 && (
-                        <div className="mt-1 flex flex-wrap gap-1.5">
-                          {metadata.map((item) => (
-                            <span
-                              key={`${game.id}-${item.label}`}
-                              className="inline-flex max-w-full items-center gap-1 rounded-full bg-secondary/80 px-2 py-0.5 text-[11px] text-muted-foreground"
-                            >
-                              <span className="font-medium uppercase tracking-wide text-foreground/70">
-                                {item.label}
-                              </span>
-                              <span className="truncate">{item.value}</span>
-                            </span>
-                          ))}
+                    >
+                      <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded bg-secondary">
+                        {game.background_image ? (
+                          <Image
+                            src={game.background_image}
+                            alt={game.name}
+                            fill
+                            className="object-cover"
+                            sizes="40px"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+                            ?
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-foreground">{game.name}</p>
+                        {metadata.length > 0 && (
+                          <div className="relative mt-1">
+                            {isPendingConfirmation && (
+                              <span
+                                aria-hidden="true"
+                                className={cn(
+                                  'pointer-events-none absolute -inset-1 rounded-xl border border-primary/45',
+                                  lowEffects
+                                    ? 'opacity-90'
+                                    : 'animate-pulse shadow-[0_0_0_1px_rgba(34,197,94,0.18),0_0_24px_rgba(34,197,94,0.18)]'
+                                )}
+                              />
+                            )}
+                            <div className="relative z-10 flex flex-wrap gap-1.5">
+                              {metadata.map((item) => (
+                                <span
+                                  key={`${game.id}-${item.label}`}
+                                  className={cn(
+                                    'inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[11px]',
+                                    isPendingConfirmation
+                                      ? 'bg-primary/16 text-foreground'
+                                      : 'bg-secondary/80 text-muted-foreground'
+                                  )}
+                                >
+                                  <span className="font-medium uppercase tracking-wide text-foreground/70">
+                                    {item.label}
+                                  </span>
+                                  <span className="truncate">{item.value}</span>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                    {isPendingConfirmation && confirmBeforeSelect && (
+                      <div className="mx-4 mt-1 flex items-center justify-between gap-3 rounded-xl border border-primary/20 bg-background/80 px-3 py-2">
+                        <p className="text-xs font-medium text-foreground/85">
+                          Confirm this answer?
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setPendingConfirmationId(null)}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-destructive/30 bg-destructive/10 text-destructive transition-colors hover:bg-destructive/15 hover:text-destructive"
+                            aria-label={`Cancel ${game.name}`}
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleConfirm}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-primary/30 bg-primary text-primary-foreground transition-colors hover:bg-primary/90"
+                            aria-label={`Confirm ${game.name}`}
+                          >
+                            <Check className="h-4 w-4" />
+                          </button>
                         </div>
-                      )}
-                    </div>
-                  </button>
+                      </div>
+                    )}
+                  </div>
                 )
               })}
             </div>

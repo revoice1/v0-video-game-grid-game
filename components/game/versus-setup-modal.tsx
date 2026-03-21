@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -71,12 +71,25 @@ export function VersusSetupModal({
   const [draftTimerOption, setDraftTimerOption] = useState<VersusTurnTimerOption>(timerOption)
   const [isLoading, setIsLoading] = useState(false)
   const [expandedFamilies, setExpandedFamilies] = useState<Partial<Record<VersusFamilyKey, boolean>>>({})
+  const lastSyncedConfigRef = useRef<string>('')
+  const filtersKey = JSON.stringify(filters)
 
   useEffect(() => {
+    if (!isOpen) {
+      lastSyncedConfigRef.current = ''
+      return
+    }
+
+    const nextConfigKey = `${filtersKey}::${stealRule}::${timerOption}`
+    if (lastSyncedConfigRef.current === nextConfigKey) {
+      return
+    }
+
+    lastSyncedConfigRef.current = nextConfigKey
     setDraftFilters(filters)
     setDraftStealRule(stealRule)
     setDraftTimerOption(timerOption)
-  }, [filters, isOpen, stealRule, timerOption])
+  }, [filters, filtersKey, isOpen, stealRule, timerOption])
 
   useEffect(() => {
     if (!isOpen) {

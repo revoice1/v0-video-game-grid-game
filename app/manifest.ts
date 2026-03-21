@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: 'GameGrid',
     description:
       'A daily video game grid puzzle where each answer must match both category clues.',
-    id: 'https://gamegrid.games/',
+    id: '/',
     scope: '/',
     start_url: '/',
     display: 'standalone',

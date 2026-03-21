@@ -66,9 +66,6 @@ export function GameHeader({
   onNewGame,
   onCustomizeGame,
 }: GameHeaderProps) {
-  const playerLabel = currentPlayer === 'x' ? 'Player 1' : 'Player 2'
-  const winnerLabel = winner === 'x' ? 'Player 1' : 'Player 2'
-
   return (
     <header className="w-full">
       <div className="max-w-lg mx-auto">
@@ -127,63 +124,22 @@ export function GameHeader({
 
         <div className="mb-4 flex items-center justify-between px-2">
           {mode === 'versus' ? (
-            <div className="flex items-center gap-4">
-              <div className="text-center">
-                <p
-                  className={cn(
-                    'text-2xl font-bold uppercase',
-                    winner === 'x'
-                      ? 'text-primary'
-                      : winner === 'o'
-                        ? 'text-sky-400'
-                        : currentPlayer === 'x'
-                          ? 'text-primary'
-                          : 'text-sky-400'
-                  )}
-                >
-                  {winner ?? currentPlayer ?? 'x'}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {winner ? `${winnerLabel} Wins` : `${playerLabel} Turn`}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Session: P1 {versusRecord.xWins} - P2 {versusRecord.oWins}
-                </p>
-                {turnTimerLabel && (
-                  <div className="mt-2 inline-flex items-center rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
-                    {turnTimerLabel}
-                  </div>
-                )}
-              </div>
+            <div className="min-w-[150px]">
               {stealTargetLabel && (
-                <div className="rounded-xl border border-sky-400/25 bg-sky-400/10 px-3 py-2 text-left">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-300">
-                    Steal Target
-                  </p>
-                  <p className="mt-1 text-sm font-medium text-foreground">
+                <div className="inline-flex max-w-full items-center gap-3 rounded-xl border border-sky-400/25 bg-sky-400/10 px-3 py-2 text-left">
+                  <div className="shrink-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">
+                      Steal Target
+                    </p>
+                  </div>
+                  <p className="truncate text-sm font-medium text-foreground">
                     {stealTargetLabel}
                   </p>
                 </div>
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-4">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-foreground">{score}</p>
-                <p className="text-xs text-muted-foreground">Score</p>
-              </div>
-              <div className="text-center">
-                <p
-                  className={cn(
-                    'text-2xl font-bold',
-                    guessesRemaining <= 3 ? 'text-destructive' : 'text-foreground'
-                  )}
-                >
-                  {guessesRemaining}
-                </p>
-                <p className="text-xs text-muted-foreground">Guesses Left</p>
-              </div>
-            </div>
+            <div className="min-h-[1px]" />
           )}
           <div className="flex flex-col items-end gap-2">
             {mode === 'daily' && dailyResetLabel && (

@@ -37,6 +37,7 @@ const difficultyEmoji: Record<NonNullable<PuzzleCellMetadata['difficulty']>, str
 }
 
 export function GridCell({
+  index,
   guess,
   metadata,
   isSelected,
@@ -62,6 +63,7 @@ export function GridCell({
 
   return (
     <button
+      data-testid={`grid-cell-${index}`}
       onClick={onClick}
       disabled={isButtonDisabled}
       className={cn(

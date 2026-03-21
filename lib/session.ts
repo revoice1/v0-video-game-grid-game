@@ -1,7 +1,22 @@
-import type { Puzzle } from './types'
+import type { CellGuess, Puzzle } from './types'
 
 // Session management for anonymous users
 const SESSION_KEY = 'gamegrid_session_id'
+
+function createSessionId(): string {
+  if (typeof window === 'undefined') {
+    return ''
+  }
+
+  if (
+    typeof window.crypto !== 'undefined' &&
+    typeof window.crypto.randomUUID === 'function'
+  ) {
+    return window.crypto.randomUUID()
+  }
+
+  return `gg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+}
 
 export function getSessionId(): string {
   if (typeof window === 'undefined') return ''
@@ -9,7 +24,7 @@ export function getSessionId(): string {
   let sessionId = localStorage.getItem(SESSION_KEY)
   
   if (!sessionId) {
-    sessionId = crypto.randomUUID()
+    sessionId = createSessionId()
     localStorage.setItem(SESSION_KEY, sessionId)
   }
   
@@ -19,39 +34,76 @@ export function getSessionId(): string {
 // Game state persistence
 const DAILY_STATE_KEY = 'gamegrid_daily_state'
 const PRACTICE_STATE_KEY = 'gamegrid_practice_state'
+const VERSUS_STATE_KEY = 'gamegrid_versus_state'
 
 function getUtcDateKey(): string {
   return new Date().toISOString().split('T')[0]
 }
+
+export type PersistedMode = 'daily' | 'practice' | 'versus'
 
 export interface CellGuessRecord {
   gameId: number
   gameName: string
   gameImage: string | null
   isCorrect: boolean
+  owner?: 'x' | 'o'
+  gameSlug?: string | null
+  gameUrl?: string | null
+  released?: string | null
+  metacritic?: number | null
+  stealRating?: number | null
+  genres?: string[]
+  platforms?: string[]
+  developers?: string[]
+  publishers?: string[]
+  tags?: string[]
+  gameModes?: string[]
+  themes?: string[]
+  perspectives?: string[]
+  companies?: string[]
+  matchedRow?: boolean
+  matchedCol?: boolean
 }
 
-interface SavedGameState {
+export interface SavedGameState {
   puzzleId: string
   puzzle?: Puzzle
-  guesses: (CellGuessRecord | null)[]
+  guesses: (CellGuess | CellGuessRecord | null)[]
   guessesRemaining: number
   isComplete: boolean
   date?: string
+  currentPlayer?: 'x' | 'o'
+  stealableCell?: number | null
+  winner?: 'x' | 'o' | null
+  pendingFinalSteal?: {
+    defender: 'x' | 'o'
+    cellIndex: number
+  } | null
+  versusCategoryFilters?: Record<string, string[]>
+  versusStealRule?: 'lower' | 'higher'
+  versusTimerOption?: 'none' | 60 | 120 | 300
+  turnTimeLeft?: number | null
 }
 
-export function saveGameState(state: SavedGameState, isDaily: boolean): void {
+function getStateKey(mode: PersistedMode): string {
+  if (mode === 'daily') return DAILY_STATE_KEY
+  if (mode === 'practice') return PRACTICE_STATE_KEY
+  return VERSUS_STATE_KEY
+}
+
+export function saveGameState(state: SavedGameState, mode: PersistedMode): void {
   if (typeof window === 'undefined') return
   
-  const key = isDaily ? DAILY_STATE_KEY : PRACTICE_STATE_KEY
-  const saveState = isDaily ? { ...state, date: getUtcDateKey() } : state
+  const key = getStateKey(mode)
+  const saveState = mode === 'daily' ? { ...state, date: getUtcDateKey() } : state
   localStorage.setItem(key, JSON.stringify(saveState))
 }
 
-export function loadGameState(isDaily: boolean): SavedGameState | null {
+export function loadGameState(mode: PersistedMode): SavedGameState | null {
   if (typeof window === 'undefined') return null
   
-  const key = isDaily ? DAILY_STATE_KEY : PRACTICE_STATE_KEY
+  const key = getStateKey(mode)
   const saved = localStorage.getItem(key)
   
   if (!saved) return null
@@ -60,7 +112,7 @@ export function loadGameState(isDaily: boolean): SavedGameState | null {
     const state = JSON.parse(saved) as SavedGameState
     
     // For daily, align the saved-state key with the server's UTC rollover.
-    if (isDaily && state.date !== getUtcDateKey()) {
+    if (mode === 'daily' && state.date !== getUtcDateKey()) {
       localStorage.removeItem(key)
       return null
     }
@@ -71,8 +123,8 @@ export function loadGameState(isDaily: boolean): SavedGameState | null {
   }
 }
 
-export function clearGameState(isDaily: boolean): void {
+export function clearGameState(mode: PersistedMode): void {
   if (typeof window === 'undefined') return
-  const key = isDaily ? DAILY_STATE_KEY : PRACTICE_STATE_KEY
+  const key = getStateKey(mode)
   localStorage.removeItem(key)
 }
