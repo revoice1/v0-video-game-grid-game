@@ -12,6 +12,7 @@ function serializeGameDetails(game: Awaited<ReturnType<typeof validateIGDBGameFo
     background_image: game.background_image,
     released: game.released,
     metacritic: game.metacritic,
+    stealRating: game.stealRating ?? null,
     genres: game.genres?.map(genre => genre.name) ?? [],
     platforms: game.platforms?.map(platform => platform.platform.name) ?? [],
     developers: game.developers?.map(developer => developer.name) ?? [],

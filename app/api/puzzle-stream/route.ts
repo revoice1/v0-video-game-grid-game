@@ -4,6 +4,7 @@ import {
   buildPuzzleCellMetadata,
   generatePuzzleCategories,
   getValidGameCountForCell,
+  type PuzzleCategoryFilters,
   type PuzzleProgressCallback,
 } from '@/lib/igdb'
 import type { Category, PuzzleCellMetadata } from '@/lib/types'
@@ -137,7 +138,11 @@ function generationProgress(
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const mode = searchParams.get('mode') || 'daily'
+  const rawFilters = searchParams.get('filters')
   const supabase = await createClient()
+  const allowedCategoryIds = rawFilters
+    ? JSON.parse(rawFilters) as PuzzleCategoryFilters
+    : undefined
 
   const encoder = new TextEncoder()
   const stream = new TransformStream<string, Uint8Array>({
@@ -223,16 +228,19 @@ export async function GET(request: NextRequest) {
             minValidOptionsPerCell: plan.minValidOptionsPerCell,
             maxAttempts: plan.maxAttempts,
             sampleSize: VALIDATION_SAMPLE_SIZE,
+            allowedCategoryIds,
             onProgress,
           })
 
           categories = {
             rows,
             cols,
-            validationStatus: plan.minValidOptionsPerCell !== MIN_VALID_OPTIONS_PER_CELL ? 'relaxed' : 'validated',
+            validationStatus: plan.minValidOptionsPerCell !== MIN_VALID_OPTIONS_PER_CELL
+                ? 'relaxed'
+                : 'validated',
             validationMessage: plan.minValidOptionsPerCell !== MIN_VALID_OPTIONS_PER_CELL
-              ? `Generated with relaxed validation (${plan.minValidOptionsPerCell}+ valid options per cell instead of ${MIN_VALID_OPTIONS_PER_CELL}+).`
-              : null,
+                ? `Generated with relaxed validation (${plan.minValidOptionsPerCell}+ valid options per cell instead of ${MIN_VALID_OPTIONS_PER_CELL}+).`
+                : null,
             cellMetadata,
           }
           break

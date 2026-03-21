@@ -11,6 +11,9 @@ interface GameGridProps {
   cellMetadata?: PuzzleCellMetadata[]
   selectedCell: number | null
   isGameOver: boolean
+  currentPlayer?: 'x' | 'o' | null
+  stealableCell?: number | null
+  lockImpactCell?: number | null
   onCellClick: (index: number) => void
 }
 
@@ -21,10 +24,13 @@ export function GameGrid({
   cellMetadata,
   selectedCell,
   isGameOver,
+  currentPlayer = null,
+  stealableCell = null,
+  lockImpactCell = null,
   onCellClick,
 }: GameGridProps) {
   return (
-    <div className="w-full max-w-xl mx-auto">
+    <div className="mx-auto w-full max-w-xl">
       <div className="grid auto-rows-fr grid-cols-[1.12fr_repeat(3,minmax(0,1fr))] gap-2 sm:grid-cols-4 sm:gap-3">
         <div className="aspect-square" />
 
@@ -45,13 +51,21 @@ export function GameGrid({
 
             {colCategories.map((_, colIndex) => {
               const cellIndex = rowIndex * 3 + colIndex
+              const guess = guesses[cellIndex]
+              const isAvailable = !isGameOver && currentPlayer !== null && (guess === null || stealableCell === cellIndex)
+
               return (
                 <GridCell
                   key={`cell-${cellIndex}`}
                   index={cellIndex}
-                  guess={guesses[cellIndex]}
+                  guess={guess}
                   metadata={cellMetadata?.find(cell => cell.cellIndex === cellIndex)}
                   isSelected={selectedCell === cellIndex}
+                  isAvailable={isAvailable}
+                  availableTone={currentPlayer}
+                  isStealable={stealableCell === cellIndex}
+                  isLocked={Boolean(guess?.owner) && stealableCell !== cellIndex && !isGameOver}
+                  isLockImpact={lockImpactCell === cellIndex}
                   isDisabled={isGameOver}
                   onClick={() => onCellClick(cellIndex)}
                 />

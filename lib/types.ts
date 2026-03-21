@@ -7,6 +7,7 @@ export interface Game {
   background_image: string | null
   released: string | null
   metacritic: number | null
+  stealRating?: number | null
   gameTypeLabel?: string | null
   originalPlatformName?: string | null
   genres: { id: number; name: string; slug: string }[]
@@ -16,6 +17,10 @@ export interface Game {
   tags?: { id: number; name: string; slug: string }[]
   igdb?: {
     id: number
+    rating?: number | null
+    aggregated_rating?: number | null
+    total_rating?: number | null
+    total_rating_count?: number | null
     game_modes: string[]
     themes: string[]
     player_perspectives: string[]
@@ -71,12 +76,14 @@ export interface PuzzleCellMetadata {
 export interface CellGuess {
   gameId: number
   gameName: string
+  owner?: 'x' | 'o'
   gameSlug?: string | null
   gameUrl?: string | null
   gameImage: string | null
   isCorrect: boolean
   released?: string | null
   metacritic?: number | null
+  stealRating?: number | null
   genres?: string[]
   platforms?: string[]
   developers?: string[]

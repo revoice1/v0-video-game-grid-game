@@ -96,19 +96,32 @@ function getPreferredPlatform(game: Game): string | null {
 interface GameSearchProps {
   isOpen: boolean
   puzzleId?: string
+  hideScores?: boolean
+  activeCategoryTypes?: Category['type'][]
   rowCategory: Category | null
   colCategory: Category | null
   onSelect: (game: Game) => void
   onClose: () => void
 }
 
-export function GameSearch({ isOpen, puzzleId, rowCategory, colCategory, onSelect, onClose }: GameSearchProps) {
+export function GameSearch({
+  isOpen,
+  puzzleId,
+  hideScores = false,
+  activeCategoryTypes = [],
+  rowCategory,
+  colCategory,
+  onSelect,
+  onClose,
+}: GameSearchProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Game[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const resultRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const activeCategoryTypesKey = [...activeCategoryTypes].sort().join(',')
 
   // Focus input when opened
   useEffect(() => {
@@ -130,9 +143,13 @@ export function GameSearch({ isOpen, puzzleId, rowCategory, colCategory, onSelec
     setIsLoading(true)
     try {
       const params = new URLSearchParams({ q: searchQuery })
-      const categoryTypes = [rowCategory?.type, colCategory?.type].filter(
-        (type): type is Category['type'] => Boolean(type)
-      )
+      const categoryTypes = activeCategoryTypesKey.length > 0
+        ? activeCategoryTypesKey.split(',').filter(
+            (type): type is Category['type'] => Boolean(type)
+          )
+        : [rowCategory?.type, colCategory?.type].filter(
+            (type): type is Category['type'] => Boolean(type)
+          )
 
       if (puzzleId) {
         params.set('puzzleId', puzzleId)
@@ -152,7 +169,7 @@ export function GameSearch({ isOpen, puzzleId, rowCategory, colCategory, onSelec
     } finally {
       setIsLoading(false)
     }
-  }, [colCategory?.type, puzzleId, rowCategory?.type])
+  }, [activeCategoryTypesKey, colCategory?.type, puzzleId, rowCategory?.type])
 
   useEffect(() => {
     if (debounceRef.current) {
@@ -163,6 +180,17 @@ export function GameSearch({ isOpen, puzzleId, rowCategory, colCategory, onSelec
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
   }, [query, search])
+
+  useEffect(() => {
+    if (!isOpen || results.length === 0) {
+      return
+    }
+
+    resultRefs.current[selectedIndex]?.scrollIntoView({
+      block: 'nearest',
+      behavior: 'smooth',
+    })
+  }, [isOpen, results.length, selectedIndex])
 
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -187,7 +215,7 @@ export function GameSearch({ isOpen, puzzleId, rowCategory, colCategory, onSelec
 
     return [
       game.released ? { label: 'Year', value: game.released.slice(0, 4) } : null,
-      game.metacritic !== null ? { label: 'Score', value: `${game.metacritic}` } : null,
+      !hideScores && game.metacritic !== null ? { label: 'Score', value: `${game.metacritic}` } : null,
       game.gameTypeLabel ? { label: 'Type', value: game.gameTypeLabel } : null,
       game.genres?.[0]?.name ? { label: 'Genre', value: game.genres[0].name } : null,
       preferredPlatform
@@ -251,6 +279,9 @@ export function GameSearch({ isOpen, puzzleId, rowCategory, colCategory, onSelec
                 return (
                   <button
                     key={game.id}
+                    ref={(element) => {
+                      resultRefs.current[index] = element
+                    }}
                     onClick={() => onSelect(game)}
                     className={cn(
                       'w-full flex items-center gap-3 px-4 py-2 text-left',

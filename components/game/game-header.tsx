@@ -28,34 +28,50 @@ function AchievementEggIcon({ className }: { className?: string }) {
 }
 
 interface GameHeaderProps {
-  mode: 'daily' | 'practice'
+  mode: 'daily' | 'practice' | 'versus'
   guessesRemaining: number
   score: number
+  currentPlayer?: 'x' | 'o' | null
+  stealTargetLabel?: string | null
+  winner?: 'x' | 'o' | null
+  turnTimerLabel?: string | null
+  versusRecord?: { xWins: number; oWins: number }
   dailyResetLabel?: string | null
   isHowToPlayOpen?: boolean
   isAchievementsOpen?: boolean
-  onModeChange: (mode: 'daily' | 'practice') => void
+  hasActiveCustomSetup?: boolean
+  onModeChange: (mode: 'daily' | 'practice' | 'versus') => void
   onHowToPlay: () => void
   onAchievements: () => void
-  onNewPracticeGame?: () => void
+  onNewGame?: () => void
+  onCustomizeGame?: () => void
 }
 
-export function GameHeader({ 
-  mode, 
-  guessesRemaining, 
-  score, 
+export function GameHeader({
+  mode,
+  guessesRemaining,
+  score,
+  currentPlayer = null,
+  stealTargetLabel = null,
+  winner = null,
+  turnTimerLabel = null,
+  versusRecord = { xWins: 0, oWins: 0 },
   dailyResetLabel,
   isHowToPlayOpen = false,
   isAchievementsOpen = false,
+  hasActiveCustomSetup = false,
   onModeChange,
   onHowToPlay,
   onAchievements,
-  onNewPracticeGame,
+  onNewGame,
+  onCustomizeGame,
 }: GameHeaderProps) {
+  const playerLabel = currentPlayer === 'x' ? 'Player 1' : 'Player 2'
+  const winnerLabel = winner === 'x' ? 'Player 1' : 'Player 2'
+
   return (
     <header className="w-full">
       <div className="max-w-lg mx-auto">
-        {/* Title */}
         <div className="relative mb-6">
           <div className="text-center">
             <h1 className="text-3xl font-bold tracking-tight">
@@ -71,13 +87,12 @@ export function GameHeader({
           </div>
         </div>
 
-        {/* Mode tabs */}
-        <div className="flex justify-center mb-4">
+        <div className="mb-4 flex justify-center">
           <div className="inline-flex rounded-lg bg-secondary/50 p-1">
             <button
               onClick={() => onModeChange('daily')}
               className={cn(
-                'px-4 py-2 rounded-md text-sm font-medium transition-colors',
+                'rounded-md px-4 py-2 text-sm font-medium transition-colors',
                 mode === 'daily'
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:text-foreground'
@@ -88,7 +103,7 @@ export function GameHeader({
             <button
               onClick={() => onModeChange('practice')}
               className={cn(
-                'px-4 py-2 rounded-md text-sm font-medium transition-colors',
+                'rounded-md px-4 py-2 text-sm font-medium transition-colors',
                 mode === 'practice'
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:text-foreground'
@@ -96,27 +111,80 @@ export function GameHeader({
             >
               Practice
             </button>
+            <button
+              onClick={() => onModeChange('versus')}
+              className={cn(
+                'rounded-md px-4 py-2 text-sm font-medium transition-colors',
+                mode === 'versus'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Versus
+            </button>
           </div>
         </div>
 
-        {/* Stats bar */}
-        <div className="flex items-center justify-between px-2 mb-4">
-          <div className="flex items-center gap-4">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-foreground">{score}</p>
-              <p className="text-xs text-muted-foreground">Score</p>
+        <div className="mb-4 flex items-center justify-between px-2">
+          {mode === 'versus' ? (
+            <div className="flex items-center gap-4">
+              <div className="text-center">
+                <p
+                  className={cn(
+                    'text-2xl font-bold uppercase',
+                    winner === 'x'
+                      ? 'text-primary'
+                      : winner === 'o'
+                        ? 'text-sky-400'
+                        : currentPlayer === 'x'
+                          ? 'text-primary'
+                          : 'text-sky-400'
+                  )}
+                >
+                  {winner ?? currentPlayer ?? 'x'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {winner ? `${winnerLabel} Wins` : `${playerLabel} Turn`}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Session: P1 {versusRecord.xWins} - P2 {versusRecord.oWins}
+                </p>
+                {turnTimerLabel && (
+                  <div className="mt-2 inline-flex items-center rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                    {turnTimerLabel}
+                  </div>
+                )}
+              </div>
+              {stealTargetLabel && (
+                <div className="rounded-xl border border-sky-400/25 bg-sky-400/10 px-3 py-2 text-left">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-300">
+                    Steal Target
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-foreground">
+                    {stealTargetLabel}
+                  </p>
+                </div>
+              )}
             </div>
-            <div className="text-center">
-              <p className={cn(
-                'text-2xl font-bold',
-                guessesRemaining <= 3 ? 'text-destructive' : 'text-foreground'
-              )}>
-                {guessesRemaining}
-              </p>
-              <p className="text-xs text-muted-foreground">Guesses Left</p>
+          ) : (
+            <div className="flex items-center gap-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-foreground">{score}</p>
+                <p className="text-xs text-muted-foreground">Score</p>
+              </div>
+              <div className="text-center">
+                <p
+                  className={cn(
+                    'text-2xl font-bold',
+                    guessesRemaining <= 3 ? 'text-destructive' : 'text-foreground'
+                  )}
+                >
+                  {guessesRemaining}
+                </p>
+                <p className="text-xs text-muted-foreground">Guesses Left</p>
+              </div>
             </div>
-          </div>
-          
+          )}
           <div className="flex flex-col items-end gap-2">
             {mode === 'daily' && dailyResetLabel && (
               <div className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary/40 px-2 py-1 text-[11px] font-medium uppercase text-muted-foreground">
@@ -126,13 +194,34 @@ export function GameHeader({
             )}
 
             <div className="flex items-center gap-2">
-              {mode === 'practice' && onNewPracticeGame && (
+              {(mode === 'practice' || mode === 'versus') && onNewGame && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={onNewPracticeGame}
+                  onClick={onNewGame}
+                  className="h-auto min-w-[92px] px-3 py-2"
                 >
-                  New Game
+                  <span className="flex flex-col items-start leading-tight">
+                    <span>{mode === 'versus' ? 'New Match' : 'New Game'}</span>
+                    <span className="text-[10px] font-medium text-muted-foreground">
+                      {hasActiveCustomSetup ? 'Uses Custom Pool' : 'Standard Pool'}
+                    </span>
+                  </span>
+                </Button>
+              )}
+              {(mode === 'practice' || mode === 'versus') && onCustomizeGame && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onCustomizeGame}
+                  className="h-auto min-w-[92px] px-3 py-2"
+                >
+                  <span className="flex flex-col items-start leading-tight">
+                    <span>Customize</span>
+                    <span className="text-[10px] font-medium text-muted-foreground">
+                      {hasActiveCustomSetup ? 'Edit Custom Pool' : 'Set Up Pool'}
+                    </span>
+                  </span>
                 </Button>
               )}
               <Button
@@ -150,8 +239,8 @@ export function GameHeader({
               >
                 <AchievementEggIcon className="h-[18px] w-[18px]" />
               </Button>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 size="sm"
                 onClick={onHowToPlay}
                 className={cn(
@@ -161,7 +250,7 @@ export function GameHeader({
                     : 'border-primary/30 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground'
                 )}
               >
-                <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 How to Play

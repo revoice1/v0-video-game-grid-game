@@ -76,6 +76,12 @@ let categoryFamiliesCache:
       families: CategoryFamily[]
     }
   | null = null
+let versusCategoryFamiliesCache:
+  | {
+      expiresAt: number
+      families: CategoryFamily[]
+    }
+  | null = null
 const DEFAULT_CELL_SAMPLE_SIZE = 40
 const DEFAULT_MIN_VALID_OPTIONS = 3
 const DEFAULT_MAX_GENERATION_ATTEMPTS = 12
@@ -107,11 +113,14 @@ const DISQUALIFYING_KEYWORDS = new Set([
   'super mario odyssey mod',
 ])
 
-interface CategoryFamily {
+export interface CategoryFamily {
   key: 'platform' | 'genre' | 'decade' | 'game_mode' | 'theme' | 'perspective'
   source: 'dynamic' | 'fallback'
   categories: Category[]
 }
+
+export type CategoryFamilyKey = CategoryFamily['key']
+export type PuzzleCategoryFilters = Partial<Record<CategoryFamilyKey, Array<string>>>
 
 export type PuzzleProgressCallback = (event: {
   stage: 'families' | 'attempt' | 'cell' | 'metadata' | 'rejected' | 'done'
@@ -133,6 +142,7 @@ interface PuzzleGenerationOptions {
   maxAttempts?: number
   sampleSize?: number
   onProgress?: PuzzleProgressCallback
+  allowedCategoryIds?: PuzzleCategoryFilters
 }
 
 interface CellValidationCacheEntry {
@@ -184,6 +194,7 @@ let igdbRequestQueue = Promise.resolve()
 let igdbNextRequestAt = 0
 
 const FALLBACK_DECADES: Category[] = [
+  { type: 'decade', id: '1980', name: '1980s', slug: '1980-01-01,1989-12-31' },
   { type: 'decade', id: '1990', name: '1990s', slug: '1990-01-01,1999-12-31' },
   { type: 'decade', id: '2000', name: '2000s', slug: '2000-01-01,2009-12-31' },
   { type: 'decade', id: '2010', name: '2010s', slug: '2010-01-01,2019-12-31' },
@@ -215,6 +226,13 @@ const FALLBACK_PERSPECTIVES: Category[] = [
   { type: 'perspective', id: 2, name: 'Third person', slug: 'third-person' },
   { type: 'perspective', id: 3, name: 'Bird view / Isometric', slug: 'isometric' },
   { type: 'perspective', id: 4, name: 'Side view', slug: 'side-view' },
+]
+
+const CUSTOM_FALLBACK_PERSPECTIVES: Category[] = [
+  ...FALLBACK_PERSPECTIVES,
+  { type: 'perspective', id: 5, name: 'Text', slug: 'text' },
+  { type: 'perspective', id: 6, name: 'Auditory', slug: 'auditory' },
+  { type: 'perspective', id: 7, name: 'Virtual Reality', slug: 'virtual-reality' },
 ]
 
 const FALLBACK_PLATFORMS: Category[] = [
@@ -338,6 +356,29 @@ const TAG_ALIAS_GROUPS: Record<string, string[]> = {
 }
 
 const PLATFORM_ALIAS_GROUPS: Record<string, string[]> = {
+  'nintendo entertainment system': [
+    'nintendo entertainment system',
+    'family computer',
+    'family computer disk system',
+  ],
+  'family computer': [
+    'nintendo entertainment system',
+    'family computer',
+    'family computer disk system',
+  ],
+  'family computer disk system': [
+    'nintendo entertainment system',
+    'family computer',
+    'family computer disk system',
+  ],
+  'super nintendo entertainment system': [
+    'super nintendo entertainment system',
+    'super famicom',
+  ],
+  'super famicom': [
+    'super nintendo entertainment system',
+    'super famicom',
+  ],
   'pc microsoft windows': ['pc microsoft windows', 'dos'],
   'pc windows dos': ['pc microsoft windows', 'dos'],
 }
@@ -584,16 +625,30 @@ async function fetchIGDBCategories(
   endpoint: 'platforms' | 'genres' | 'game_modes' | 'themes' | 'player_perspectives',
   allowedNames?: Set<string>
 ): Promise<Category[]> {
-  const query = [
-    'fields id,name,slug;',
-    'limit 100;',
-  ].join(' ')
+  const pageSize = 500
+  const results: Array<{ id: number; name: string; slug?: string }> = []
+  let offset = 0
 
-  const results = await queryIGDB<{ id: number; name: string; slug?: string }>(endpoint, query)
+  while (true) {
+    const query = [
+      'fields id,name,slug;',
+      `limit ${pageSize};`,
+      `offset ${offset};`,
+    ].join(' ')
+
+    const page = await queryIGDB<{ id: number; name: string; slug?: string }>(endpoint, query)
+    results.push(...page)
+
+    if (page.length < pageSize) {
+      break
+    }
+
+    offset += pageSize
+  }
 
   return results
     .filter(item => !allowedNames || allowedNames.has(item.name))
-    .map(item => ({
+    .map((item): Category => ({
       type:
         endpoint === 'game_modes'
           ? 'game_mode'
@@ -608,6 +663,7 @@ async function fetchIGDBCategories(
       name: item.name,
       slug: item.slug ?? normalizeName(item.name).replace(/\s+/g, '-'),
     }))
+    .sort((left, right) => left.name.localeCompare(right.name))
 }
 
 function buildFamily(
@@ -621,6 +677,16 @@ function buildFamily(
     source: dynamic.length >= minimumDynamic ? 'dynamic' : 'fallback',
     categories: dynamic.length >= minimumDynamic ? dynamic : fallback,
   }
+}
+
+function mergeCategoryLists(primary: Category[], fallback: Category[]): Category[] {
+  const merged = new Map<string, Category>()
+
+  for (const category of [...primary, ...fallback]) {
+    merged.set(`${category.type}:${String(category.id)}`, category)
+  }
+
+  return [...merged.values()].sort((left, right) => left.name.localeCompare(right.name))
 }
 
 function buildDifficultyMetadata(
@@ -717,7 +783,7 @@ async function queryValidGamesForCell(
   return Array.from(new Map(filteredGames.map(game => [game.id, game])).values())
 }
 
-async function getCategoryFamilies(): Promise<CategoryFamily[]> {
+export async function getCategoryFamilies(): Promise<CategoryFamily[]> {
   if (categoryFamiliesCache && categoryFamiliesCache.expiresAt > Date.now()) {
     return categoryFamiliesCache.families
   }
@@ -746,6 +812,35 @@ async function getCategoryFamilies(): Promise<CategoryFamily[]> {
   ]
 
   categoryFamiliesCache = {
+    expiresAt: Date.now() + CATEGORY_FAMILY_CACHE_TTL_MS,
+    families,
+  }
+
+  return families
+}
+
+export async function getVersusCategoryFamilies(): Promise<CategoryFamily[]> {
+  if (versusCategoryFamiliesCache && versusCategoryFamiliesCache.expiresAt > Date.now()) {
+    return versusCategoryFamiliesCache.families
+  }
+
+  const baseFamilies = await getCategoryFamilies()
+  const families: CategoryFamily[] = baseFamilies.map((family) => {
+    if (family.key === 'perspective') {
+      return {
+        key: 'perspective',
+        source: 'fallback',
+        categories: [...CUSTOM_FALLBACK_PERSPECTIVES].sort((left, right) => left.name.localeCompare(right.name)),
+      }
+    }
+
+    return {
+      ...family,
+      categories: [...family.categories].sort((left, right) => left.name.localeCompare(right.name)),
+    }
+  })
+
+  versusCategoryFamiliesCache = {
     expiresAt: Date.now() + CATEGORY_FAMILY_CACHE_TTL_MS,
     families,
   }
@@ -853,6 +948,54 @@ function buildAxisCategories(
   return null
 }
 
+function permuteFamilies<T>(items: T[]): T[][] {
+  if (items.length <= 1) {
+    return [items]
+  }
+
+  const permutations: T[][] = []
+
+  items.forEach((item, index) => {
+    const remaining = [...items.slice(0, index), ...items.slice(index + 1)]
+    permuteFamilies(remaining).forEach((permutation) => {
+      permutations.push([item, ...permutation])
+    })
+  })
+
+  return permutations
+}
+
+function buildBoardFromSelectedFamilies(selectedFamilies: CategoryFamily[]): {
+  rows: Category[]
+  cols: Category[]
+  rowFamilies: [CategoryFamily, CategoryFamily]
+  colFamilies: [CategoryFamily, CategoryFamily]
+} | null {
+  for (const permutation of shuffle(permuteFamilies(selectedFamilies))) {
+    const [rowPrimary, rowSecondary, colPrimary, colSecondary] = permutation
+
+    const cols = buildAxisCategories(colPrimary, colSecondary, [])
+    if (!cols) {
+      continue
+    }
+
+    const rows = buildAxisCategories(rowPrimary, rowSecondary, cols)
+    if (!rows) {
+      continue
+    }
+
+    return {
+      rows,
+      cols,
+      rowFamilies: [rowPrimary, rowSecondary],
+      colFamilies: [colPrimary, colSecondary],
+    }
+  }
+
+  return null
+}
+
+
 function mapIGDBGameToGame(game: IGDBGame): Game {
   const platforms = (game.platforms ?? []).map(platform => ({
     platform: {
@@ -871,6 +1014,16 @@ function mapIGDBGameToGame(game: IGDBGame): Game {
   const companies = (game.involved_companies ?? [])
     .map(entry => entry.company)
     .filter((company): company is IGDBCompany => Boolean(company))
+  const averagedSplitRating = [game.rating, game.aggregated_rating]
+    .filter((value): value is number => typeof value === 'number')
+  const stealRating =
+    typeof game.total_rating === 'number'
+      ? Math.round(game.total_rating)
+      : averagedSplitRating.length > 0
+        ? Math.round(
+            averagedSplitRating.reduce((sum, value) => sum + value, 0) / averagedSplitRating.length
+          )
+        : null
 
   return {
     id: game.id,
@@ -880,6 +1033,7 @@ function mapIGDBGameToGame(game: IGDBGame): Game {
     background_image: buildCoverUrl(game.cover?.image_id),
     released: formatIGDBDate(game.first_release_date),
     metacritic: getMetacriticScore(game.total_rating),
+    stealRating,
     gameTypeLabel: getGameTypeLabel(game.game_type),
     originalPlatformName: getOriginalPlatformName(game),
     genres,
@@ -901,6 +1055,10 @@ function mapIGDBGameToGame(game: IGDBGame): Game {
     })),
     igdb: {
       id: game.id,
+      rating: game.rating ?? null,
+      aggregated_rating: game.aggregated_rating ?? null,
+      total_rating: game.total_rating ?? null,
+      total_rating_count: game.total_rating_count ?? null,
       game_modes: game.game_modes?.map(mode => mode.name) ?? [],
       themes: game.themes?.map(theme => theme.name) ?? [],
       player_perspectives: game.player_perspectives?.map(perspective => perspective.name) ?? [],
@@ -1446,25 +1604,52 @@ export async function generatePuzzleCategories(
   const onProgress = options.onProgress
 
   onProgress?.({ stage: 'families', message: 'Loading category data...' })
-  const families = (await getCategoryFamilies()).filter(family => family.categories.length >= 3)
+  const allowedCategoryIds = options.allowedCategoryIds
+  const familySource = options.allowedCategoryIds ? await getVersusCategoryFamilies() : await getCategoryFamilies()
+  const families = familySource
+    .map((family) => {
+      const allowedIds = allowedCategoryIds?.[family.key]
+
+      if (!allowedIds) {
+        return family
+      }
+
+      return {
+        ...family,
+        categories: family.categories.filter((category) => allowedIds.includes(String(category.id))),
+      }
+    })
+    .filter(family => family.categories.length > 0)
   if (families.length < 4) {
-    throw new Error('Not enough IGDB category families available to generate a puzzle')
+    throw new Error('Custom setup needs at least 4 enabled category families to generate a board')
   }
+
+  const pinnedFamilyKeys = families
+    .filter((family) => {
+      const allowedIds = allowedCategoryIds?.[family.key]
+      return Boolean(allowedIds && allowedIds.length > 0)
+    })
+    .map((family) => family.key)
 
   let bestAttempt: { rows: Category[]; cols: Category[]; validation: PuzzleValidationResult } | null = null
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     onProgress?.({ stage: 'attempt', attempt, maxAttempts, message: `Attempt ${attempt} of ${maxAttempts}: picking categories...` })
-    const selectedFamilies = pickRandomItems(families, 4)
-    const cols = buildAxisCategories(selectedFamilies[2], selectedFamilies[3], [])
-    if (!cols) {
-      continue
-    }
+    const pinnedFamilies = families.filter((family) => pinnedFamilyKeys.includes(family.key))
+    const remainingFamilies = families.filter((family) => !pinnedFamilyKeys.includes(family.key))
+    const selectedFamilies = [
+      ...(pinnedFamilies.length > 4 ? pickRandomItems(pinnedFamilies, 4) : shuffle(pinnedFamilies)),
+      ...pickRandomItems(remainingFamilies, Math.max(0, 4 - pinnedFamilies.length)),
+    ].slice(0, 4)
 
-    const rows = buildAxisCategories(selectedFamilies[0], selectedFamilies[1], cols)
-    if (!rows) {
+    if (selectedFamilies.length < 4) {
       continue
     }
+    const board = buildBoardFromSelectedFamilies(selectedFamilies)
+    if (!board) {
+      continue
+    }
+    const { rows, cols, rowFamilies, colFamilies } = board
     onProgress?.({
       stage: 'attempt',
       attempt,
@@ -1546,13 +1731,13 @@ export async function generatePuzzleCategories(
         `[v0] Generated validated IGDB puzzle on attempt ${attempt} with min ${validation.minValidOptionCount} valid options per cell`
       )
       console.log(
-        `[v0] Family sources - rows: ${selectedFamilies[0].key}:${selectedFamilies[0].source}, ${selectedFamilies[1].key}:${selectedFamilies[1].source}; cols: ${selectedFamilies[2].key}:${selectedFamilies[2].source}, ${selectedFamilies[3].key}:${selectedFamilies[3].source}`
+        `[v0] Family sources - rows: ${rowFamilies[0].key}:${rowFamilies[0].source}, ${rowFamilies[1].key}:${rowFamilies[1].source}; cols: ${colFamilies[0].key}:${colFamilies[0].source}, ${colFamilies[1].key}:${colFamilies[1].source}`
       )
       return {
         rows,
         cols,
-        rowFamilies: [selectedFamilies[0], selectedFamilies[1]],
-        colFamilies: [selectedFamilies[2], selectedFamilies[3]],
+        rowFamilies,
+        colFamilies,
         validation: exactValidation,
         cellMetadata,
       }

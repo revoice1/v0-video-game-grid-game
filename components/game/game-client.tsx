@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { GameHeader } from './game-header'
 import { GameGrid } from './game-grid'
 import { GameSearch } from './game-search'
@@ -8,14 +8,35 @@ import { ResultsModal } from './results-modal'
 import { HowToPlayModal } from './how-to-play-modal'
 import { GuessDetailsModal } from './guess-details-modal'
 import { AchievementsModal } from './achievements-modal'
+import {
+  VersusSetupModal,
+  type VersusCategoryFilters,
+  type VersusStealRule,
+  type VersusTurnTimerOption,
+} from './versus-setup-modal'
 import { getSessionId, saveGameState, loadGameState, clearGameState, type CellGuessRecord } from '@/lib/session'
 import { unlockAchievement } from '@/lib/achievements'
 import { EASTER_EGGS, type EasterEggConfig, type EasterEggPieceKind } from '@/lib/easter-eggs'
 import type { Puzzle, CellGuess, Game, Category } from '@/lib/types'
+import { cn } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
 import { useToast } from '@/hooks/use-toast'
 
 const MAX_GUESSES = 9
+const WINNING_LINES = [
+  [0, 1, 2],
+  [3, 4, 5],
+  [6, 7, 8],
+  [0, 3, 6],
+  [1, 4, 7],
+  [2, 5, 8],
+  [0, 4, 8],
+  [2, 4, 6],
+] as const
+
+type GameMode = 'daily' | 'practice' | 'versus'
+type TicTacToePlayer = 'x' | 'o'
+const VERSUS_RECORD_KEY = 'gamegrid_versus_record'
 
 interface EasterEggParticle {
   id: string
@@ -43,6 +64,361 @@ interface ActivePerfectCelebration {
   burstId: number
   durationMs: number
   particles: Array<EasterEggParticle & { variant: 'g-green' | 'g-white' }>
+}
+
+interface ActiveStealShowdown {
+  burstId: number
+  durationMs: number
+  defenderName: string
+  defenderScore: number
+  attackerName: string
+  attackerScore: number
+  rule: VersusStealRule
+  successful: boolean
+}
+
+interface ActiveStealMissSplash {
+  burstId: number
+  durationMs: number
+}
+
+const STEAL_SHOWDOWN_DURATION_MS = 3400
+
+interface VersusRecord {
+  xWins: number
+  oWins: number
+}
+
+interface PendingFinalSteal {
+  defender: TicTacToePlayer
+  cellIndex: number
+}
+
+function getNextPlayer(player: TicTacToePlayer): TicTacToePlayer {
+  return player === 'x' ? 'o' : 'x'
+}
+
+function getPlayerLabel(player: TicTacToePlayer): string {
+  return player === 'x' ? 'Player 1' : 'Player 2'
+}
+
+function hasNonEmptyFilters(filters: VersusCategoryFilters): boolean {
+  return Object.values(filters).some((values) => Array.isArray(values) && values.length > 0)
+}
+
+function getWinningPlayer(guesses: (CellGuess | null)[]): TicTacToePlayer | null {
+  for (const [a, b, c] of WINNING_LINES) {
+    const owner = guesses[a]?.owner
+
+    if (owner && owner === guesses[b]?.owner && owner === guesses[c]?.owner) {
+      return owner
+    }
+  }
+
+  return null
+}
+
+function getInitialVersusRecord(): VersusRecord {
+  if (typeof window === 'undefined') {
+    return { xWins: 0, oWins: 0 }
+  }
+
+  try {
+    const raw = sessionStorage.getItem(VERSUS_RECORD_KEY)
+    if (!raw) {
+      return { xWins: 0, oWins: 0 }
+    }
+
+    const parsed = JSON.parse(raw) as Partial<VersusRecord>
+    return {
+      xWins: parsed.xWins ?? 0,
+      oWins: parsed.oWins ?? 0,
+    }
+  } catch {
+    return { xWins: 0, oWins: 0 }
+  }
+}
+
+function buildMissReason(
+  rowCategory: Category,
+  colCategory: Category,
+  matchesRow?: boolean,
+  matchesCol?: boolean
+): string {
+  const failures: string[] = []
+
+  if (matchesRow === false) {
+    failures.push(`didn't match ${rowCategory.name}`)
+  }
+
+  if (matchesCol === false) {
+    failures.push(`didn't match ${colCategory.name}`)
+  }
+
+  if (failures.length === 0) {
+    return `didn't match ${rowCategory.name} x ${colCategory.name}`
+  }
+
+  if (failures.length === 1) {
+    return failures[0]
+  }
+
+  return `${failures[0]} or ${failures[1]}`
+}
+
+function StealShowdownOverlay({
+  burstId,
+  defenderName,
+  defenderScore,
+  attackerName,
+  attackerScore,
+  rule,
+  successful,
+}: ActiveStealShowdown) {
+  const attackerScoreLabel = `${attackerScore}`
+  const defenderScoreLabel = `${defenderScore}`
+  const [showVerdict, setShowVerdict] = useState(false)
+  const [revealedAttackerDigits, setRevealedAttackerDigits] = useState<boolean[]>(
+    () => Array.from({ length: attackerScoreLabel.length }, () => false)
+  )
+  const [spinningAttackerDigits, setSpinningAttackerDigits] = useState<string[]>(
+    () => Array.from({ length: attackerScoreLabel.length }, () => `${Math.floor(Math.random() * 10)}`)
+  )
+  const [revealedDefenderDigits, setRevealedDefenderDigits] = useState<boolean[]>(
+    () => Array.from({ length: defenderScoreLabel.length }, () => false)
+  )
+  const [spinningDefenderDigits, setSpinningDefenderDigits] = useState<string[]>(
+    () => Array.from({ length: defenderScoreLabel.length }, () => `${Math.floor(Math.random() * 10)}`)
+  )
+
+  useEffect(() => {
+    setShowVerdict(false)
+    setRevealedAttackerDigits(Array.from({ length: attackerScoreLabel.length }, () => false))
+    setSpinningAttackerDigits(Array.from({ length: attackerScoreLabel.length }, () => `${Math.floor(Math.random() * 10)}`))
+    setRevealedDefenderDigits(Array.from({ length: defenderScoreLabel.length }, () => false))
+    setSpinningDefenderDigits(Array.from({ length: defenderScoreLabel.length }, () => `${Math.floor(Math.random() * 10)}`))
+
+    const attackerRevealTimers = attackerScoreLabel
+      .split('')
+      .map((_, reverseIndex) => {
+        const index = attackerScoreLabel.length - 1 - reverseIndex
+        return setTimeout(() => {
+          setRevealedAttackerDigits(current => current.map((value, digitIndex) => (
+            digitIndex === index ? true : value
+          )))
+        }, 1120 + reverseIndex * 260)
+      })
+
+    const defenderRevealTimers = defenderScoreLabel
+      .split('')
+      .map((_, reverseIndex) => {
+        const index = defenderScoreLabel.length - 1 - reverseIndex
+        return setTimeout(() => {
+          setRevealedDefenderDigits(current => current.map((value, digitIndex) => (
+            digitIndex === index ? true : value
+          )))
+        }, 480 + reverseIndex * 240)
+      })
+
+    return () => {
+      attackerRevealTimers.forEach(clearTimeout)
+      defenderRevealTimers.forEach(clearTimeout)
+    }
+  }, [attackerScoreLabel, burstId, defenderScoreLabel])
+
+  useEffect(() => {
+    const verdictTimer = setTimeout(() => {
+      setShowVerdict(true)
+    }, 2250)
+
+    return () => clearTimeout(verdictTimer)
+  }, [burstId])
+
+  useEffect(() => {
+    const attackerInterval = setInterval(() => {
+      setSpinningAttackerDigits(current => current.map((digit, index) => (
+        revealedAttackerDigits[index] ? digit : `${Math.floor(Math.random() * 10)}`
+      )))
+    }, 70)
+
+    return () => clearInterval(attackerInterval)
+  }, [revealedAttackerDigits])
+
+  useEffect(() => {
+    const defenderInterval = setInterval(() => {
+      setSpinningDefenderDigits(current => current.map((digit, index) => (
+        revealedDefenderDigits[index] ? digit : `${Math.floor(Math.random() * 10)}`
+      )))
+    }, 70)
+
+    return () => clearInterval(defenderInterval)
+  }, [revealedDefenderDigits])
+
+  return (
+    <div className="fixed inset-0 z-[80]">
+      <div className={cn(
+        'absolute inset-0 backdrop-blur-[3px] transition-all duration-300',
+        successful
+          ? 'bg-[radial-gradient(circle_at_center,rgba(56,189,248,0.14),transparent_32%),radial-gradient(circle_at_center,rgba(0,0,0,0.88),rgba(0,0,0,0.72))]'
+          : 'bg-[radial-gradient(circle_at_center,rgba(239,68,68,0.18),transparent_30%),radial-gradient(circle_at_center,rgba(0,0,0,0.9),rgba(0,0,0,0.76))]'
+      )} />
+      <div className="pointer-events-none absolute inset-0 grid place-items-center p-4">
+      <div className="showdown-shell w-full max-w-lg rounded-[2rem] border border-border/80 bg-card/95 p-6 shadow-[0_28px_90px_rgba(0,0,0,0.6)]">
+        <p className="text-center text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+          Steal Attempt
+        </p>
+        <p className="mt-1 text-center text-xs text-muted-foreground">
+          {rule === 'lower' ? 'Lower rating steals the square' : 'Higher rating steals the square'}
+        </p>
+        <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+          <div className="showdown-panel showdown-panel-left rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+            <p className="truncate text-xs uppercase tracking-[0.18em] text-muted-foreground">Defender</p>
+            <p className="mt-1 truncate text-sm font-semibold text-foreground">{defenderName}</p>
+            <div className="mt-3 flex justify-center gap-1.5">
+              {defenderScoreLabel.split('').map((digit, index) => (
+                <span
+                  key={`${burstId}-defender-${index}`}
+                  className="inline-flex h-14 w-10 items-center justify-center rounded-xl border border-emerald-400/30 bg-background/75 text-4xl font-black text-emerald-300 shadow-[0_0_18px_rgba(110,231,183,0.14)]"
+                >
+                  {revealedDefenderDigits[index] ? digit : spinningDefenderDigits[index]}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="showdown-vs text-center">
+            <p className="text-xl font-black uppercase tracking-[0.28em] text-foreground/80 drop-shadow-[0_0_20px_rgba(255,255,255,0.1)]">VS</p>
+          </div>
+          <div className="showdown-panel showdown-panel-right rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+            <p className="truncate text-xs uppercase tracking-[0.18em] text-muted-foreground">Challenger</p>
+            <p className="mt-1 truncate text-sm font-semibold text-foreground">{attackerName}</p>
+            <div className="mt-3 flex justify-center gap-1.5">
+              {attackerScoreLabel.split('').map((digit, index) => (
+                <span
+                  key={`${burstId}-attacker-${index}`}
+                  className="inline-flex h-14 w-10 items-center justify-center rounded-xl border border-sky-400/30 bg-background/75 text-4xl font-black text-sky-300 shadow-[0_0_18px_rgba(56,189,248,0.14)]"
+                >
+                  {revealedAttackerDigits[index] ? digit : spinningAttackerDigits[index]}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className={cn('mt-5 transition-all duration-300', showVerdict ? 'opacity-100 translate-y-0' : 'translate-y-3 opacity-0')}>
+          <div
+            className={cn(
+              'rounded-2xl border px-4 py-3 text-center text-sm font-semibold uppercase tracking-[0.18em] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]',
+              successful
+                ? 'border-primary/40 bg-primary/15 text-primary shadow-[0_0_28px_rgba(34,197,94,0.16)]'
+                : 'border-destructive/40 bg-destructive/15 text-destructive shadow-[0_0_28px_rgba(239,68,68,0.18)]'
+            )}
+          >
+            {successful ? 'Steal Successful' : 'Steal Denied'}
+          </div>
+        </div>
+      </div>
+      </div>
+      <style jsx>{`
+        .showdown-shell {
+          animation: showdown-shell-in 320ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .showdown-panel-left {
+          animation: showdown-panel-left 520ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .showdown-panel-right {
+          animation: showdown-panel-right 520ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .showdown-vs {
+          animation: showdown-vs-pop 420ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        @keyframes showdown-shell-in {
+          0% {
+            transform: scale(0.96);
+            opacity: 0;
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+
+        @keyframes showdown-panel-left {
+          0% {
+            transform: translateX(-22px) scale(0.96);
+            opacity: 0;
+          }
+          100% {
+            transform: translateX(0) scale(1);
+            opacity: 1;
+          }
+        }
+
+        @keyframes showdown-panel-right {
+          0% {
+            transform: translateX(22px) scale(0.96);
+            opacity: 0;
+          }
+          100% {
+            transform: translateX(0) scale(1);
+            opacity: 1;
+          }
+        }
+
+        @keyframes showdown-vs-pop {
+          0% {
+            transform: scale(0.8);
+            opacity: 0;
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+
+      `}</style>
+    </div>
+  )
+}
+
+function StealMissSplash({ burstId }: ActiveStealMissSplash) {
+  return (
+    <div key={burstId} className="pointer-events-none fixed inset-0 z-[90] grid place-items-center p-4">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(239,68,68,0.12),transparent_28%),rgba(0,0,0,0.18)]" />
+      <div className="steal-miss-splash select-none px-6 text-center font-black uppercase italic tracking-[0.08em] text-[#ff6262] drop-shadow-[0_10px_28px_rgba(0,0,0,0.78)]">
+        Wasted
+      </div>
+      <style jsx>{`
+        .steal-miss-splash {
+          font-size: clamp(2.8rem, 10vw, 6.5rem);
+          line-height: 1;
+          animation: steal-miss-hit 700ms cubic-bezier(0.18, 1.15, 0.3, 1);
+        }
+
+        @keyframes steal-miss-hit {
+          0% {
+            transform: scale(1.16);
+            letter-spacing: 0.14em;
+            opacity: 0;
+            filter: blur(10px);
+          }
+          52% {
+            transform: scale(0.95);
+            opacity: 1;
+            filter: blur(0);
+          }
+          100% {
+            transform: scale(1);
+            letter-spacing: 0.08em;
+            opacity: 1;
+            filter: blur(0);
+          }
+        }
+      `}</style>
+    </div>
+  )
 }
 
 function createSeededRandom(seed: number) {
@@ -725,6 +1101,49 @@ const EASTER_EGG_DEFINITIONS: EasterEggDefinition[] = [
       )
     },
   },
+  {
+    ...requireEasterEgg('free-planeswalker'),
+    renderPiece: (particle) => {
+      if (particle.kind === 'mtg-card') {
+        return (
+          <div
+            className="relative rounded-[14%] border border-[#7C3AED] bg-[#161127] shadow-[0_8px_22px_rgba(124,58,237,0.3)]"
+            style={{
+              width: `calc(${particle.size} * 0.78)`,
+              height: `calc(${particle.size} * 1.08)`,
+            }}
+          >
+            <div className="absolute inset-x-[10%] top-[8%] h-[12%] rounded-md bg-[#2A1E4A]" />
+            <div className="absolute inset-x-[12%] top-[24%] bottom-[18%] rounded-[12%] bg-[linear-gradient(180deg,#7C3AED_0%,#2563EB_48%,#F59E0B_100%)]" />
+            <div
+              className="absolute left-1/2 top-[42%] h-[28%] w-[34%] -translate-x-1/2 -translate-y-1/2 bg-[#F8FAFC]/90 shadow-[0_0_12px_rgba(248,250,252,0.35)]"
+              style={{ clipPath: 'polygon(50% 0%, 64% 36%, 100% 36%, 70% 58%, 80% 94%, 50% 72%, 20% 94%, 30% 58%, 0% 36%, 36% 36%)' }}
+            />
+            <div className="absolute inset-x-[18%] bottom-[8%] h-[6%] rounded-full bg-[#D1D5DB]/65" />
+          </div>
+        )
+      }
+
+      return (
+        <div
+          className="relative"
+          style={{
+            width: particle.size,
+            height: particle.size,
+          }}
+        >
+          <div
+            className="absolute inset-[12%] bg-[#8B5CF6] shadow-[0_0_18px_rgba(139,92,246,0.42)]"
+            style={{ clipPath: 'polygon(50% 0%, 62% 18%, 82% 18%, 72% 38%, 88% 50%, 72% 62%, 82% 82%, 62% 82%, 50% 100%, 38% 82%, 18% 82%, 28% 62%, 12% 50%, 28% 38%, 18% 18%, 38% 18%)' }}
+          />
+          <div
+            className="absolute inset-[30%] bg-[#C4B5FD]"
+            style={{ clipPath: 'polygon(50% 0%, 62% 18%, 82% 18%, 72% 38%, 88% 50%, 72% 62%, 82% 82%, 62% 82%, 50% 100%, 38% 82%, 18% 82%, 28% 62%, 12% 50%, 28% 38%, 18% 18%, 38% 18%)' }}
+          />
+        </div>
+      )
+    },
+  },
 ]
 
 function getEasterEggDefinition(gameName: string): EasterEggDefinition | null {
@@ -939,15 +1358,26 @@ function getTimeUntilNextUtcMidnight(now = new Date()) {
 }
 
 export function GameClient() {
-  const [mode, setMode] = useState<'daily' | 'practice'>('daily')
+  const skipNextVersusAutoLoadRef = useRef(false)
+  const skipNextPracticeAutoLoadRef = useRef(false)
+  const [mode, setMode] = useState<GameMode>('daily')
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null)
   const [guesses, setGuesses] = useState<(CellGuess | null)[]>(Array(9).fill(null))
   const [guessesRemaining, setGuessesRemaining] = useState(MAX_GUESSES)
+  const [currentPlayer, setCurrentPlayer] = useState<TicTacToePlayer>('x')
+  const [stealableCell, setStealableCell] = useState<number | null>(null)
+  const [winner, setWinner] = useState<TicTacToePlayer | null>(null)
   const [selectedCell, setSelectedCell] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [showResults, setShowResults] = useState(false)
   const [showHowToPlay, setShowHowToPlay] = useState(false)
   const [showAchievements, setShowAchievements] = useState(false)
+  const [showPracticeSetup, setShowPracticeSetup] = useState(false)
+  const [showPracticeStartOptions, setShowPracticeStartOptions] = useState(false)
+  const [practiceSetupError, setPracticeSetupError] = useState<string | null>(null)
+  const [showVersusSetup, setShowVersusSetup] = useState(false)
+  const [showVersusStartOptions, setShowVersusStartOptions] = useState(false)
+  const [versusSetupError, setVersusSetupError] = useState<string | null>(null)
   const [detailCell, setDetailCell] = useState<number | null>(null)
   const [sessionId, setSessionId] = useState('')
   const [loadingProgress, setLoadingProgress] = useState(8)
@@ -956,12 +1386,31 @@ export function GameClient() {
   const [dailyResetLabel, setDailyResetLabel] = useState(() => getTimeUntilNextUtcMidnight().label)
   const [activeEasterEgg, setActiveEasterEgg] = useState<ActiveEasterEgg | null>(null)
   const [activePerfectCelebration, setActivePerfectCelebration] = useState<ActivePerfectCelebration | null>(null)
+  const [activeStealShowdown, setActiveStealShowdown] = useState<ActiveStealShowdown | null>(null)
+  const [activeStealMissSplash, setActiveStealMissSplash] = useState<ActiveStealMissSplash | null>(null)
+  const [practiceCategoryFilters, setPracticeCategoryFilters] = useState<VersusCategoryFilters>({})
+  const [versusCategoryFilters, setVersusCategoryFilters] = useState<VersusCategoryFilters>({})
+  const [versusStealRule, setVersusStealRule] = useState<VersusStealRule>('lower')
+  const [versusTimerOption, setVersusTimerOption] = useState<VersusTurnTimerOption>('none')
+  const [turnTimeLeft, setTurnTimeLeft] = useState<number | null>(null)
+  const [versusRecord, setVersusRecord] = useState<VersusRecord>({ xWins: 0, oWins: 0 })
+  const [pendingFinalSteal, setPendingFinalSteal] = useState<PendingFinalSteal | null>(null)
+  const [lockImpactCell, setLockImpactCell] = useState<number | null>(null)
   const { toast } = useToast()
 
   const score = guesses.filter(g => g?.isCorrect).length
+  const isVersusMode = mode === 'versus'
+  const hasActivePracticeCustomSetup = hasNonEmptyFilters(practiceCategoryFilters)
+  const hasActiveVersusCustomSetup = hasNonEmptyFilters(versusCategoryFilters)
+  const hasActiveCustomSetup =
+    mode === 'practice'
+      ? hasActivePracticeCustomSetup
+      : mode === 'versus'
+        ? hasActiveVersusCustomSetup
+        : false
   // Game is over when out of guesses OR all cells filled (not necessarily all correct)
   const gridFull = guesses.every(g => g !== null)
-  const isComplete = guessesRemaining === 0 || gridFull
+  const isComplete = isVersusMode ? winner !== null : guessesRemaining === 0 || gridFull
 
   const unlockAchievementWithToast = useCallback((achievementId: string) => {
     const result = unlockAchievement(achievementId)
@@ -979,6 +1428,7 @@ export function GameClient() {
   // Initialize session
   useEffect(() => {
     setSessionId(getSessionId())
+    setVersusRecord(getInitialVersusRecord())
   }, [])
 
   useEffect(() => {
@@ -1016,9 +1466,78 @@ export function GameClient() {
     return () => clearTimeout(timer)
   }, [activePerfectCelebration])
 
+  useEffect(() => {
+    if (!activeStealShowdown) {
+      return
+    }
+
+    const timer = setTimeout(() => {
+      setActiveStealShowdown(null)
+    }, activeStealShowdown.durationMs)
+
+    return () => clearTimeout(timer)
+  }, [activeStealShowdown])
+
+  useEffect(() => {
+    if (!activeStealMissSplash) {
+      return
+    }
+
+    const timer = setTimeout(() => {
+      setActiveStealMissSplash(null)
+    }, activeStealMissSplash.durationMs)
+
+    return () => clearTimeout(timer)
+  }, [activeStealMissSplash])
+
+  useEffect(() => {
+    if (!isVersusMode || winner || versusTimerOption === 'none') {
+      setTurnTimeLeft(null)
+      return
+    }
+
+    setTurnTimeLeft(versusTimerOption)
+  }, [currentPlayer, isVersusMode, versusTimerOption, winner])
+
+  useEffect(() => {
+    if (!isVersusMode || winner || turnTimeLeft === null) {
+      return
+    }
+
+    if (turnTimeLeft <= 0) {
+      const nextPlayer = getNextPlayer(currentPlayer)
+      setSelectedCell(null)
+      setCurrentPlayer(nextPlayer)
+      setStealableCell(null)
+      toast({
+        variant: 'destructive',
+        title: 'Turn expired',
+        description: `${getPlayerLabel(nextPlayer)} is up.`,
+      })
+      return
+    }
+
+    const timer = setTimeout(() => {
+      setTurnTimeLeft((current) => (current === null ? null : current - 1))
+    }, 1000)
+
+    return () => clearTimeout(timer)
+  }, [currentPlayer, isVersusMode, toast, turnTimeLeft, winner])
+
   // Load puzzle
-  const loadPuzzle = useCallback(async (gameMode: 'daily' | 'practice') => {
-    const savedState = loadGameState(gameMode === 'daily')
+  const loadPuzzle = useCallback(async (
+    gameMode: GameMode,
+    customFilters?: VersusCategoryFilters
+  ) => {
+    const shouldPersist = gameMode !== 'versus'
+    const streamMode = gameMode === 'daily' ? 'daily' : 'practice'
+    const savedState = shouldPersist ? loadGameState(gameMode === 'daily') : null
+    const effectiveFilters =
+      gameMode === 'versus'
+        ? (customFilters ?? versusCategoryFilters)
+        : gameMode === 'practice'
+          ? (customFilters ?? practiceCategoryFilters)
+          : undefined
 
     if (savedState?.puzzle) {
       setPuzzle(savedState.puzzle)
@@ -1028,6 +1547,11 @@ export function GameClient() {
         )
       )
       setGuessesRemaining(savedState.guessesRemaining)
+      setCurrentPlayer('x')
+      setStealableCell(null)
+      setWinner(null)
+      setPendingFinalSteal(null)
+      setLockImpactCell(null)
       setSelectedCell(null)
       setShowResults(savedState.isComplete)
       setDetailCell(null)
@@ -1037,7 +1561,12 @@ export function GameClient() {
 
     setIsLoading(true)
     setGuesses(Array(9).fill(null))
-    setGuessesRemaining(MAX_GUESSES)
+    setGuessesRemaining(gameMode === 'versus' ? MAX_GUESSES : MAX_GUESSES)
+    setCurrentPlayer('x')
+    setStealableCell(null)
+    setWinner(null)
+    setPendingFinalSteal(null)
+    setLockImpactCell(null)
     setSelectedCell(null)
     setShowResults(false)
     setDetailCell(null)
@@ -1049,7 +1578,14 @@ export function GameClient() {
     try {
       let puzzleData: Puzzle | null = null
 
-      const response = await fetch(`/api/puzzle-stream?mode=${gameMode}`)
+      const params = new URLSearchParams({ mode: streamMode })
+      if (gameMode === 'versus' || gameMode === 'practice') {
+        if (effectiveFilters && Object.keys(effectiveFilters).length > 0) {
+          params.set('filters', JSON.stringify(effectiveFilters))
+        }
+      }
+
+      const response = await fetch(`/api/puzzle-stream?${params.toString()}`)
       if (!response.ok || !response.body) {
         throw new Error('Failed to open puzzle stream')
       }
@@ -1142,13 +1678,15 @@ export function GameClient() {
       setLoadingStage('Board ready.')
       setPuzzle(puzzleData)
 
-      saveGameState({
-        puzzleId: puzzleData.id,
-        puzzle: puzzleData,
-        guesses: Array(9).fill(null),
-        guessesRemaining: MAX_GUESSES,
-        isComplete: false,
-      }, gameMode === 'daily')
+      if (shouldPersist) {
+        saveGameState({
+          puzzleId: puzzleData.id,
+          puzzle: puzzleData,
+          guesses: Array(9).fill(null),
+          guessesRemaining: MAX_GUESSES,
+          isComplete: false,
+        }, gameMode === 'daily')
+      }
 
       if (savedState && savedState.puzzleId === puzzleData.id) {
         const restoredGuesses = savedState.guesses.map(g =>
@@ -1160,20 +1698,133 @@ export function GameClient() {
       }
     } catch (error) {
       console.error('Failed to load puzzle:', error)
+      const hadCustomFilters = Boolean(effectiveFilters && Object.keys(effectiveFilters).length > 0)
+      const generationErrorMessage =
+        error instanceof Error && error.message
+          ? error.message
+          : 'No valid board could be generated from that combination. Try widening a category family or enabling more options.'
+
+      if (gameMode === 'practice' && hadCustomFilters) {
+        setPracticeSetupError(generationErrorMessage)
+        setShowPracticeStartOptions(false)
+        setShowPracticeSetup(true)
+      } else if (gameMode === 'versus' && hadCustomFilters) {
+        setVersusSetupError(generationErrorMessage)
+        setShowVersusStartOptions(false)
+        setShowVersusSetup(true)
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Puzzle generation failed',
+          description: 'Please try again.',
+        })
+      }
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [
+    practiceCategoryFilters,
+    toast,
+    versusCategoryFilters,
+  ])
 
   useEffect(() => {
+    if (mode === 'practice' && showPracticeStartOptions) {
+      setIsLoading(false)
+      return
+    }
+
+    if (mode === 'versus' && showVersusStartOptions) {
+      setIsLoading(false)
+      return
+    }
+
+    if (mode === 'practice' && skipNextPracticeAutoLoadRef.current) {
+      skipNextPracticeAutoLoadRef.current = false
+      return
+    }
+
+    if (mode === 'versus' && skipNextVersusAutoLoadRef.current) {
+      skipNextVersusAutoLoadRef.current = false
+      return
+    }
+
     loadPuzzle(mode)
-  }, [mode, loadPuzzle])
+  }, [loadPuzzle, mode, showPracticeStartOptions, showVersusStartOptions])
 
   // Handle mode change
-  const handleModeChange = (newMode: 'daily' | 'practice') => {
+  const handleModeChange = (newMode: GameMode) => {
     if (newMode !== mode) {
+      if (newMode === 'practice') {
+        const hasSavedPracticeState = Boolean(loadGameState(false)?.puzzle)
+        setShowVersusStartOptions(false)
+        setShowVersusSetup(false)
+        setVersusSetupError(null)
+        setShowPracticeSetup(false)
+        setPracticeSetupError(null)
+
+        if (!hasSavedPracticeState) {
+          setPuzzle(null)
+          setGuesses(Array(9).fill(null))
+          setSelectedCell(null)
+          setShowResults(false)
+          setWinner(null)
+          setStealableCell(null)
+          setShowPracticeStartOptions(true)
+        } else {
+          setShowPracticeStartOptions(false)
+        }
+      } else if (newMode === 'versus') {
+        setPuzzle(null)
+        setGuesses(Array(9).fill(null))
+        setSelectedCell(null)
+        setShowResults(false)
+        setWinner(null)
+        setStealableCell(null)
+        setShowPracticeStartOptions(false)
+        setShowPracticeSetup(false)
+        setPracticeSetupError(null)
+        setShowVersusStartOptions(true)
+        setVersusSetupError(null)
+      } else {
+        setShowPracticeStartOptions(false)
+        setShowPracticeSetup(false)
+        setPracticeSetupError(null)
+        setShowVersusStartOptions(false)
+        setShowVersusSetup(false)
+        setVersusSetupError(null)
+      }
       setMode(newMode)
     }
+  }
+
+  const handleApplyPracticeFilters = (
+    filters: VersusCategoryFilters,
+    _stealRule: VersusStealRule,
+    _timerOption: VersusTurnTimerOption
+  ) => {
+    setPracticeCategoryFilters(filters)
+    setPracticeSetupError(null)
+    setShowPracticeSetup(false)
+    setShowPracticeStartOptions(false)
+    skipNextPracticeAutoLoadRef.current = true
+    clearGameState(false)
+    loadPuzzle('practice', filters)
+  }
+
+  const handleApplyVersusFilters = (
+    filters: VersusCategoryFilters,
+    stealRule: VersusStealRule,
+    timerOption: VersusTurnTimerOption
+  ) => {
+    setVersusCategoryFilters(filters)
+    setVersusSetupError(null)
+    setVersusStealRule(stealRule)
+    setVersusTimerOption(timerOption)
+    setShowVersusSetup(false)
+    setShowVersusStartOptions(false)
+    skipNextVersusAutoLoadRef.current = true
+    loadPuzzle('versus', filters)
   }
 
   const hydrateGuessDetails = useCallback(async (cellIndex: number) => {
@@ -1231,6 +1882,7 @@ export function GameClient() {
             gameUrl: result.game.url ?? existingGuess.gameUrl ?? null,
             released: result.game.released ?? null,
             metacritic: result.game.metacritic ?? null,
+            stealRating: result.game.stealRating ?? existingGuess.stealRating ?? null,
             genres: result.game.genres ?? [],
             platforms: result.game.platforms ?? [],
             developers: result.game.developers ?? [],
@@ -1252,6 +1904,27 @@ export function GameClient() {
 
   // Handle cell click
   const handleCellClick = async (index: number) => {
+    if (activeStealShowdown) {
+      return
+    }
+
+    if (mode === 'versus') {
+      if (isComplete) return
+
+      const existingGuess = guesses[index]
+      const canSteal =
+        existingGuess !== null &&
+        existingGuess.owner !== currentPlayer &&
+        stealableCell === index
+
+      if (existingGuess && !canSteal) {
+        return
+      }
+
+      setSelectedCell(index)
+      return
+    }
+
     if (guesses[index] !== null) {
       await hydrateGuessDetails(index)
       setDetailCell(index)
@@ -1265,7 +1938,18 @@ export function GameClient() {
   const handleGameSelect = async (game: Game) => {
     if (selectedCell === null || !puzzle) return
 
-    if (guesses.some(guess => guess?.gameId === game.id)) {
+    const existingGuess = guesses[selectedCell]
+    const isVersusSteal =
+      mode === 'versus' &&
+      existingGuess !== null &&
+      existingGuess.owner !== currentPlayer &&
+      stealableCell === selectedCell
+
+    if (
+      guesses.some((guess, index) =>
+        guess?.gameId === game.id && (mode !== 'versus' || index !== selectedCell)
+      )
+    ) {
       toast({
         variant: 'destructive',
         title: 'Game already used',
@@ -1310,12 +1994,14 @@ export function GameClient() {
       const newGuess: CellGuess = {
         gameId: game.id,
         gameName: game.name,
+        owner: mode === 'versus' ? currentPlayer : undefined,
         gameSlug: result.game?.slug ?? game.slug ?? null,
         gameUrl: result.game?.url ?? game.gameUrl ?? null,
         gameImage: game.background_image,
         isCorrect: result.valid,
         released: result.game?.released ?? null,
         metacritic: result.game?.metacritic ?? null,
+        stealRating: result.game?.stealRating ?? null,
         genres: result.game?.genres ?? [],
         platforms: result.game?.platforms ?? [],
         developers: result.game?.developers ?? [],
@@ -1327,6 +2013,109 @@ export function GameClient() {
         companies: result.game?.companies ?? [],
         matchedRow: result.matchesRow,
         matchedCol: result.matchesCol,
+      }
+
+      if (mode === 'versus' && !result.valid) {
+        setSelectedCell(null)
+        setStealableCell(null)
+        setLockImpactCell(null)
+        const missReason = buildMissReason(rowCategory, colCategory, result.matchesRow, result.matchesCol)
+        if (isVersusSteal) {
+          setActiveStealMissSplash({
+            burstId: Date.now(),
+            durationMs: 900,
+          })
+        }
+
+        if (pendingFinalSteal && pendingFinalSteal.cellIndex === selectedCell) {
+          setWinner(pendingFinalSteal.defender)
+          setPendingFinalSteal(null)
+          toast({
+            variant: 'destructive',
+            title: 'Final steal chance missed',
+            description: `${missReason}. ${getPlayerLabel(pendingFinalSteal.defender)} keeps the win.`,
+          })
+        } else {
+          const nextPlayer = getNextPlayer(currentPlayer)
+          setCurrentPlayer(nextPlayer)
+          toast({
+            variant: 'destructive',
+            title: 'Missed claim',
+            description: `${missReason}. ${getPlayerLabel(nextPlayer)} is up.`,
+          })
+        }
+        return
+      }
+
+      if (mode === 'versus' && isVersusSteal) {
+        const defendingScore = existingGuess?.stealRating
+        const attackingScore = newGuess.stealRating
+        const hasShowdownScores =
+          defendingScore !== null &&
+          defendingScore !== undefined &&
+          attackingScore !== null &&
+          attackingScore !== undefined
+        const canStealByScore =
+          hasShowdownScores &&
+          (versusStealRule === 'lower'
+            ? attackingScore < defendingScore
+            : attackingScore > defendingScore)
+
+        if (hasShowdownScores) {
+          setActiveStealShowdown({
+            burstId: Date.now(),
+            durationMs: STEAL_SHOWDOWN_DURATION_MS,
+            defenderName: existingGuess.gameName,
+            defenderScore: defendingScore,
+            attackerName: game.name,
+            attackerScore: attackingScore,
+            rule: versusStealRule,
+            successful: canStealByScore,
+          })
+        }
+
+        if (!canStealByScore) {
+          const resolveFailedSteal = () => {
+            setSelectedCell(null)
+            setStealableCell(null)
+            setLockImpactCell(selectedCell)
+            window.setTimeout(() => {
+              setLockImpactCell((current) => (current === selectedCell ? null : current))
+            }, 550)
+
+            if (pendingFinalSteal && pendingFinalSteal.cellIndex === selectedCell) {
+              setWinner(pendingFinalSteal.defender)
+              setPendingFinalSteal(null)
+              toast({
+                variant: 'destructive',
+                title: 'Steal failed',
+                description:
+                  !hasShowdownScores
+                    ? `${getPlayerLabel(pendingFinalSteal.defender)} keeps the win because both answers needed a score.`
+                    : `${game.name} (${attackingScore}) needed to be ${versusStealRule === 'lower' ? 'lower' : 'higher'} than ${existingGuess.gameName} (${defendingScore}). ${getPlayerLabel(pendingFinalSteal.defender)} keeps the win.`,
+              })
+              return
+            }
+
+            const nextPlayer = getNextPlayer(currentPlayer)
+            setCurrentPlayer(nextPlayer)
+            toast({
+              variant: 'destructive',
+              title: 'Steal failed',
+              description:
+                !hasShowdownScores
+                  ? `${getPlayerLabel(nextPlayer)} is up. Both answers need a score to settle the steal.`
+                  : `${getPlayerLabel(nextPlayer)} is up. ${game.name} (${attackingScore}) had to be ${versusStealRule === 'lower' ? 'lower' : 'higher'} than ${existingGuess.gameName} (${defendingScore}).`,
+            })
+          }
+
+          if (hasShowdownScores) {
+            window.setTimeout(resolveFailedSteal, STEAL_SHOWDOWN_DURATION_MS)
+          } else {
+            resolveFailedSteal()
+          }
+          return
+        }
       }
 
       const newGuesses = [...guesses]
@@ -1355,18 +2144,60 @@ export function GameClient() {
         }
       }
       
-      const newGuessesRemaining = guessesRemaining - 1
+      const newGuessesRemaining = mode === 'versus' ? guessesRemaining : guessesRemaining - 1
       setGuessesRemaining(newGuessesRemaining)
       setSelectedCell(null)
 
-      // Save state with full guess objects for proper restoration
-      saveGameState({
-        puzzleId: puzzle.id,
-        puzzle,
-        guesses: newGuesses.map(g => g ? { gameId: g.gameId, gameName: g.gameName, gameImage: g.gameImage, isCorrect: g.isCorrect } : null),
-        guessesRemaining: newGuessesRemaining,
-        isComplete: newGuessesRemaining === 0 || newGuesses.every(g => g !== null),
-      }, mode === 'daily')
+      if (mode !== 'versus') {
+        // Save state with full guess objects for proper restoration
+        saveGameState({
+          puzzleId: puzzle.id,
+          puzzle,
+          guesses: newGuesses.map(g => g ? { gameId: g.gameId, gameName: g.gameName, gameImage: g.gameImage, isCorrect: g.isCorrect } : null),
+          guessesRemaining: newGuessesRemaining,
+          isComplete: newGuessesRemaining === 0 || newGuesses.every(g => g !== null),
+        }, mode === 'daily')
+      }
+
+      if (mode === 'versus') {
+        const winningPlayer = getWinningPlayer(newGuesses)
+        const nextPlayer = getNextPlayer(currentPlayer)
+
+        setPendingFinalSteal(null)
+        setLockImpactCell(null)
+        setStealableCell(selectedCell)
+
+        if (currentPlayer === 'x' && winningPlayer === 'x') {
+          setPendingFinalSteal({
+            defender: winningPlayer,
+            cellIndex: selectedCell,
+          })
+          setCurrentPlayer(nextPlayer)
+          toast({
+            title: 'Last chance steal',
+            description: 'Player 2 gets one chance to answer back on that square.',
+          })
+          return
+        }
+
+        if (winningPlayer) {
+          setWinner(winningPlayer)
+          toast({
+            title: `${getPlayerLabel(winningPlayer)} wins!`,
+            description: isVersusSteal
+              ? 'That steal completed the line.'
+              : 'Three in a row takes the match.',
+          })
+          return
+        }
+
+        setCurrentPlayer(nextPlayer)
+        toast({
+          title: isVersusSteal ? 'Stolen square' : 'Claim locked in',
+          description: `${getPlayerLabel(nextPlayer)} is up.`,
+        })
+        return
+      }
 
       // Check if game is complete
       if (newGuessesRemaining === 0 || newGuesses.every(g => g !== null)) {
@@ -1420,10 +2251,18 @@ export function GameClient() {
     }
   }
 
-  // Handle play again (practice mode only)
-  const handlePlayAgain = () => {
-    clearGameState(false)
-    loadPuzzle('practice')
+  // Handle starting a fresh non-daily board
+  const handleNewGame = () => {
+    if (mode === 'practice') {
+      clearGameState(false)
+      skipNextPracticeAutoLoadRef.current = true
+      loadPuzzle('practice', practiceCategoryFilters)
+      return
+    }
+
+    setShowVersusStartOptions(false)
+    skipNextVersusAutoLoadRef.current = true
+    loadPuzzle('versus', versusCategoryFilters)
   }
 
   // Get categories for selected cell
@@ -1436,6 +2275,16 @@ export function GameClient() {
       col: puzzle.col_categories[colIndex],
     }
   }
+
+  const getCellLabel = useCallback((cellIndex: number) => {
+    if (!puzzle) {
+      return 'Unknown cell'
+    }
+
+    const rowCategory = puzzle.row_categories[Math.floor(cellIndex / 3)]
+    const colCategory = puzzle.col_categories[cellIndex % 3]
+    return `${rowCategory?.name ?? 'Row'} x ${colCategory?.name ?? 'Column'}`
+  }, [puzzle])
 
   const { row: selectedRowCategory, col: selectedColCategory } = getSelectedCategories()
   const detailGuess = detailCell !== null ? guesses[detailCell] : null
@@ -1452,6 +2301,16 @@ export function GameClient() {
   const resolvedMinimumCellOptions = Number.isFinite(minimumCellOptions ?? Number.NaN)
     ? minimumCellOptions
     : null
+  const stealTargetLabel = stealableCell !== null ? getCellLabel(stealableCell) : null
+  const turnTimerLabel = isVersusMode && turnTimeLeft !== null
+    ? `Turn: ${Math.floor(turnTimeLeft / 60)}:${String(turnTimeLeft % 60).padStart(2, '0')}`
+    : null
+  const activeCategoryTypes = puzzle
+    ? Array.from(new Set([
+        ...puzzle.row_categories.map((category) => category.type),
+        ...puzzle.col_categories.map((category) => category.type),
+      ]))
+    : []
 
   if (isLoading) {
     const activeAttempt = loadingAttempts[loadingAttempts.length - 1] ?? null
@@ -1462,7 +2321,7 @@ export function GameClient() {
         <div className="w-full max-w-5xl md:flex md:items-start md:justify-center md:gap-4">
           <div className="w-full max-w-md rounded-2xl border border-border bg-card/70 p-6 shadow-xl backdrop-blur-sm">
           <p className="text-center text-sm font-semibold uppercase tracking-[0.24em] text-primary">
-            {mode === 'daily' ? 'Daily Puzzle' : 'Building Grid'}
+            {mode === 'daily' ? 'Daily Puzzle' : mode === 'versus' ? 'Setting Up Match' : 'Building Grid'}
           </p>
           <p className="mt-3 whitespace-pre-line text-center text-lg font-semibold text-foreground">{loadingStage}</p>
           <p className="mt-2 text-center text-sm text-muted-foreground">
@@ -1472,9 +2331,11 @@ export function GameClient() {
                 : loadingProgress < 75
                   ? 'Generating today\'s puzzle and validating intersections.'
                   : 'Almost done!'
-              : 'Generating a fresh practice puzzle and sanity-checking each intersection.'}
+              : mode === 'versus'
+                ? 'Building a local head-to-head board and validating each intersection.'
+                : 'Generating a fresh practice puzzle and sanity-checking each intersection.'}
           </p>
-          {mode === 'practice' && (
+          {mode !== 'daily' && (
             <div className="mt-6 space-y-2">
               <Progress value={loadingProgress} className="h-3" />
               <p className="text-right text-xs font-medium text-muted-foreground">
@@ -1483,7 +2344,7 @@ export function GameClient() {
             </div>
           )}
         </div>
-          {mode === 'practice' && (
+          {mode !== 'daily' && (
             <aside className="mt-4 w-full rounded-2xl border border-border bg-card/70 p-4 shadow-xl backdrop-blur-sm md:mt-0 md:max-w-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Attempt Notes</p>
               {!activeAttempt && (
@@ -1552,6 +2413,125 @@ export function GameClient() {
   }
 
   if (!puzzle) {
+    if ((mode === 'versus' && showVersusStartOptions) || (mode === 'practice' && showPracticeStartOptions)) {
+      const isPracticeStart = mode === 'practice'
+
+      return (
+        <main id="top" className="min-h-screen px-4 py-6">
+          <GameHeader
+            mode={mode}
+            guessesRemaining={guessesRemaining}
+            score={score}
+            currentPlayer={currentPlayer}
+            stealTargetLabel={null}
+            winner={winner}
+            turnTimerLabel={null}
+            versusRecord={versusRecord}
+            isHowToPlayOpen={showHowToPlay}
+            isAchievementsOpen={showAchievements}
+            hasActiveCustomSetup={hasActiveCustomSetup}
+            onModeChange={handleModeChange}
+            onAchievements={() => setShowAchievements(true)}
+            onHowToPlay={() => setShowHowToPlay(true)}
+            onNewGame={undefined}
+            onCustomizeGame={() => (isPracticeStart ? setShowPracticeSetup(true) : setShowVersusSetup(true))}
+          />
+
+          <div className="mx-auto mt-16 max-w-lg rounded-3xl border border-border bg-card/80 p-6 text-center shadow-xl backdrop-blur-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+              {isPracticeStart ? 'Practice Mode' : 'Versus Mode'}
+            </p>
+            <h2 className="mt-3 text-2xl font-bold text-foreground">How do you want to start?</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {isPracticeStart
+                ? 'Launch a standard solo board right away, or customize the category pool first.'
+                : 'Launch a standard head-to-head board right away, or customize the category pool and steal rules first.'}
+            </p>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <button
+                onClick={() => {
+                  if (isPracticeStart) {
+                    setPracticeCategoryFilters({})
+                    setPracticeSetupError(null)
+                    setShowPracticeStartOptions(false)
+                    skipNextPracticeAutoLoadRef.current = true
+                    clearGameState(false)
+                    loadPuzzle('practice', {})
+                    return
+                  }
+
+                  setVersusCategoryFilters({})
+                  setVersusSetupError(null)
+                  setShowVersusStartOptions(false)
+                  skipNextVersusAutoLoadRef.current = true
+                  loadPuzzle('versus', {})
+                }}
+                className="rounded-2xl border border-border bg-secondary/40 px-4 py-4 text-left transition-colors hover:bg-secondary/65"
+              >
+                <p className="text-sm font-semibold text-foreground">
+                  {isPracticeStart ? 'Standard Puzzle' : 'Standard Match'}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {isPracticeStart
+                    ? 'Use the default solo category pool and jump right in.'
+                    : 'Use the default versus rules and random category families.'}
+                </p>
+              </button>
+              <button
+                onClick={() => (isPracticeStart ? setShowPracticeSetup(true) : setShowVersusSetup(true))}
+                className="rounded-2xl border border-primary/30 bg-primary/10 px-4 py-4 text-left transition-colors hover:bg-primary/15"
+              >
+                <p className="text-sm font-semibold text-foreground">
+                  {isPracticeStart ? 'Custom Puzzle' : 'Custom Match'}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {isPracticeStart
+                    ? 'Pick the families you want in the solo category pool before generating.'
+                    : 'Pick families, tune steals, and set an optional turn timer.'}
+                </p>
+              </button>
+            </div>
+          </div>
+
+          <VersusSetupModal
+            isOpen={showPracticeSetup}
+            onClose={() => setShowPracticeSetup(false)}
+            mode="practice"
+            errorMessage={practiceSetupError}
+            filters={practiceCategoryFilters}
+            stealRule="lower"
+            timerOption="none"
+            onApply={handleApplyPracticeFilters}
+          />
+
+          <VersusSetupModal
+            isOpen={showVersusSetup}
+            onClose={() => setShowVersusSetup(false)}
+            mode="versus"
+            errorMessage={versusSetupError}
+            filters={versusCategoryFilters}
+            stealRule={versusStealRule}
+            timerOption={versusTimerOption}
+            onApply={handleApplyVersusFilters}
+          />
+
+          <AchievementsModal
+            isOpen={showAchievements}
+            onClose={() => setShowAchievements(false)}
+          />
+
+          <HowToPlayModal
+            isOpen={showHowToPlay}
+            onClose={() => setShowHowToPlay(false)}
+            mode="versus"
+            minimumCellOptions={resolvedMinimumCellOptions}
+            validationStatus={undefined}
+            dailyResetLabel={dailyResetLabel}
+          />
+        </main>
+      )
+    }
+
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -1571,18 +2551,33 @@ export function GameClient() {
     <main id="top" className="min-h-screen py-6 px-4">
       {activeEasterEgg && <EasterEggCelebration {...activeEasterEgg} />}
       {activePerfectCelebration && <PerfectGridCelebration {...activePerfectCelebration} />}
+      {activeStealShowdown && <StealShowdownOverlay {...activeStealShowdown} />}
+      {activeStealMissSplash && <StealMissSplash {...activeStealMissSplash} />}
 
       <GameHeader
         mode={mode}
         guessesRemaining={guessesRemaining}
         score={score}
+        currentPlayer={isVersusMode ? currentPlayer : null}
+        stealTargetLabel={isVersusMode ? stealTargetLabel : null}
+        winner={isVersusMode ? winner : null}
+        turnTimerLabel={turnTimerLabel}
+        versusRecord={versusRecord}
         dailyResetLabel={mode === 'daily' ? dailyResetLabel : null}
         isHowToPlayOpen={showHowToPlay}
         isAchievementsOpen={showAchievements}
+        hasActiveCustomSetup={hasActiveCustomSetup}
         onModeChange={handleModeChange}
         onAchievements={() => setShowAchievements(true)}
         onHowToPlay={() => setShowHowToPlay(true)}
-        onNewPracticeGame={mode === 'practice' ? handlePlayAgain : undefined}
+        onNewGame={mode === 'practice' || mode === 'versus' ? handleNewGame : undefined}
+        onCustomizeGame={
+          mode === 'practice'
+            ? () => setShowPracticeSetup(true)
+            : mode === 'versus'
+              ? () => setShowVersusSetup(true)
+              : undefined
+        }
       />
 
       {puzzle.validation_status && puzzle.validation_status !== 'validated' && (
@@ -1600,12 +2595,15 @@ export function GameClient() {
         guesses={guesses}
         cellMetadata={puzzle.cell_metadata}
         selectedCell={selectedCell}
+        stealableCell={isVersusMode ? stealableCell : null}
+        currentPlayer={isVersusMode ? currentPlayer : null}
+        lockImpactCell={isVersusMode ? lockImpactCell : null}
         isGameOver={isComplete}
         onCellClick={handleCellClick}
       />
 
       {/* Show results button when complete */}
-      {isComplete && !showResults && (
+      {!isVersusMode && isComplete && !showResults && (
         <div className="max-w-lg mx-auto mt-6 text-center">
           <button
             onClick={() => setShowResults(true)}
@@ -1616,30 +2614,53 @@ export function GameClient() {
         </div>
       )}
 
+      {isVersusMode && winner && (
+        <div className="max-w-lg mx-auto mt-6 rounded-2xl border border-border bg-card/70 p-5 text-center shadow-lg">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Match Over</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">
+            {getPlayerLabel(winner)} wins with {winner.toUpperCase()}
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Start a new match to play the next board.
+          </p>
+          <button
+            onClick={handleNewGame}
+            className="mt-4 rounded-lg bg-primary px-5 py-2.5 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            New Match
+          </button>
+        </div>
+      )}
+
       <GameSearch
         isOpen={selectedCell !== null}
         puzzleId={mode === 'daily' ? puzzle.id : undefined}
+        hideScores={mode === 'versus'}
+        activeCategoryTypes={activeCategoryTypes}
         rowCategory={selectedRowCategory}
         colCategory={selectedColCategory}
         onSelect={handleGameSelect}
         onClose={() => setSelectedCell(null)}
       />
 
-      <ResultsModal
-        isOpen={showResults}
-        onClose={() => setShowResults(false)}
-        guesses={guesses}
-        puzzleId={puzzle.id}
-        puzzleDate={puzzle.date}
-        rowCategories={puzzle.row_categories}
-        colCategories={puzzle.col_categories}
-        isDaily={mode === 'daily'}
-        onPlayAgain={handlePlayAgain}
-      />
+      {!isVersusMode && (
+        <ResultsModal
+          isOpen={showResults}
+          onClose={() => setShowResults(false)}
+          guesses={guesses}
+          puzzleId={puzzle.id}
+          puzzleDate={puzzle.date}
+          rowCategories={puzzle.row_categories}
+          colCategories={puzzle.col_categories}
+          isDaily={mode === 'daily'}
+          onPlayAgain={handleNewGame}
+        />
+      )}
 
       <HowToPlayModal
         isOpen={showHowToPlay}
         onClose={() => setShowHowToPlay(false)}
+        mode={mode}
         minimumCellOptions={resolvedMinimumCellOptions}
         validationStatus={puzzle.validation_status}
         dailyResetLabel={dailyResetLabel}
@@ -1648,6 +2669,28 @@ export function GameClient() {
       <AchievementsModal
         isOpen={showAchievements}
         onClose={() => setShowAchievements(false)}
+      />
+
+      <VersusSetupModal
+        mode="practice"
+        isOpen={showPracticeSetup}
+        onClose={() => setShowPracticeSetup(false)}
+        errorMessage={practiceSetupError}
+        filters={practiceCategoryFilters}
+        stealRule="lower"
+        timerOption="none"
+        onApply={handleApplyPracticeFilters}
+      />
+
+      <VersusSetupModal
+        isOpen={showVersusSetup}
+        onClose={() => setShowVersusSetup(false)}
+        mode="versus"
+        errorMessage={versusSetupError}
+        filters={versusCategoryFilters}
+        stealRule={versusStealRule}
+        timerOption={versusTimerOption}
+        onApply={handleApplyVersusFilters}
       />
 
       <GuessDetailsModal

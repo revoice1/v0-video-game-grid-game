@@ -31,6 +31,8 @@ export type EasterEggPieceKind =
   | 'plasma'
   | 'disc'
   | 'trail'
+  | 'mtg-card'
+  | 'mana'
 
 export interface EasterEggConfig {
   achievementId: string
@@ -46,7 +48,7 @@ export const EASTER_EGGS: EasterEggConfig[] = [
   {
     achievementId: 'chex-mix',
     achievementTitle: 'Breakfast Defender',
-    achievementDescription: 'Trigger the Chex Quest easter egg.',
+    achievementDescription: 'Use Chex Quest as a correct answer.',
     triggerNames: ['chex quest'],
     durationMs: 5000,
     density: 42,
@@ -55,7 +57,7 @@ export const EASTER_EGGS: EasterEggConfig[] = [
   {
     achievementId: 'golden-path',
     achievementTitle: 'Golden Path',
-    achievementDescription: 'Trigger the Tunic easter egg.',
+    achievementDescription: 'Use Tunic as a correct answer.',
     triggerNames: ['tunic'],
     durationMs: 5000,
     density: 34,
@@ -64,7 +66,7 @@ export const EASTER_EGGS: EasterEggConfig[] = [
   {
     achievementId: 'dust-to-dust',
     achievementTitle: 'Scraps of Memory',
-    achievementDescription: 'Trigger the Phantom Dust easter egg.',
+    achievementDescription: 'Use Phantom Dust as a correct answer.',
     triggerNames: ['phantom dust'],
     durationMs: 5200,
     density: 38,
@@ -73,7 +75,7 @@ export const EASTER_EGGS: EasterEggConfig[] = [
   {
     achievementId: 'snap-happy',
     achievementTitle: 'You Were Close!',
-    achievementDescription: 'Trigger the Pokemon Snap easter egg.',
+    achievementDescription: 'Use Pokemon Snap as a correct answer.',
     triggerNames: ['pokemon snap', 'pokémon snap', 'pokÃ©mon snap'],
     durationMs: 5000,
     density: 34,
@@ -82,7 +84,7 @@ export const EASTER_EGGS: EasterEggConfig[] = [
   {
     achievementId: 'garden-party',
     achievementTitle: 'Maché Mating Dance',
-    achievementDescription: 'Trigger the Viva Pinata easter egg.',
+    achievementDescription: 'Use Viva Pinata as a correct answer.',
     triggerNames: ['viva pinata', 'viva piñata', 'viva piÃ±ata'],
     durationMs: 5200,
     density: 38,
@@ -91,7 +93,7 @@ export const EASTER_EGGS: EasterEggConfig[] = [
   {
     achievementId: 'war-never-changes',
     achievementTitle: 'Fawkes Approved',
-    achievementDescription: 'Trigger the Fallout 3 easter egg.',
+    achievementDescription: 'Use Fallout 3 as a correct answer.',
     triggerNames: ['fallout 3'],
     durationMs: 5200,
     density: 34,
@@ -100,7 +102,7 @@ export const EASTER_EGGS: EasterEggConfig[] = [
   {
     achievementId: 'brain-bounce',
     achievementTitle: 'Stretching Jelly Hero',
-    achievementDescription: 'Trigger the Smart Ball easter egg.',
+    achievementDescription: 'Use Smart Ball or Jerry Boy as a correct answer.',
     triggerNames: ['smart ball', 'jerry boy'],
     durationMs: 5000,
     density: 34,
@@ -109,7 +111,7 @@ export const EASTER_EGGS: EasterEggConfig[] = [
   {
     achievementId: 'cute-chaos',
     achievementTitle: 'Mascot Puck Smash',
-    achievementDescription: 'Trigger the Sanrio World Smashball easter egg.',
+    achievementDescription: 'Use Sanrio World Smashball as a correct answer.',
     triggerNames: ['sanrio world smashball'],
     durationMs: 5000,
     density: 36,
@@ -118,7 +120,7 @@ export const EASTER_EGGS: EasterEggConfig[] = [
   {
     achievementId: 'second-round',
     achievementTitle: 'ZA PARTY GAAAAME! 2',
-    achievementDescription: 'Trigger The Party Game 2 easter egg.',
+    achievementDescription: 'Use The Party Game 2 as a correct answer.',
     triggerNames: ['simple 2000 series the party game 2', 'the party game 2'],
     durationMs: 5200,
     density: 40,
@@ -127,7 +129,7 @@ export const EASTER_EGGS: EasterEggConfig[] = [
   {
     achievementId: 'blast-zone',
     achievementTitle: 'Kangaroo Mount Mayhem',
-    achievementDescription: 'Trigger the Super Bomberman 5 easter egg.',
+    achievementDescription: 'Use Super Bomberman 5 as a correct answer.',
     triggerNames: ['super bomberman 5'],
     durationMs: 5000,
     density: 38,
@@ -136,7 +138,7 @@ export const EASTER_EGGS: EasterEggConfig[] = [
   {
     achievementId: 'time-to-collect',
     achievementTitle: "Snatcher's Contract",
-    achievementDescription: 'Trigger A Hat in Time easter egg.',
+    achievementDescription: 'Use A Hat in Time as a correct answer.',
     triggerNames: ['a hat in time', 'hat in time'],
     durationMs: 5200,
     density: 36,
@@ -145,7 +147,7 @@ export const EASTER_EGGS: EasterEggConfig[] = [
   {
     achievementId: 'sold-out-crowd',
     achievementTitle: '64-bit-mania',
-    achievementDescription: 'Trigger the WCW vs nWo World Tour easter egg.',
+    achievementDescription: 'Use WCW vs nWo World Tour as a correct answer.',
     triggerNames: [
       'wcw vs nwo world tour',
       'wcw vs. nwo world tour',
@@ -159,7 +161,7 @@ export const EASTER_EGGS: EasterEggConfig[] = [
   {
     achievementId: 'maximum-impact',
     achievementTitle: '3D Buster Wolf',
-    achievementDescription: 'Trigger The King of Fighters Maximum Impact easter egg.',
+    achievementDescription: 'Use The King of Fighters: Maximum Impact as a correct answer.',
     triggerNames: [
       'king of fighters maximum impact',
       'the king of fighters maximum impact',
@@ -173,7 +175,7 @@ export const EASTER_EGGS: EasterEggConfig[] = [
   {
     achievementId: 'wrong-dimension',
     achievementTitle: 'Definitly Nothing Here',
-    achievementDescription: 'Trigger There Is No Game: Wrong Dimension easter egg.',
+    achievementDescription: 'Use There Is No Game: Wrong Dimension as a correct answer.',
     triggerNames: ['there is no game: wrong dimension', 'there is no game wrong dimension'],
     durationMs: 5200,
     density: 34,
@@ -182,7 +184,7 @@ export const EASTER_EGGS: EasterEggConfig[] = [
   {
     achievementId: 'finish-the-fight',
     achievementTitle: 'Finish the Fight',
-    achievementDescription: 'Trigger the Halo 2 easter egg.',
+    achievementDescription: 'Use Halo 2 as a correct answer.',
     triggerNames: ['halo 2'],
     durationMs: 5200,
     density: 36,
@@ -191,11 +193,24 @@ export const EASTER_EGGS: EasterEggConfig[] = [
   {
     achievementId: 'flying-power-disc',
     achievementTitle: 'Flying Power Disc',
-    achievementDescription: 'Trigger the Windjammers easter egg.',
+    achievementDescription: 'Use Windjammers as a correct answer.',
     triggerNames: ['windjammers'],
     durationMs: 5000,
     density: 38,
     pieceKinds: ['disc', 'trail'],
+  },
+  {
+    achievementId: 'free-planeswalker',
+    achievementTitle: 'Free Planeswalker?!?!',
+    achievementDescription: 'Use Magic: The Gathering - Duels of the Planeswalkers as a correct answer.',
+    triggerNames: [
+      'magic: the gathering - duels of the planeswalkers',
+      'magic the gathering duels of the planeswalkers',
+      'duels of the planeswalkers',
+    ],
+    durationMs: 5200,
+    density: 38,
+    pieceKinds: ['mtg-card', 'mana'],
   },
 ]
 
