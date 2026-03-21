@@ -5,3 +5,4 @@ test-results
 coverage
 .vercel
 .husky/_
+next-env.d.ts

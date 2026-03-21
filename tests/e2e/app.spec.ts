@@ -768,6 +768,50 @@ test('practice and versus restore in-progress boards from local storage', async 
   await expect(page.getByTestId('grid-cell-0')).toContainText('Restored Versus Game')
 })
 
+test('double alarm cells alternate between steal and game point only', async ({ page }) => {
+  await resetStorage(page)
+  await seedStorageValue(page, 'gamegrid_versus_state', {
+    puzzleId: 'versus-double-alarm',
+    puzzle: { ...fakePuzzle, id: 'versus-double-alarm', is_daily: false, date: null },
+    guesses: [
+      { gameId: 1, gameName: 'X1', gameImage: null, isCorrect: true, owner: 'x' },
+      { gameId: 2, gameName: 'X2', gameImage: null, isCorrect: true, owner: 'x' },
+      { gameId: 3, gameName: 'O3', gameImage: null, isCorrect: true, owner: 'o' },
+      ...Array(6).fill(null),
+    ],
+    guessesRemaining: 9,
+    isComplete: false,
+    currentPlayer: 'x',
+    stealableCell: 2,
+    winner: null,
+    pendingFinalSteal: null,
+    versusCategoryFilters: {},
+    versusStealRule: 'lower',
+    versusTimerOption: 'none',
+    turnTimeLeft: null,
+  })
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Versus' }).click()
+
+  const doubleAlarmCell = page.getByTestId('grid-cell-2')
+  await expect(doubleAlarmCell).toBeVisible()
+
+  const initialBorderColor = await doubleAlarmCell.evaluate(
+    (element) => (element as HTMLElement).style.borderColor
+  )
+  expect(initialBorderColor).not.toBe('')
+
+  await expect
+    .poll(
+      async () => {
+        return doubleAlarmCell.evaluate((element) => (element as HTMLElement).style.borderColor)
+      },
+      { timeout: 5000 }
+    )
+    .not.toBe(initialBorderColor)
+})
+
 test('versus timer enters danger state in the last 10 seconds', async ({ page }) => {
   await resetStorage(page)
   await seedStorageValue(page, 'gamegrid_versus_state', {
