@@ -422,13 +422,15 @@ export function ResultsModal({
 
         {/* Actions - fixed at bottom */}
         <div className="flex gap-3 pt-4 border-t border-border flex-shrink-0">
-          <Button
-            variant="outline"
-            onClick={handleCopyResults}
-            className="flex-1"
-          >
-            Copy Results
-          </Button>
+          {isDaily && (
+            <Button
+              variant="outline"
+              onClick={handleCopyResults}
+              className="flex-1"
+            >
+              Copy Results
+            </Button>
+          )}
           {!isDaily && (
             <Button onClick={onPlayAgain} className="flex-1">
               New Game

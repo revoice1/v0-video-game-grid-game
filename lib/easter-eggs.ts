@@ -31,6 +31,8 @@ export type EasterEggPieceKind =
   | 'plasma'
   | 'disc'
   | 'trail'
+  | 'mtg-card'
+  | 'mana'
 
 export interface EasterEggConfig {
   achievementId: string
@@ -196,6 +198,19 @@ export const EASTER_EGGS: EasterEggConfig[] = [
     durationMs: 5000,
     density: 38,
     pieceKinds: ['disc', 'trail'],
+  },
+  {
+    achievementId: 'free-planeswalker',
+    achievementTitle: 'Free Planeswalker?!?!',
+    achievementDescription: 'Use Magic: The Gathering - Duels of the Planeswalkers as a correct answer.',
+    triggerNames: [
+      'magic: the gathering - duels of the planeswalkers',
+      'magic the gathering duels of the planeswalkers',
+      'duels of the planeswalkers',
+    ],
+    durationMs: 5200,
+    density: 38,
+    pieceKinds: ['mtg-card', 'mana'],
   },
 ]
 

@@ -1101,6 +1101,49 @@ const EASTER_EGG_DEFINITIONS: EasterEggDefinition[] = [
       )
     },
   },
+  {
+    ...requireEasterEgg('free-planeswalker'),
+    renderPiece: (particle) => {
+      if (particle.kind === 'mtg-card') {
+        return (
+          <div
+            className="relative rounded-[14%] border border-[#7C3AED] bg-[#161127] shadow-[0_8px_22px_rgba(124,58,237,0.3)]"
+            style={{
+              width: `calc(${particle.size} * 0.78)`,
+              height: `calc(${particle.size} * 1.08)`,
+            }}
+          >
+            <div className="absolute inset-x-[10%] top-[8%] h-[12%] rounded-md bg-[#2A1E4A]" />
+            <div className="absolute inset-x-[12%] top-[24%] bottom-[18%] rounded-[12%] bg-[linear-gradient(180deg,#7C3AED_0%,#2563EB_48%,#F59E0B_100%)]" />
+            <div
+              className="absolute left-1/2 top-[42%] h-[28%] w-[34%] -translate-x-1/2 -translate-y-1/2 bg-[#F8FAFC]/90 shadow-[0_0_12px_rgba(248,250,252,0.35)]"
+              style={{ clipPath: 'polygon(50% 0%, 64% 36%, 100% 36%, 70% 58%, 80% 94%, 50% 72%, 20% 94%, 30% 58%, 0% 36%, 36% 36%)' }}
+            />
+            <div className="absolute inset-x-[18%] bottom-[8%] h-[6%] rounded-full bg-[#D1D5DB]/65" />
+          </div>
+        )
+      }
+
+      return (
+        <div
+          className="relative"
+          style={{
+            width: particle.size,
+            height: particle.size,
+          }}
+        >
+          <div
+            className="absolute inset-[12%] bg-[#8B5CF6] shadow-[0_0_18px_rgba(139,92,246,0.42)]"
+            style={{ clipPath: 'polygon(50% 0%, 62% 18%, 82% 18%, 72% 38%, 88% 50%, 72% 62%, 82% 82%, 62% 82%, 50% 100%, 38% 82%, 18% 82%, 28% 62%, 12% 50%, 28% 38%, 18% 18%, 38% 18%)' }}
+          />
+          <div
+            className="absolute inset-[30%] bg-[#C4B5FD]"
+            style={{ clipPath: 'polygon(50% 0%, 62% 18%, 82% 18%, 72% 38%, 88% 50%, 72% 62%, 82% 82%, 62% 82%, 50% 100%, 38% 82%, 18% 82%, 28% 62%, 12% 50%, 28% 38%, 18% 18%, 38% 18%)' }}
+          />
+        </div>
+      )
+    },
+  },
 ]
 
 function getEasterEggDefinition(gameName: string): EasterEggDefinition | null {
