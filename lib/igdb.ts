@@ -2,6 +2,9 @@ import type { Category, Game, PuzzleCellMetadata } from './types'
 
 const TWITCH_IGDB_CLIENT_ID = process.env.TWITCH_IGDB_CLIENT_ID
 const TWITCH_IGDB_CLIENT_SECRET = process.env.TWITCH_IGDB_CLIENT_SECRET
+const USING_TEST_IGDB_CREDENTIALS =
+  TWITCH_IGDB_CLIENT_ID === 'test-client-id' ||
+  TWITCH_IGDB_CLIENT_SECRET === 'test-client-secret'
 
 interface IGDBNamedEntity {
   id: number
@@ -514,6 +517,10 @@ function getPlatformAliases(name: string): Set<string> {
 
 async function getIGDBAccessToken(): Promise<string | null> {
   if (!TWITCH_IGDB_CLIENT_ID || !TWITCH_IGDB_CLIENT_SECRET) {
+    return null
+  }
+
+  if (USING_TEST_IGDB_CREDENTIALS) {
     return null
   }
 
