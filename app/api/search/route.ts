@@ -3,6 +3,19 @@ import { searchIGDBGames } from '@/lib/igdb'
 import { createClient } from '@/lib/supabase/server'
 import type { Category } from '@/lib/types'
 
+function parseCategoryTypes(rawValue: string | null): Set<Category['type']> {
+  if (!rawValue) {
+    return new Set<Category['type']>()
+  }
+
+  return new Set(
+    rawValue
+      .split(',')
+      .map((value) => value.trim())
+      .filter((value): value is Category['type'] => value.length > 0)
+  )
+}
+
 async function getPuzzleCategoryTypes(puzzleId: string | null): Promise<Set<Category['type']>> {
   if (!puzzleId) {
     return new Set<Category['type']>()
@@ -29,15 +42,19 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const query = searchParams.get('q')
   const puzzleId = searchParams.get('puzzleId')
+  const categoryTypesParam = searchParams.get('categoryTypes')
 
   if (!query || query.length < 2) {
     return NextResponse.json({ results: [] })
   }
 
   try {
-    const categoryTypes = await getPuzzleCategoryTypes(puzzleId)
+    const explicitCategoryTypes = parseCategoryTypes(categoryTypesParam)
+    const categoryTypes = explicitCategoryTypes.size > 0
+      ? explicitCategoryTypes
+      : await getPuzzleCategoryTypes(puzzleId)
     const games = await searchIGDBGames(query)
-    const shouldScrub = (type: Category['type']) => puzzleId != null && categoryTypes.has(type)
+    const shouldScrub = (type: Category['type']) => categoryTypes.has(type)
 
     // Return lightweight display metadata, scrubbing any families that overlap
     // with active puzzle categories for this search session.

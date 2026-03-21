@@ -1292,6 +1292,7 @@ export function GameClient() {
           sessionId,
           rowCategory,
           colCategory,
+          isDaily: mode === 'daily',
         }),
       })
 
@@ -1394,16 +1395,18 @@ export function GameClient() {
           })
         }
 
-        await fetch('/api/stats', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            puzzleId: puzzle.id,
-            sessionId,
-            score: finalScore,
-            rarityScore: 0, // Will be calculated on results load
-          }),
-        })
+        if (mode === 'daily') {
+          await fetch('/api/stats', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              puzzleId: puzzle.id,
+              sessionId,
+              score: finalScore,
+              rarityScore: 0, // Will be calculated on results load
+            }),
+          })
+        }
         
         setTimeout(() => setShowResults(true), 500)
       }
@@ -1615,7 +1618,7 @@ export function GameClient() {
 
       <GameSearch
         isOpen={selectedCell !== null}
-        puzzleId={puzzle.id}
+        puzzleId={mode === 'daily' ? puzzle.id : undefined}
         rowCategory={selectedRowCategory}
         colCategory={selectedColCategory}
         onSelect={handleGameSelect}

@@ -38,6 +38,10 @@ function getTodayDate(): string {
   return new Date().toISOString().split('T')[0]
 }
 
+function createEphemeralPuzzleId(): string {
+  return `practice-${crypto.randomUUID()}`
+}
+
 async function getExistingDailyPuzzle(supabase: Awaited<ReturnType<typeof createClient>>, today: string) {
   const { data } = await supabase
     .from('puzzles')
@@ -240,16 +244,37 @@ export async function GET(request: NextRequest) {
 
       if (!categories) throw lastError ?? new Error('Failed to generate puzzle')
 
+      if (mode !== 'daily') {
+        await send({ type: 'progress', pct: 100, message: 'Board ready.' })
+        await send({
+          type: 'puzzle',
+          puzzle: {
+            id: createEphemeralPuzzleId(),
+            date: null,
+            is_daily: false,
+            created_at: new Date().toISOString(),
+            row_categories: sanitizeCategories(categories.rows),
+            col_categories: sanitizeCategories(categories.cols),
+            validation_status: categories.validationStatus,
+            validation_message: categories.validationMessage,
+            cell_metadata: categories.cellMetadata,
+          },
+        })
+        return
+      }
+
       await send({ type: 'progress', pct: 96, message: 'Saving puzzle...' })
 
-      const insertPayload = mode === 'daily'
-        ? { date: getTodayDate(), is_daily: true, row_categories: categories.rows, col_categories: categories.cols, cell_metadata: categories.cellMetadata }
-        : { date: null, is_daily: false, row_categories: categories.rows, col_categories: categories.cols }
-
-      const { data: newPuzzle, error } = await supabase.from('puzzles').insert(insertPayload).select().single()
+      const { data: newPuzzle, error } = await supabase.from('puzzles').insert({
+        date: getTodayDate(),
+        is_daily: true,
+        row_categories: categories.rows,
+        col_categories: categories.cols,
+        cell_metadata: categories.cellMetadata,
+      }).select().single()
 
       if (error) {
-        if (error.code === '23505' && mode === 'daily') {
+        if (error.code === '23505') {
           const existing = await getExistingDailyPuzzle(supabase, getTodayDate())
           if (existing) {
             const cellMetadata: PuzzleCellMetadata[] = existing.cell_metadata ?? categories.cellMetadata

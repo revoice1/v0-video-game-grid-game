@@ -95,7 +95,7 @@ function getPreferredPlatform(game: Game): string | null {
 
 interface GameSearchProps {
   isOpen: boolean
-  puzzleId: string
+  puzzleId?: string
   rowCategory: Category | null
   colCategory: Category | null
   onSelect: (game: Game) => void
@@ -129,10 +129,19 @@ export function GameSearch({ isOpen, puzzleId, rowCategory, colCategory, onSelec
 
     setIsLoading(true)
     try {
-      const params = new URLSearchParams({
-        q: searchQuery,
-        puzzleId,
-      })
+      const params = new URLSearchParams({ q: searchQuery })
+      const categoryTypes = [rowCategory?.type, colCategory?.type].filter(
+        (type): type is Category['type'] => Boolean(type)
+      )
+
+      if (puzzleId) {
+        params.set('puzzleId', puzzleId)
+      }
+
+      if (categoryTypes.length > 0) {
+        params.set('categoryTypes', categoryTypes.join(','))
+      }
+
       const response = await fetch(`/api/search?${params.toString()}`)
       const data = await response.json()
       setResults(data.results || [])
@@ -143,7 +152,7 @@ export function GameSearch({ isOpen, puzzleId, rowCategory, colCategory, onSelec
     } finally {
       setIsLoading(false)
     }
-  }, [puzzleId])
+  }, [colCategory?.type, puzzleId, rowCategory?.type])
 
   useEffect(() => {
     if (debounceRef.current) {

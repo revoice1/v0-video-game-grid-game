@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
       sessionId,
       rowCategory,
       colCategory,
+      isDaily = true,
       lookupOnly,
     } = body as {
       puzzleId?: string
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest) {
       sessionId?: string
       rowCategory: Category
       colCategory: Category
+      isDaily?: boolean
       lookupOnly?: boolean
     }
 
@@ -64,22 +66,24 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const { data: existingGuess } = await supabase
-      .from('guesses')
-      .select('id')
-      .eq('puzzle_id', puzzleId)
-      .eq('session_id', sessionId)
-      .eq('game_id', gameId)
-      .maybeSingle()
+    if (isDaily) {
+      const { data: existingGuess } = await supabase
+        .from('guesses')
+        .select('id')
+        .eq('puzzle_id', puzzleId)
+        .eq('session_id', sessionId)
+        .eq('game_id', gameId)
+        .maybeSingle()
 
-    if (existingGuess) {
-      return NextResponse.json({
-        valid: false,
-        duplicate: true,
-        matchesRow: false,
-        matchesCol: false,
-        game: null,
-      })
+      if (existingGuess) {
+        return NextResponse.json({
+          valid: false,
+          duplicate: true,
+          matchesRow: false,
+          matchesCol: false,
+          game: null,
+        })
+      }
     }
 
     if (!valid && game) {
@@ -102,38 +106,35 @@ export async function POST(request: NextRequest) {
       })
     }
     
-    let recordedGuess = false
-    const { error: guessInsertError } = await supabase.from('guesses').insert({
-      puzzle_id: puzzleId,
-      cell_index: cellIndex,
-      game_id: gameId,
-      game_name: gameName,
-      game_image: gameImage,
-      session_id: sessionId,
-      is_correct: valid,
-    })
+    if (isDaily) {
+      const { error: guessInsertError } = await supabase.from('guesses').insert({
+        puzzle_id: puzzleId,
+        cell_index: cellIndex,
+        game_id: gameId,
+        game_name: gameName,
+        game_image: gameImage,
+        session_id: sessionId,
+        is_correct: valid,
+      })
 
-    if (guessInsertError) {
-      console.warn('[v0] Guess insert with correctness failed, falling back:', guessInsertError.message)
+      if (guessInsertError) {
+        console.warn('[v0] Guess insert with correctness failed, falling back:', guessInsertError.message)
 
-      if (valid) {
-        const { error: legacyGuessInsertError } = await supabase.from('guesses').insert({
-          puzzle_id: puzzleId,
-          cell_index: cellIndex,
-          game_id: gameId,
-          game_name: gameName,
-          game_image: gameImage,
-          session_id: sessionId,
-        })
+        if (valid) {
+          const { error: legacyGuessInsertError } = await supabase.from('guesses').insert({
+            puzzle_id: puzzleId,
+            cell_index: cellIndex,
+            game_id: gameId,
+            game_name: gameName,
+            game_image: gameImage,
+            session_id: sessionId,
+          })
 
-        if (legacyGuessInsertError) {
-          throw legacyGuessInsertError
+          if (legacyGuessInsertError) {
+            throw legacyGuessInsertError
+          }
         }
-
-        recordedGuess = true
       }
-    } else {
-      recordedGuess = true
     }
 
     return NextResponse.json({

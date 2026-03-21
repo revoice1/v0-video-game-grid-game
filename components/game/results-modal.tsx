@@ -103,6 +103,14 @@ export function ResultsModal({
   const score = correctGuesses
 
   useEffect(() => {
+    if (!isDaily) {
+      setStats(null)
+      setTotalCompletions(0)
+      setIsLoading(false)
+      setActiveTab('your-results')
+      return
+    }
+
     if (isOpen && puzzleId) {
       setIsLoading(true)
       fetch(`/api/stats?puzzleId=${puzzleId}`)
@@ -114,7 +122,7 @@ export function ResultsModal({
         .catch(console.error)
         .finally(() => setIsLoading(false))
     }
-  }, [isOpen, puzzleId])
+  }, [isDaily, isOpen, puzzleId])
 
   // Calculate rarity for each of user's guesses
   const getCellRarity = (cellIndex: number): number | null => {
@@ -176,31 +184,32 @@ export function ResultsModal({
           </DialogTitle>
         </DialogHeader>
 
-        {/* Tab Switcher */}
-        <div className="flex border-b border-border flex-shrink-0">
-          <button
-            onClick={() => setActiveTab('your-results')}
-            className={cn(
-              'flex-1 py-2 text-sm font-medium transition-colors',
-              activeTab === 'your-results' 
-                ? 'border-b-2 border-primary text-primary' 
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            Your Results
-          </button>
-          <button
-            onClick={() => setActiveTab('playerbase')}
-            className={cn(
-              'flex-1 py-2 text-sm font-medium transition-colors',
-              activeTab === 'playerbase' 
-                ? 'border-b-2 border-primary text-primary' 
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            All Players
-          </button>
-        </div>
+        {isDaily && (
+          <div className="flex border-b border-border flex-shrink-0">
+            <button
+              onClick={() => setActiveTab('your-results')}
+              className={cn(
+                'flex-1 py-2 text-sm font-medium transition-colors',
+                activeTab === 'your-results' 
+                  ? 'border-b-2 border-primary text-primary' 
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Your Results
+            </button>
+            <button
+              onClick={() => setActiveTab('playerbase')}
+              className={cn(
+                'flex-1 py-2 text-sm font-medium transition-colors',
+                activeTab === 'playerbase' 
+                  ? 'border-b-2 border-primary text-primary' 
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              All Players
+            </button>
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto min-h-0">
           {activeTab === 'your-results' ? (
@@ -216,7 +225,7 @@ export function ResultsModal({
               </div>
 
               {/* Rarity Score */}
-              {score > 0 && (
+              {isDaily && score > 0 && (
                 <div className="text-center p-4 rounded-lg bg-secondary/50 border border-border">
                   <p className="text-sm text-muted-foreground mb-1">Rarity Score</p>
                   <div className={cn('text-3xl font-bold', getRarityClass(100 - overallRarity))}>
@@ -284,9 +293,11 @@ export function ResultsModal({
               </div>
 
               {/* Stats footer */}
-              <div className="text-center text-xs text-muted-foreground">
-                {totalCompletions} {totalCompletions === 1 ? 'player has' : 'players have'} completed this puzzle
-              </div>
+              {isDaily && (
+                <div className="text-center text-xs text-muted-foreground">
+                  {totalCompletions} {totalCompletions === 1 ? 'player has' : 'players have'} completed this puzzle
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-6 py-4 px-1">

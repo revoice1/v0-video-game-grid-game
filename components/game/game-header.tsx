@@ -145,7 +145,7 @@ export function GameHeader({
                   'h-9 w-9 border transition-colors',
                   isAchievementsOpen
                     ? 'border-foreground bg-foreground text-background hover:bg-foreground/90 hover:text-background'
-                    : 'border-border bg-secondary/30 text-foreground hover:bg-secondary/60'
+                    : 'border-border bg-secondary/30 text-muted-foreground hover:bg-secondary/50 hover:text-foreground'
                 )}
               >
                 <AchievementEggIcon className="h-[18px] w-[18px]" />
