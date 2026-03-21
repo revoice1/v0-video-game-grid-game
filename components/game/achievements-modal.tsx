@@ -6,8 +6,9 @@ import { cn } from '@/lib/utils'
 import {
   ACHIEVEMENTS,
   loadUnlockedAchievementEntries,
-  loadUnlockedAchievementIds,
+  mergeUnlockedAchievementImages,
 } from '@/lib/achievements'
+import { EASTER_EGGS } from '@/lib/easter-eggs'
 import { useEffect, useState } from 'react'
 
 interface AchievementsModalProps {
@@ -24,14 +25,50 @@ export function AchievementsModal({ isOpen, onClose }: AchievementsModalProps) {
       return
     }
 
-    setUnlockedAchievementIds(loadUnlockedAchievementIds())
+    const entries = loadUnlockedAchievementEntries()
+    const unlockedIds = entries.map((entry) => entry.id)
+    setUnlockedAchievementIds(unlockedIds)
     setAchievementImageMap(
       new Map(
-        loadUnlockedAchievementEntries()
+        entries
           .filter((entry): entry is { id: string; imageUrl: string } => Boolean(entry.imageUrl))
           .map((entry) => [entry.id, entry.imageUrl])
       )
     )
+
+    const eeIds = new Set(EASTER_EGGS.map((egg) => egg.achievementId))
+    const needsImages = entries
+      .filter((entry) => eeIds.has(entry.id) && !entry.imageUrl)
+      .map((entry) => entry.id)
+
+    if (needsImages.length === 0) {
+      return
+    }
+
+    const controller = new AbortController()
+
+    fetch('/api/achievement-covers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ achievementIds: needsImages }),
+      signal: controller.signal,
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload) => {
+        const images = (payload?.images ?? {}) as Record<string, string | null>
+        const updatedEntries = mergeUnlockedAchievementImages(images)
+        setUnlockedAchievementIds(updatedEntries.map((entry) => entry.id))
+        setAchievementImageMap(
+          new Map(
+            updatedEntries
+              .filter((entry): entry is { id: string; imageUrl: string } => Boolean(entry.imageUrl))
+              .map((entry) => [entry.id, entry.imageUrl])
+          )
+        )
+      })
+      .catch(() => undefined)
+
+    return () => controller.abort()
   }, [isOpen])
 
   const unlockedAchievementSet = new Set(unlockedAchievementIds)
@@ -60,6 +97,7 @@ export function AchievementsModal({ isOpen, onClose }: AchievementsModalProps) {
             {ACHIEVEMENTS.map((achievement) => {
               const isUnlocked = unlockedAchievementSet.has(achievement.id)
               const imageUrl = achievementImageMap.get(achievement.id)
+              const isPerfectGrid = achievement.id === 'perfect-grid'
 
               return (
                 <div
@@ -83,6 +121,23 @@ export function AchievementsModal({ isOpen, onClose }: AchievementsModalProps) {
                       >
                         {isUnlocked && imageUrl ? (
                           <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+                        ) : isUnlocked && isPerfectGrid ? (
+                          <svg
+                            viewBox="0 0 24 24"
+                            className={cn(
+                              'h-8 w-8',
+                              isUnlocked ? 'text-primary' : 'text-muted-foreground'
+                            )}
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.6"
+                          >
+                            <path d="M7 6h10v2a5 5 0 01-10 0V6Z" />
+                            <path d="M5 6H3c0 3 1.5 5 4 5" />
+                            <path d="M19 6h2c0 3-1.5 5-4 5" />
+                            <path d="M10 13h4v3h-4z" />
+                            <path d="M8 19h8" />
+                          </svg>
                         ) : (
                           <span
                             className={cn(
