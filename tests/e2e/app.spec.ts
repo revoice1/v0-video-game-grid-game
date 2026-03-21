@@ -37,11 +37,46 @@ const fakeSearchResult = {
 }
 
 async function resetStorage(page: Page) {
+  const seededDailyState = {
+    puzzleId: fakePuzzle.id,
+    puzzle: fakePuzzle,
+    guesses: Array(9).fill(null),
+    guessesRemaining: 9,
+    isComplete: false,
+    date: new Date().toISOString().slice(0, 10),
+  }
+
+  await page.route('**/api/puzzle-stream?*', async (route) => {
+    const url = route.request().url()
+    const mode = new URL(url).searchParams.get('mode')
+
+    if (mode !== 'daily') {
+      await route.fallback()
+      return
+    }
+
+    await route.fulfill({
+      status: 200,
+      headers: {
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache',
+      },
+      body: [
+        `data: ${JSON.stringify({ type: 'progress', pct: 20, message: 'Preparing daily board...' })}`,
+        '',
+        `data: ${JSON.stringify({ type: 'puzzle', puzzle: fakePuzzle })}`,
+        '',
+      ].join('\n') + '\n',
+    })
+  })
+
   await page.goto('/')
-  await page.evaluate(() => {
+  await page.evaluate((dailyState) => {
     window.localStorage.clear()
     window.sessionStorage.clear()
-  })
+    window.localStorage.setItem('gamegrid_daily_state', JSON.stringify(dailyState))
+  }, seededDailyState)
+  await page.reload()
 }
 
 async function seedDailyPuzzle(page: Page) {
@@ -161,10 +196,18 @@ test('confirm picks setting persists after reload', async ({ page }) => {
   await page.reload()
   await page.getByRole('button', { name: 'Open settings' }).click()
 
-  await expect(page.getByRole('button', { name: 'Turn off search confirmation' })).toBeVisible()
   await expect.poll(async () => {
     return page.evaluate(() => window.localStorage.getItem('gamegrid_search_confirm'))
   }).toBe('true')
+  await expect(page.getByText('Ask before submitting')).toBeVisible()
+  await expect
+    .poll(async () => {
+      return page
+        .getByRole('button', { name: /search confirmation/i })
+        .first()
+        .getAttribute('aria-label')
+    })
+    .toBe('Turn off search confirmation')
 })
 
 test('practice mode shows start options and opens custom setup', async ({ page }) => {
