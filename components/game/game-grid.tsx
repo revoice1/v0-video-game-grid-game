@@ -50,6 +50,25 @@ function getWinningOwner(guesses: (CellGuess | null)[]) {
   return null
 }
 
+function parseTimerLabel(label: string | null | undefined): number | null {
+  if (!label) {
+    return null
+  }
+
+  const match = label.match(/(\d+):(\d{2})/)
+  if (!match) {
+    return null
+  }
+
+  const minutes = Number(match[1])
+  const seconds = Number(match[2])
+  if (Number.isNaN(minutes) || Number.isNaN(seconds)) {
+    return null
+  }
+
+  return minutes * 60 + seconds
+}
+
 export function GameGrid({
   rowCategories,
   colCategories,
@@ -71,7 +90,7 @@ export function GameGrid({
   onCellClick,
 }: GameGridProps) {
   const winnerLabel = winner === 'x' ? 'X' : 'O'
-  const isStealPossible = stealTargetLabel !== null
+  const isStealPossible = stealableCell !== null
 
   const gamePointCells =
     currentPlayer === null || isGameOver
@@ -105,10 +124,11 @@ export function GameGrid({
     turnTimerMaxSeconds !== null
       ? Math.min(30, Math.max(10, Math.round(turnTimerMaxSeconds * 0.3)))
       : 10
-  const isTimerDanger = turnTimerSeconds !== null && turnTimerSeconds <= timerDangerThreshold
+  const parsedTimerSeconds = turnTimerSeconds ?? parseTimerLabel(turnTimerLabel)
+  const isTimerDanger = parsedTimerSeconds !== null && parsedTimerSeconds <= timerDangerThreshold
   const timerDangerProgress =
-    turnTimerSeconds !== null && turnTimerSeconds <= timerDangerThreshold
-      ? Math.min(1, Math.max(0, (timerDangerThreshold - turnTimerSeconds) / timerDangerThreshold))
+    parsedTimerSeconds !== null && parsedTimerSeconds <= timerDangerThreshold
+      ? Math.min(1, Math.max(0, (timerDangerThreshold - parsedTimerSeconds) / timerDangerThreshold))
       : 0
   const timerDangerStyle = isTimerDanger
     ? {
