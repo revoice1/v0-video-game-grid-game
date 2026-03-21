@@ -28,51 +28,58 @@ export async function GET(request: NextRequest) {
 
     if (puzzleError) throw puzzleError
 
-    // Get all correct-answer stats for this puzzle, grouped by cell
-    const { data: correctStats, error } = await supabase
-      .from('answer_stats')
-      .select('*')
-      .eq('puzzle_id', puzzleId)
-      .order('count', { ascending: false })
-    
-    if (error) throw error
-    
-    // Get completion count
-    const { count: completionCount } = await supabase
+    const { data: completionRows, error: completionError } = await supabase
       .from('puzzle_completions')
-      .select('*', { count: 'exact', head: true })
+      .select('session_id')
       .eq('puzzle_id', puzzleId)
 
-    let incorrectGuessRows:
+    if (completionError) throw completionError
+
+    const completionCount = completionRows?.length ?? 0
+    const completedSessionIds = new Set(
+      (completionRows ?? [])
+        .map(row => row.session_id)
+        .filter((sessionId): sessionId is string => typeof sessionId === 'string' && sessionId.length > 0)
+    )
+
+    let guessRows:
       | {
           cell_index: number
           game_id: number
           game_name: string
           game_image: string | null
           is_correct: boolean
+          session_id: string | null
         }[]
       | null = null
 
-    const incorrectResponse = await supabase
+    const guessResponse = await supabase
       .from('guesses')
-      .select('cell_index,game_id,game_name,game_image,is_correct')
+      .select('cell_index,game_id,game_name,game_image,is_correct,session_id')
       .eq('puzzle_id', puzzleId)
-      .eq('is_correct', false)
 
-    if (incorrectResponse.error) {
-      console.warn('[v0] Incorrect guess stats unavailable:', incorrectResponse.error.message)
+    if (guessResponse.error) {
+      console.warn('[v0] Guess stats unavailable:', guessResponse.error.message)
     } else {
-      incorrectGuessRows = incorrectResponse.data
+      guessRows = guessResponse.data
     }
 
+    const completedGuessRows = (guessRows ?? []).filter(guess =>
+      guess.session_id ? completedSessionIds.has(guess.session_id) : false
+    )
+
+    const correctStatsMap = new Map<string, GuessStatRow>()
     const incorrectStatsMap = new Map<string, GuessStatRow>()
-    for (const guess of incorrectGuessRows ?? []) {
+    for (const guess of completedGuessRows) {
       const key = `${guess.cell_index}:${guess.game_id}`
-      const existing = incorrectStatsMap.get(key)
+
+      const targetMap = guess.is_correct ? correctStatsMap : incorrectStatsMap
+      const existing = targetMap.get(key)
+
       if (existing) {
         existing.count += 1
       } else {
-        incorrectStatsMap.set(key, {
+        targetMap.set(key, {
           puzzle_id: puzzleId,
           cell_index: guess.cell_index,
           game_id: guess.game_id,
@@ -87,7 +94,9 @@ export async function GET(request: NextRequest) {
     const cellStats: Record<number, { correct: GuessStatRow[]; incorrect: GuessStatRow[] }> = {}
     for (let i = 0; i < 9; i++) {
       cellStats[i] = {
-        correct: ((correctStats as GuessStatRow[] | null) ?? []).filter(s => s.cell_index === i),
+        correct: Array.from(correctStatsMap.values())
+          .filter(s => s.cell_index === i)
+          .sort((left, right) => right.count - left.count),
         incorrect: Array.from(incorrectStatsMap.values())
           .filter(s => s.cell_index === i)
           .sort((left, right) => right.count - left.count),
@@ -113,8 +122,18 @@ export async function POST(request: NextRequest) {
   
   try {
     const { puzzleId, sessionId, score, rarityScore } = await request.json()
-    
-    // Record puzzle completion
+
+    const { data: existingCompletion, error: existingCompletionError } = await supabase
+      .from('puzzle_completions')
+      .select('session_id')
+      .eq('puzzle_id', puzzleId)
+      .eq('session_id', sessionId)
+      .maybeSingle()
+
+    if (existingCompletionError) throw existingCompletionError
+
+    const isNewCompletion = !existingCompletion
+
     const { error } = await supabase
       .from('puzzle_completions')
       .upsert({
@@ -125,6 +144,27 @@ export async function POST(request: NextRequest) {
       })
     
     if (error) throw error
+
+    if (isNewCompletion) {
+      const { data: correctGuesses, error: guessesError } = await supabase
+        .from('guesses')
+        .select('cell_index,game_id,game_name,game_image')
+        .eq('puzzle_id', puzzleId)
+        .eq('session_id', sessionId)
+        .eq('is_correct', true)
+
+      if (guessesError) throw guessesError
+
+      for (const guess of correctGuesses ?? []) {
+        await supabase.rpc('increment_answer_stat', {
+          p_puzzle_id: puzzleId,
+          p_cell_index: guess.cell_index,
+          p_game_id: guess.game_id,
+          p_game_name: guess.game_name,
+          p_game_image: guess.game_image,
+        })
+      }
+    }
     
     return NextResponse.json({ success: true })
   } catch (error) {

@@ -136,17 +136,6 @@ export async function POST(request: NextRequest) {
       recordedGuess = true
     }
 
-    if (valid && recordedGuess) {
-      // Atomically increment answer stats with a single upsert
-      await supabase.rpc('increment_answer_stat', {
-        p_puzzle_id: puzzleId,
-        p_cell_index: cellIndex,
-        p_game_id: gameId,
-        p_game_name: gameName,
-        p_game_image: gameImage,
-      })
-    }
-    
     return NextResponse.json({
       valid,
       duplicate: false,

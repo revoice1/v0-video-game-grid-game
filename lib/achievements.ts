@@ -1,3 +1,5 @@
+import { EASTER_EGGS } from './easter-eggs'
+
 export interface AchievementDefinition {
   id: string
   title: string
@@ -12,26 +14,11 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     title: 'Perfect Grid',
     description: 'Finish a board with a flawless 9/9.',
   },
-  {
-    id: 'chex-mix',
-    title: 'Breakfast Defender',
-    description: 'Trigger the Chex Quest easter egg.',
-  },
-  {
-    id: 'golden-path',
-    title: 'Golden Path',
-    description: 'Trigger the Tunic easter egg.',
-  },
-  {
-    id: 'dust-to-dust',
-    title: 'Scraps of Memory',
-    description: 'Trigger the Phantom Dust easter egg.',
-  },
-  {
-    id: 'snap-happy',
-    title: 'You Were Close!',
-    description: 'Trigger the Pokemon Snap easter egg.',
-  },
+  ...EASTER_EGGS.map(({ achievementId, achievementTitle, achievementDescription }) => ({
+    id: achievementId,
+    title: achievementTitle,
+    description: achievementDescription,
+  })),
 ]
 
 export function loadUnlockedAchievementIds(): string[] {

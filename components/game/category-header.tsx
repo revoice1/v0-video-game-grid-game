@@ -42,8 +42,8 @@ export function CategoryHeaderSimple({ category, orientation }: CategoryHeaderPr
         className={cn(
           'block w-full font-bold text-sm leading-snug text-foreground text-balance',
           orientation === 'col'
-            ? 'max-sm:text-[11px] max-sm:leading-tight max-sm:[overflow-wrap:anywhere] max-sm:[text-wrap:pretty]'
-            : 'max-sm:text-[11px] max-sm:leading-tight max-sm:[overflow-wrap:anywhere] max-sm:[text-wrap:pretty]'
+            ? 'max-sm:text-[10px] max-sm:leading-tight max-sm:[text-wrap:pretty]'
+            : 'max-sm:text-[9px] max-sm:leading-[1.15] max-sm:[text-wrap:pretty]'
         )}
       >
         {category.name}

@@ -25,7 +25,7 @@ export function GameGrid({
 }: GameGridProps) {
   return (
     <div className="w-full max-w-xl mx-auto">
-      <div className="grid grid-cols-4 gap-3 auto-rows-fr">
+      <div className="grid auto-rows-fr grid-cols-[1.12fr_repeat(3,minmax(0,1fr))] gap-2 sm:grid-cols-4 sm:gap-3">
         <div className="aspect-square" />
 
         {colCategories.map((cat, i) => (
