@@ -36,6 +36,7 @@ const WINNING_LINES = [
 
 type GameMode = 'daily' | 'practice' | 'versus'
 type TicTacToePlayer = 'x' | 'o'
+type AnimationQuality = 'high' | 'medium' | 'low'
 const VERSUS_RECORD_KEY = 'gamegrid_versus_record'
 
 interface EasterEggParticle {
@@ -75,6 +76,7 @@ interface ActiveStealShowdown {
   attackerScore: number
   rule: VersusStealRule
   successful: boolean
+  lowEffects?: boolean
 }
 
 interface ActiveStealMissSplash {
@@ -100,6 +102,47 @@ function getNextPlayer(player: TicTacToePlayer): TicTacToePlayer {
 
 function getPlayerLabel(player: TicTacToePlayer): string {
   return player === 'x' ? 'Player 1' : 'Player 2'
+}
+
+function detectAnimationQuality(): AnimationQuality {
+  if (typeof window === 'undefined') {
+    return 'high'
+  }
+
+  const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+
+  if (prefersReducedMotion) {
+    return 'low'
+  }
+
+  const navigatorWithHints = navigator as Navigator & {
+    deviceMemory?: number
+    hardwareConcurrency?: number
+  }
+  const deviceMemory = navigatorWithHints.deviceMemory ?? 8
+  const hardwareConcurrency = navigatorWithHints.hardwareConcurrency ?? 8
+
+  if (deviceMemory <= 4 || hardwareConcurrency <= 4) {
+    return 'low'
+  }
+
+  if (deviceMemory <= 8 || hardwareConcurrency <= 8) {
+    return 'medium'
+  }
+
+  return 'high'
+}
+
+function scaleParticleDensity(density: number, quality: AnimationQuality): number {
+  if (quality === 'low') {
+    return Math.max(10, Math.round(density * 0.45))
+  }
+
+  if (quality === 'medium') {
+    return Math.max(14, Math.round(density * 0.7))
+  }
+
+  return density
 }
 
 function hasNonEmptyFilters(filters: VersusCategoryFilters): boolean {
@@ -174,6 +217,7 @@ function StealShowdownOverlay({
   attackerScore,
   rule,
   successful,
+  lowEffects = false,
 }: ActiveStealShowdown) {
   const attackerScoreLabel = `${attackerScore}`
   const defenderScoreLabel = `${defenderScore}`
@@ -235,35 +279,41 @@ function StealShowdownOverlay({
   }, [burstId])
 
   useEffect(() => {
+    const attackerSpinIntervalMs = lowEffects ? 120 : 70
     const attackerInterval = setInterval(() => {
       setSpinningAttackerDigits(current => current.map((digit, index) => (
         revealedAttackerDigits[index] ? digit : `${Math.floor(Math.random() * 10)}`
       )))
-    }, 70)
+    }, attackerSpinIntervalMs)
 
     return () => clearInterval(attackerInterval)
-  }, [revealedAttackerDigits])
+  }, [lowEffects, revealedAttackerDigits])
 
   useEffect(() => {
+    const defenderSpinIntervalMs = lowEffects ? 120 : 70
     const defenderInterval = setInterval(() => {
       setSpinningDefenderDigits(current => current.map((digit, index) => (
         revealedDefenderDigits[index] ? digit : `${Math.floor(Math.random() * 10)}`
       )))
-    }, 70)
+    }, defenderSpinIntervalMs)
 
     return () => clearInterval(defenderInterval)
-  }, [revealedDefenderDigits])
+  }, [lowEffects, revealedDefenderDigits])
 
   return (
     <div className="fixed inset-0 z-[80]">
       <div className={cn(
-        'absolute inset-0 backdrop-blur-[3px] transition-all duration-300',
+        'absolute inset-0 transition-all duration-300',
+        !lowEffects && 'backdrop-blur-[3px]',
         successful
           ? 'bg-[radial-gradient(circle_at_center,rgba(56,189,248,0.14),transparent_32%),radial-gradient(circle_at_center,rgba(0,0,0,0.88),rgba(0,0,0,0.72))]'
           : 'bg-[radial-gradient(circle_at_center,rgba(239,68,68,0.18),transparent_30%),radial-gradient(circle_at_center,rgba(0,0,0,0.9),rgba(0,0,0,0.76))]'
       )} />
       <div className="pointer-events-none absolute inset-0 grid place-items-center p-4">
-      <div className="showdown-shell w-full max-w-lg rounded-[2rem] border border-border/80 bg-card/95 p-6 shadow-[0_28px_90px_rgba(0,0,0,0.6)]">
+      <div className={cn(
+        'showdown-shell w-full max-w-lg rounded-[2rem] border border-border/80 bg-card/95 p-6',
+        lowEffects ? 'shadow-2xl' : 'shadow-[0_28px_90px_rgba(0,0,0,0.6)]'
+      )}>
         <p className="text-center text-xs font-semibold uppercase tracking-[0.24em] text-primary">
           Steal Attempt
         </p>
@@ -278,7 +328,10 @@ function StealShowdownOverlay({
               {defenderScoreLabel.split('').map((digit, index) => (
                 <span
                   key={`${burstId}-defender-${index}`}
-                  className="inline-flex h-14 w-10 items-center justify-center rounded-xl border border-emerald-400/30 bg-background/75 text-4xl font-black text-emerald-300 shadow-[0_0_18px_rgba(110,231,183,0.14)]"
+                  className={cn(
+                    'inline-flex h-14 w-10 items-center justify-center rounded-xl border border-emerald-400/30 bg-background/75 text-4xl font-black text-emerald-300',
+                    !lowEffects && 'shadow-[0_0_18px_rgba(110,231,183,0.14)]'
+                  )}
                 >
                   {revealedDefenderDigits[index] ? digit : spinningDefenderDigits[index]}
                 </span>
@@ -286,7 +339,7 @@ function StealShowdownOverlay({
             </div>
           </div>
           <div className="showdown-vs text-center">
-            <p className="text-xl font-black uppercase tracking-[0.28em] text-foreground/80 drop-shadow-[0_0_20px_rgba(255,255,255,0.1)]">VS</p>
+            <p className={cn('text-xl font-black uppercase tracking-[0.28em] text-foreground/80', !lowEffects && 'drop-shadow-[0_0_20px_rgba(255,255,255,0.1)]')}>VS</p>
           </div>
           <div className="showdown-panel showdown-panel-right rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
             <p className="truncate text-xs uppercase tracking-[0.18em] text-muted-foreground">Challenger</p>
@@ -295,7 +348,10 @@ function StealShowdownOverlay({
               {attackerScoreLabel.split('').map((digit, index) => (
                 <span
                   key={`${burstId}-attacker-${index}`}
-                  className="inline-flex h-14 w-10 items-center justify-center rounded-xl border border-sky-400/30 bg-background/75 text-4xl font-black text-sky-300 shadow-[0_0_18px_rgba(56,189,248,0.14)]"
+                  className={cn(
+                    'inline-flex h-14 w-10 items-center justify-center rounded-xl border border-sky-400/30 bg-background/75 text-4xl font-black text-sky-300',
+                    !lowEffects && 'shadow-[0_0_18px_rgba(56,189,248,0.14)]'
+                  )}
                 >
                   {revealedAttackerDigits[index] ? digit : spinningAttackerDigits[index]}
                 </span>
@@ -308,8 +364,8 @@ function StealShowdownOverlay({
             className={cn(
               'rounded-2xl border px-4 py-3 text-center text-sm font-semibold uppercase tracking-[0.18em] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]',
               successful
-                ? 'border-primary/40 bg-primary/15 text-primary shadow-[0_0_28px_rgba(34,197,94,0.16)]'
-                : 'border-destructive/40 bg-destructive/15 text-destructive shadow-[0_0_28px_rgba(239,68,68,0.18)]'
+                ? (lowEffects ? 'border-primary/40 bg-primary/15 text-primary' : 'border-primary/40 bg-primary/15 text-primary shadow-[0_0_28px_rgba(34,197,94,0.16)]')
+                : (lowEffects ? 'border-destructive/40 bg-destructive/15 text-destructive' : 'border-destructive/40 bg-destructive/15 text-destructive shadow-[0_0_28px_rgba(239,68,68,0.18)]')
             )}
           >
             {successful ? 'Steal Successful' : 'Steal Denied'}
@@ -1184,6 +1240,7 @@ function EasterEggCelebration({ burstId, renderPiece, particles }: ActiveEasterE
               animationDuration: particle.duration,
               animationTimingFunction: 'linear',
               animationFillMode: 'both',
+              willChange: 'transform, opacity',
               ['--rotation' as string]: particle.rotate,
               ['--drift' as string]: particle.drift,
             }}
@@ -1396,6 +1453,7 @@ export function GameClient() {
   const [versusRecord, setVersusRecord] = useState<VersusRecord>({ xWins: 0, oWins: 0 })
   const [pendingFinalSteal, setPendingFinalSteal] = useState<PendingFinalSteal | null>(null)
   const [lockImpactCell, setLockImpactCell] = useState<number | null>(null)
+  const [animationQuality, setAnimationQuality] = useState<AnimationQuality>('high')
   const { toast } = useToast()
 
   const score = guesses.filter(g => g?.isCorrect).length
@@ -1429,6 +1487,7 @@ export function GameClient() {
   useEffect(() => {
     setSessionId(getSessionId())
     setVersusRecord(getInitialVersusRecord())
+    setAnimationQuality(detectAnimationQuality())
   }, [])
 
   useEffect(() => {
@@ -2127,7 +2186,7 @@ export function GameClient() {
       if (easterEggDefinition) {
         const burstId = Date.now()
         const particles = createFallingParticles(
-          easterEggDefinition.density,
+          scaleParticleDensity(easterEggDefinition.density, animationQuality),
           easterEggDefinition.pieceKinds,
           burstId
         )
@@ -2551,7 +2610,7 @@ export function GameClient() {
     <main id="top" className="min-h-screen py-6 px-4">
       {activeEasterEgg && <EasterEggCelebration {...activeEasterEgg} />}
       {activePerfectCelebration && <PerfectGridCelebration {...activePerfectCelebration} />}
-      {activeStealShowdown && <StealShowdownOverlay {...activeStealShowdown} />}
+      {activeStealShowdown && <StealShowdownOverlay {...activeStealShowdown} lowEffects={animationQuality === 'low'} />}
       {activeStealMissSplash && <StealMissSplash {...activeStealMissSplash} />}
 
       <GameHeader

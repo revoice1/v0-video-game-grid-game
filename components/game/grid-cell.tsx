@@ -65,14 +65,14 @@ export function GridCell({
       onClick={onClick}
       disabled={isButtonDisabled}
       className={cn(
-        'game-cell aspect-square w-full rounded-lg border-2 border-border',
+        'game-cell relative aspect-square w-full rounded-lg border-2 border-border',
         'flex items-center justify-center overflow-hidden',
         'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background',
         'transition-all duration-200',
         isSelected && !hasGuess && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
         isAvailable && availableTone === 'x' && 'border-primary/45 shadow-[0_0_0_1px_rgba(34,197,94,0.22),0_0_18px_rgba(34,197,94,0.14)] hover:border-primary/65',
         isAvailable && availableTone === 'o' && 'border-sky-400/45 shadow-[0_0_0_1px_rgba(56,189,248,0.22),0_0_18px_rgba(56,189,248,0.14)] hover:border-sky-300/65',
-        isStealable && 'ring-2 ring-sky-400/60 ring-offset-2 ring-offset-background stealable-pulse',
+        isStealable && 'ring-2 ring-sky-400/60 ring-offset-2 ring-offset-background',
         hasGuess && guess.isCorrect && 'correct border-primary/50',
         hasGuess && !guess.isCorrect && 'incorrect border-destructive/50',
         hasGuess && 'cursor-pointer hover:brightness-110',
@@ -80,6 +80,12 @@ export function GridCell({
         isDisabled && !hasGuess && 'opacity-50 cursor-not-allowed'
       )}
     >
+      {isStealable && (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-[-3px] rounded-[12px] border border-sky-300/70 stealable-pulse-indicator"
+        />
+      )}
       {hasGuess ? (
         <div className="relative h-full w-full group">
           {guess.gameImage ? (
@@ -165,32 +171,27 @@ export function GridCell({
         </div>
       )}
       <style jsx>{`
-        .stealable-pulse {
-          animation: stealable-pulse 1.1s ease-in-out infinite;
-        }
-
         .lock-impact {
           animation: lock-slam 620ms cubic-bezier(0.22, 1, 0.36, 1);
         }
 
-        @keyframes stealable-pulse {
+        .stealable-pulse-indicator {
+          animation: stealable-pulse-indicator 1.15s ease-in-out infinite;
+          will-change: transform, opacity;
+        }
+
+        @keyframes stealable-pulse-indicator {
           0% {
-            box-shadow:
-              0 0 0 0 rgba(56, 189, 248, 0.18),
-              0 0 0 1px rgba(56, 189, 248, 0.45),
-              0 0 16px rgba(56, 189, 248, 0.24);
+            opacity: 0.45;
+            transform: scale(0.985);
           }
           50% {
-            box-shadow:
-              0 0 0 6px rgba(56, 189, 248, 0.12),
-              0 0 0 2px rgba(56, 189, 248, 0.85),
-              0 0 32px rgba(56, 189, 248, 0.42);
+            opacity: 1;
+            transform: scale(1.03);
           }
           100% {
-            box-shadow:
-              0 0 0 0 rgba(56, 189, 248, 0.18),
-              0 0 0 1px rgba(56, 189, 248, 0.45),
-              0 0 16px rgba(56, 189, 248, 0.24);
+            opacity: 0.45;
+            transform: scale(0.985);
           }
         }
 
@@ -212,6 +213,13 @@ export function GridCell({
           100% {
             transform: translateY(0) scale(1) rotate(0deg);
             opacity: 1;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .stealable-pulse-indicator,
+          .lock-impact {
+            animation: none;
           }
         }
       `}</style>
