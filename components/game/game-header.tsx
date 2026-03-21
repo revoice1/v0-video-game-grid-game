@@ -9,11 +9,20 @@ function AchievementEggIcon({ className }: { className?: string }) {
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
         d="M12 3.5c-3.5 0-6.5 3.95-6.5 8.55C5.5 16.5 8.2 20 12 20s6.5-3.5 6.5-7.95C18.5 7.45 15.5 3.5 12 3.5Z"
-        fill="currentColor"
+        fill="hsl(var(--background))"
+        stroke="currentColor"
+        strokeWidth="1.9"
       />
-      <circle cx="9.25" cy="10.1" r="1.2" fill="hsl(var(--background))" fillOpacity="0.9" />
-      <circle cx="14.6" cy="13.25" r="1.05" fill="hsl(var(--background))" fillOpacity="0.9" />
-      <circle cx="11.35" cy="16" r="0.95" fill="hsl(var(--background))" fillOpacity="0.9" />
+      <path
+        d="M12.15 6.2c-.65 1.55-.45 3.2.6 4.9 1.05 1.7 1.15 3.4.25 5.1"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinecap="round"
+        opacity="0.7"
+      />
+      <ellipse cx="9.1" cy="9.55" rx="1.85" ry="2.3" fill="currentColor" />
+      <ellipse cx="14.75" cy="13.05" rx="1.5" ry="1.95" fill="currentColor" />
+      <ellipse cx="10.9" cy="15.75" rx="1.25" ry="1.65" fill="currentColor" />
     </svg>
   )
 }
@@ -128,18 +137,18 @@ export function GameHeader({
               )}
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
                 onClick={onAchievements}
                 aria-label="Achievements"
                 title="Achievements"
                 className={cn(
-                  'border px-2.5 transition-colors',
+                  'h-9 w-9 border transition-colors',
                   isAchievementsOpen
                     ? 'border-foreground bg-foreground text-background hover:bg-foreground/90 hover:text-background'
                     : 'border-border bg-secondary/30 text-foreground hover:bg-secondary/60'
                 )}
               >
-                <AchievementEggIcon className="h-4 w-4" />
+                <AchievementEggIcon className="h-[18px] w-[18px]" />
               </Button>
               <Button 
                 variant="ghost" 

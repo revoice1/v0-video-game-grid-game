@@ -493,103 +493,93 @@ export function GameClient() {
     try {
       let puzzleData: Puzzle | null = null
 
-      if (gameMode === 'practice') {
-        const response = await fetch(`/api/puzzle-stream?mode=${gameMode}`)
-        if (!response.ok || !response.body) {
-          throw new Error('Failed to open puzzle stream')
-        }
+      const response = await fetch(`/api/puzzle-stream?mode=${gameMode}`)
+      if (!response.ok || !response.body) {
+        throw new Error('Failed to open puzzle stream')
+      }
 
-        const reader = response.body.getReader()
-        const decoder = new TextDecoder()
-        let buffer = ''
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
 
-        while (true) {
-          const { value, done } = await reader.read()
-          if (done) break
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
 
-          buffer += decoder.decode(value, { stream: true })
-          const events = buffer.split('\n\n')
-          buffer = events.pop() ?? ''
+        buffer += decoder.decode(value, { stream: true })
+        const events = buffer.split('\n\n')
+        buffer = events.pop() ?? ''
 
-          for (const eventChunk of events) {
-            const dataLine = eventChunk
-              .split('\n')
-              .find(line => line.startsWith('data: '))
+        for (const eventChunk of events) {
+          const dataLine = eventChunk
+            .split('\n')
+            .find(line => line.startsWith('data: '))
 
-            if (!dataLine) {
-              continue
+          if (!dataLine) {
+            continue
+          }
+
+          const event = JSON.parse(dataLine.slice(6)) as PuzzleStreamMessage
+
+          if (event.type === 'progress') {
+            if (typeof event.pct === 'number') {
+              setLoadingProgress(current => Math.max(current, event.pct!))
             }
-
-            const event = JSON.parse(dataLine.slice(6)) as PuzzleStreamMessage
-
-            if (event.type === 'progress') {
-              if (typeof event.pct === 'number') {
-                setLoadingProgress(current => Math.max(current, event.pct!))
-              }
-              if (event.message) {
-                setLoadingStage(event.message)
-              }
-              if (event.stage === 'attempt' && event.attempt && event.rows && event.cols) {
-                setLoadingAttempts(current => {
-                  const nextAttempt: LoadingAttempt = {
-                    attempt: event.attempt!,
-                    rows: event.rows!,
-                    cols: event.cols!,
-                    intersections: buildAttemptIntersections(event.rows!, event.cols!),
+            if (event.message) {
+              setLoadingStage(event.message)
+            }
+            if (event.stage === 'attempt' && event.attempt && event.rows && event.cols) {
+              setLoadingAttempts(current => {
+                const nextAttempt: LoadingAttempt = {
+                  attempt: event.attempt!,
+                  rows: event.rows!,
+                  cols: event.cols!,
+                  intersections: buildAttemptIntersections(event.rows!, event.cols!),
+                }
+                const filtered = current.filter(entry => entry.attempt !== event.attempt)
+                return [...filtered, nextAttempt].slice(-4)
+              })
+            }
+            if (event.stage === 'cell' && typeof event.attempt === 'number' && typeof event.cellIndex === 'number') {
+              setLoadingAttempts(current =>
+                current.map(entry => {
+                  if (entry.attempt !== event.attempt) {
+                    return entry
                   }
-                  const filtered = current.filter(entry => entry.attempt !== event.attempt)
-                  return [...filtered, nextAttempt].slice(-4)
-                })
-              }
-              if (event.stage === 'cell' && typeof event.attempt === 'number' && typeof event.cellIndex === 'number') {
-                setLoadingAttempts(current =>
-                  current.map(entry => {
-                    if (entry.attempt !== event.attempt) {
-                      return entry
-                    }
 
-                    const intersections = entry.intersections.map((intersection, index) =>
-                      index === event.cellIndex
-                        ? {
-                            ...intersection,
-                            status: (event.passed ? 'passed' : 'failed') as LoadingIntersection['status'],
-                            validOptionCount: event.validOptionCount,
-                          }
-                        : intersection
-                    )
-
-                    return { ...entry, intersections }
-                  })
-                )
-              }
-              if (event.stage === 'rejected' && typeof event.attempt === 'number') {
-                setLoadingAttempts(current =>
-                  current.map(entry =>
-                    entry.attempt === event.attempt
-                      ? { ...entry, rejectedMessage: event.message ?? 'Rejected' }
-                      : entry
+                  const intersections = entry.intersections.map((intersection, index) =>
+                    index === event.cellIndex
+                      ? {
+                          ...intersection,
+                          status: (event.passed ? 'passed' : 'failed') as LoadingIntersection['status'],
+                          validOptionCount: event.validOptionCount,
+                        }
+                      : intersection
                   )
-                )
-              }
-            } else if (event.type === 'puzzle' && event.puzzle) {
-              puzzleData = event.puzzle
-            } else if (event.type === 'error') {
-              throw new Error(event.message ?? 'Failed to generate puzzle')
+
+                  return { ...entry, intersections }
+                })
+              )
             }
+            if (event.stage === 'rejected' && typeof event.attempt === 'number') {
+              setLoadingAttempts(current =>
+                current.map(entry =>
+                  entry.attempt === event.attempt
+                    ? { ...entry, rejectedMessage: event.message ?? 'Rejected' }
+                    : entry
+                )
+              )
+            }
+          } else if (event.type === 'puzzle' && event.puzzle) {
+            puzzleData = event.puzzle
+          } else if (event.type === 'error') {
+            throw new Error(event.message ?? 'Failed to generate puzzle')
           }
         }
+      }
 
-        if (!puzzleData) {
-          throw new Error('Puzzle stream completed without a puzzle')
-        }
-      } else {
-        const response = await fetch(`/api/puzzle?mode=${gameMode}`)
-        const data = await response.json()
-        if (data.error) {
-          console.error('Puzzle error:', data.error)
-          return
-        }
-        puzzleData = data as Puzzle
+      if (!puzzleData) {
+        throw new Error('Puzzle stream completed without a puzzle')
       }
 
       setLoadingProgress(100)
