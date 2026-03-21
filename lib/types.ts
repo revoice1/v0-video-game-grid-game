@@ -69,7 +69,6 @@ export interface PuzzleCellMetadata {
   cellIndex: number
   validOptionCount: number
   isCapped?: boolean
-  belowMinimum?: boolean
   difficulty: 'brutal' | 'spicy' | 'tricky' | 'fair' | 'cozy' | 'feast'
   difficultyLabel: string
 }

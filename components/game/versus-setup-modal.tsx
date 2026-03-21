@@ -23,18 +23,6 @@ export interface VersusCategoryFamilyOption {
 export type VersusCategoryFilters = Partial<Record<VersusFamilyKey, string[]>>
 export type VersusStealRule = 'lower' | 'higher'
 export type VersusTurnTimerOption = 'none' | 60 | 120 | 300
-export type CustomBuildMode = 'auto' | 'full-custom'
-
-export interface ExplicitCustomCategory {
-  id: string
-  name: string
-  type: VersusFamilyKey
-}
-
-export interface FullCustomSelection {
-  rows: ExplicitCustomCategory[]
-  cols: ExplicitCustomCategory[]
-}
 
 interface VersusSetupModalProps {
   isOpen: boolean
@@ -42,14 +30,10 @@ interface VersusSetupModalProps {
   mode?: 'versus' | 'practice'
   errorMessage?: string | null
   filters: VersusCategoryFilters
-  buildMode?: CustomBuildMode
-  fullCustomSelection?: FullCustomSelection | null
   stealRule: VersusStealRule
   timerOption: VersusTurnTimerOption
   onApply: (
     filters: VersusCategoryFilters,
-    buildMode: CustomBuildMode,
-    fullCustomSelection: FullCustomSelection | null,
     stealRule: VersusStealRule,
     timerOption: VersusTurnTimerOption
   ) => void
@@ -77,18 +61,12 @@ export function VersusSetupModal({
   mode = 'versus',
   errorMessage = null,
   filters,
-  buildMode = 'auto',
-  fullCustomSelection = null,
   stealRule,
   timerOption,
   onApply,
 }: VersusSetupModalProps) {
   const [families, setFamilies] = useState<VersusCategoryFamilyOption[]>([])
   const [draftFilters, setDraftFilters] = useState<VersusCategoryFilters>(filters)
-  const [draftBuildMode, setDraftBuildMode] = useState<CustomBuildMode>(buildMode)
-  const [draftFullCustomSelection, setDraftFullCustomSelection] = useState<FullCustomSelection>(
-    fullCustomSelection ?? { rows: [], cols: [] }
-  )
   const [draftStealRule, setDraftStealRule] = useState<VersusStealRule>(stealRule)
   const [draftTimerOption, setDraftTimerOption] = useState<VersusTurnTimerOption>(timerOption)
   const [isLoading, setIsLoading] = useState(false)
@@ -96,11 +74,9 @@ export function VersusSetupModal({
 
   useEffect(() => {
     setDraftFilters(filters)
-    setDraftBuildMode(buildMode)
-    setDraftFullCustomSelection(fullCustomSelection ?? { rows: [], cols: [] })
     setDraftStealRule(stealRule)
     setDraftTimerOption(timerOption)
-  }, [buildMode, filters, fullCustomSelection, isOpen, stealRule, timerOption])
+  }, [filters, isOpen, stealRule, timerOption])
 
   useEffect(() => {
     if (!isOpen) {
@@ -187,63 +163,22 @@ export function VersusSetupModal({
     }))
   }
 
-  const toggleExplicitSelection = (
-    side: 'rows' | 'cols',
-    category: ExplicitCustomCategory
-  ) => {
-    setDraftFullCustomSelection((current) => {
-      const existing = current[side]
-      const alreadySelected = existing.some((item) => item.id === category.id && item.type === category.type)
-
-      if (alreadySelected) {
-        return {
-          ...current,
-          [side]: existing.filter((item) => !(item.id === category.id && item.type === category.type)),
-        }
-      }
-
-      if (existing.length >= 3) {
-        return current
-      }
-
-      return {
-        ...current,
-        [side]: [...existing, category],
-      }
-    })
-  }
-
   const resetToDefault = () => {
     setDraftFilters({})
-    setDraftBuildMode('auto')
-    setDraftFullCustomSelection({ rows: [], cols: [] })
     setDraftStealRule('lower')
     setDraftTimerOption('none')
   }
 
-  const canApply =
-    draftBuildMode === 'full-custom'
-      ? draftFullCustomSelection.rows.length === 3 && draftFullCustomSelection.cols.length === 3
-      : enabledFamilyCount >= 4 && totalSelectedCategories >= 6
+  const canApply = enabledFamilyCount >= 4 && totalSelectedCategories >= 6
   const isVersusMode = mode === 'versus'
   const applyDisabledReason =
-    draftBuildMode === 'full-custom'
-      ? draftFullCustomSelection.rows.length !== 3
-        ? 'Pick exactly 3 row categories for full custom.'
-        : draftFullCustomSelection.cols.length !== 3
-          ? 'Pick exactly 3 column categories for full custom.'
-          : null
-      : enabledFamilyCount < 4
-        ? `Enable at least 4 families to generate a board.`
-        : totalSelectedCategories < 6
-          ? `Enable at least 6 total categories to generate a board.`
-          : null
+    enabledFamilyCount < 4
+      ? `Enable at least 4 families to generate a board.`
+      : totalSelectedCategories < 6
+        ? `Enable at least 6 total categories to generate a board.`
+        : null
 
   const buildAppliedFilters = (): VersusCategoryFilters => {
-    if (draftBuildMode === 'full-custom') {
-      return {}
-    }
-
     const nextFilters: VersusCategoryFilters = {}
 
     for (const family of families) {
@@ -263,9 +198,7 @@ export function VersusSetupModal({
         <DialogHeader>
           <DialogTitle>{isVersusMode ? 'Versus Setup' : 'Practice Setup'}</DialogTitle>
           <DialogDescription>
-            {draftBuildMode === 'full-custom'
-              ? 'Pick all 3 rows and all 3 columns yourself. Full custom skips grid-building rules and only runs exact cell counts.'
-              : 'Build your own category pool. You need at least 6 enabled categories across at least 4 families to try generation. Some narrow combinations may take more attempts to validate, or may not be able to generate a board at all.'}
+            Build your own category pool. You need at least 6 enabled categories across at least 4 families to try generation. Some narrow combinations may take more attempts to validate, or may not be able to generate a board at all.
           </DialogDescription>
         </DialogHeader>
 
@@ -274,30 +207,6 @@ export function VersusSetupModal({
             {errorMessage}
           </div>
         )}
-
-        <section className="rounded-2xl border border-border bg-secondary/20 p-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h3 className="text-sm font-semibold text-foreground">Build Mode</h3>
-              <p className="text-xs text-muted-foreground">
-                Auto Grid builds a board from your enabled families. Full Custom lets you pick every row and column yourself.
-              </p>
-            </div>
-            <div className="flex items-center gap-3 rounded-full border border-border/70 bg-background/50 px-3 py-2">
-              <span className={`text-xs font-medium ${draftBuildMode === 'auto' ? 'text-foreground' : 'text-muted-foreground'}`}>
-                Auto Grid
-              </span>
-              <Switch
-                checked={draftBuildMode === 'full-custom'}
-                onCheckedChange={(checked) => setDraftBuildMode(checked ? 'full-custom' : 'auto')}
-                aria-label="Toggle full custom mode"
-              />
-              <span className={`text-xs font-medium ${draftBuildMode === 'full-custom' ? 'text-foreground' : 'text-muted-foreground'}`}>
-                Full Custom
-              </span>
-            </div>
-          </div>
-        </section>
 
         {isVersusMode && (
           <section className="rounded-2xl border border-border bg-secondary/20 p-4">
@@ -350,55 +259,6 @@ export function VersusSetupModal({
           </section>
         )}
 
-        {draftBuildMode === 'full-custom' && (
-          <section className="rounded-2xl border border-border bg-secondary/20 p-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">Rows</h3>
-                <p className="text-xs text-muted-foreground">Pick exactly 3 row categories.</p>
-                <div className="mt-3 flex min-h-16 flex-wrap gap-2">
-                  {draftFullCustomSelection.rows.map((category) => (
-                    <button
-                      key={`row-${category.type}-${category.id}`}
-                      type="button"
-                      onClick={() => toggleExplicitSelection('rows', category)}
-                      className="rounded-full border border-primary/35 bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
-                    >
-                      {category.name}
-                    </button>
-                  ))}
-                  {Array.from({ length: Math.max(0, 3 - draftFullCustomSelection.rows.length) }).map((_, index) => (
-                    <span key={`row-slot-${index}`} className="rounded-full border border-dashed border-border px-3 py-1 text-xs text-muted-foreground">
-                      Empty
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">Columns</h3>
-                <p className="text-xs text-muted-foreground">Pick exactly 3 column categories.</p>
-                <div className="mt-3 flex min-h-16 flex-wrap gap-2">
-                  {draftFullCustomSelection.cols.map((category) => (
-                    <button
-                      key={`col-${category.type}-${category.id}`}
-                      type="button"
-                      onClick={() => toggleExplicitSelection('cols', category)}
-                      className="rounded-full border border-sky-400/35 bg-sky-400/10 px-3 py-1 text-xs font-medium text-sky-300"
-                    >
-                      {category.name}
-                    </button>
-                  ))}
-                  {Array.from({ length: Math.max(0, 3 - draftFullCustomSelection.cols.length) }).map((_, index) => (
-                    <span key={`col-slot-${index}`} className="rounded-full border border-dashed border-border px-3 py-1 text-xs text-muted-foreground">
-                      Empty
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
         {isLoading ? (
           <div className="py-8 text-center text-sm text-muted-foreground">Loading category pools...</div>
         ) : (
@@ -445,47 +305,11 @@ export function VersusSetupModal({
                           key={`${family.key}-${category.id}`}
                           className="flex items-center gap-3 rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-sm"
                         >
-                          {draftBuildMode === 'full-custom' ? (
-                            <>
-                              <span className="min-w-0 flex-1 text-foreground">{category.name}</span>
-                              <div className="flex shrink-0 gap-2">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  disabled={
-                                    draftFullCustomSelection.rows.length >= 3 &&
-                                    !draftFullCustomSelection.rows.some((item) => item.id === category.id && item.type === family.key)
-                                  }
-                                  className={draftFullCustomSelection.rows.some((item) => item.id === category.id && item.type === family.key) ? 'border-primary bg-primary/10 text-primary' : undefined}
-                                  onClick={() => toggleExplicitSelection('rows', { id: category.id, name: category.name, type: family.key })}
-                                >
-                                  Row
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  disabled={
-                                    draftFullCustomSelection.cols.length >= 3 &&
-                                    !draftFullCustomSelection.cols.some((item) => item.id === category.id && item.type === family.key)
-                                  }
-                                  className={draftFullCustomSelection.cols.some((item) => item.id === category.id && item.type === family.key) ? 'border-sky-400 bg-sky-400/10 text-sky-300' : undefined}
-                                  onClick={() => toggleExplicitSelection('cols', { id: category.id, name: category.name, type: family.key })}
-                                >
-                                  Col
-                                </Button>
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <Checkbox
-                                checked={selected.has(category.id)}
-                                onCheckedChange={(checked) => toggleCategory(family.key, category.id, checked === true)}
-                              />
-                              <span className="text-foreground">{category.name}</span>
-                            </>
-                          )}
+                          <Checkbox
+                            checked={selected.has(category.id)}
+                            onCheckedChange={(checked) => toggleCategory(family.key, category.id, checked === true)}
+                          />
+                          <span className="text-foreground">{category.name}</span>
                         </div>
                       ))}
                     </div>
@@ -513,13 +337,7 @@ export function VersusSetupModal({
             </Button>
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button
-              onClick={() => onApply(
-                buildAppliedFilters(),
-                draftBuildMode,
-                draftBuildMode === 'full-custom' ? draftFullCustomSelection : null,
-                draftStealRule,
-                draftTimerOption
-              )}
+              onClick={() => onApply(buildAppliedFilters(), draftStealRule, draftTimerOption)}
               disabled={!canApply}
               title={applyDisabledReason ?? undefined}
             >

@@ -58,7 +58,7 @@ export function GridCell({
   const possibleTitle = metadata
     ? `${metadata.validOptionCount} possible answers`
     : null
-  const difficultyMarker = metadata?.belowMinimum ? '\u{1F480}' : metadata ? difficultyEmoji[metadata.difficulty] : null
+  const difficultyMarker = metadata ? difficultyEmoji[metadata.difficulty] : null
 
   return (
     <button

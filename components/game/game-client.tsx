@@ -10,8 +10,6 @@ import { GuessDetailsModal } from './guess-details-modal'
 import { AchievementsModal } from './achievements-modal'
 import {
   VersusSetupModal,
-  type CustomBuildMode,
-  type FullCustomSelection,
   type VersusCategoryFilters,
   type VersusStealRule,
   type VersusTurnTimerOption,
@@ -106,10 +104,6 @@ function getPlayerLabel(player: TicTacToePlayer): string {
 
 function hasNonEmptyFilters(filters: VersusCategoryFilters): boolean {
   return Object.values(filters).some((values) => Array.isArray(values) && values.length > 0)
-}
-
-function hasActiveFullCustomSelection(selection: FullCustomSelection | null): boolean {
-  return Boolean(selection && (selection.rows.length > 0 || selection.cols.length > 0))
 }
 
 function getWinningPlayer(guesses: (CellGuess | null)[]): TicTacToePlayer | null {
@@ -1352,11 +1346,7 @@ export function GameClient() {
   const [activeStealShowdown, setActiveStealShowdown] = useState<ActiveStealShowdown | null>(null)
   const [activeStealMissSplash, setActiveStealMissSplash] = useState<ActiveStealMissSplash | null>(null)
   const [practiceCategoryFilters, setPracticeCategoryFilters] = useState<VersusCategoryFilters>({})
-  const [practiceBuildMode, setPracticeBuildMode] = useState<CustomBuildMode>('auto')
-  const [practiceFullCustomSelection, setPracticeFullCustomSelection] = useState<FullCustomSelection | null>(null)
   const [versusCategoryFilters, setVersusCategoryFilters] = useState<VersusCategoryFilters>({})
-  const [versusBuildMode, setVersusBuildMode] = useState<CustomBuildMode>('auto')
-  const [versusFullCustomSelection, setVersusFullCustomSelection] = useState<FullCustomSelection | null>(null)
   const [versusStealRule, setVersusStealRule] = useState<VersusStealRule>('lower')
   const [versusTimerOption, setVersusTimerOption] = useState<VersusTurnTimerOption>('none')
   const [turnTimeLeft, setTurnTimeLeft] = useState<number | null>(null)
@@ -1367,14 +1357,8 @@ export function GameClient() {
 
   const score = guesses.filter(g => g?.isCorrect).length
   const isVersusMode = mode === 'versus'
-  const hasActivePracticeCustomSetup =
-    practiceBuildMode === 'full-custom'
-      ? hasActiveFullCustomSelection(practiceFullCustomSelection)
-      : hasNonEmptyFilters(practiceCategoryFilters)
-  const hasActiveVersusCustomSetup =
-    versusBuildMode === 'full-custom'
-      ? hasActiveFullCustomSelection(versusFullCustomSelection)
-      : hasNonEmptyFilters(versusCategoryFilters)
+  const hasActivePracticeCustomSetup = hasNonEmptyFilters(practiceCategoryFilters)
+  const hasActiveVersusCustomSetup = hasNonEmptyFilters(versusCategoryFilters)
   const hasActiveCustomSetup =
     mode === 'practice'
       ? hasActivePracticeCustomSetup
@@ -1500,9 +1484,7 @@ export function GameClient() {
   // Load puzzle
   const loadPuzzle = useCallback(async (
     gameMode: GameMode,
-    customFilters?: VersusCategoryFilters,
-    customBuildMode?: CustomBuildMode,
-    fullCustomSelection?: FullCustomSelection | null
+    customFilters?: VersusCategoryFilters
   ) => {
     const shouldPersist = gameMode !== 'versus'
     const streamMode = gameMode === 'daily' ? 'daily' : 'practice'
@@ -1513,18 +1495,6 @@ export function GameClient() {
         : gameMode === 'practice'
           ? (customFilters ?? practiceCategoryFilters)
           : undefined
-    const effectiveBuildMode =
-      gameMode === 'versus'
-        ? (customBuildMode ?? versusBuildMode)
-        : gameMode === 'practice'
-          ? (customBuildMode ?? practiceBuildMode)
-          : 'auto'
-    const effectiveFullCustomSelection =
-      gameMode === 'versus'
-        ? (fullCustomSelection ?? versusFullCustomSelection)
-        : gameMode === 'practice'
-          ? (fullCustomSelection ?? practiceFullCustomSelection)
-          : null
 
     if (savedState?.puzzle) {
       setPuzzle(savedState.puzzle)
@@ -1567,15 +1537,8 @@ export function GameClient() {
 
       const params = new URLSearchParams({ mode: streamMode })
       if (gameMode === 'versus' || gameMode === 'practice') {
-        const customizationPayload =
-          effectiveBuildMode === 'full-custom'
-            ? { buildMode: 'full-custom', fullCustom: effectiveFullCustomSelection }
-            : effectiveFilters && Object.keys(effectiveFilters).length > 0
-              ? { buildMode: 'auto', filters: effectiveFilters }
-              : null
-
-        if (customizationPayload) {
-          params.set('filters', JSON.stringify(customizationPayload))
+        if (effectiveFilters && Object.keys(effectiveFilters).length > 0) {
+          params.set('filters', JSON.stringify(effectiveFilters))
         }
       }
 
@@ -1692,10 +1655,7 @@ export function GameClient() {
       }
     } catch (error) {
       console.error('Failed to load puzzle:', error)
-      const hadCustomFilters =
-        effectiveBuildMode === 'full-custom'
-          ? Boolean(effectiveFullCustomSelection)
-          : Boolean(effectiveFilters && Object.keys(effectiveFilters).length > 0)
+      const hadCustomFilters = Boolean(effectiveFilters && Object.keys(effectiveFilters).length > 0)
       const generationErrorMessage =
         error instanceof Error && error.message
           ? error.message
@@ -1720,13 +1680,9 @@ export function GameClient() {
       setIsLoading(false)
     }
   }, [
-    practiceBuildMode,
     practiceCategoryFilters,
-    practiceFullCustomSelection,
     toast,
-    versusBuildMode,
     versusCategoryFilters,
-    versusFullCustomSelection,
   ])
 
   useEffect(() => {
@@ -1801,39 +1757,31 @@ export function GameClient() {
 
   const handleApplyPracticeFilters = (
     filters: VersusCategoryFilters,
-    buildMode: CustomBuildMode,
-    fullCustomSelection: FullCustomSelection | null,
     _stealRule: VersusStealRule,
     _timerOption: VersusTurnTimerOption
   ) => {
     setPracticeCategoryFilters(filters)
-    setPracticeBuildMode(buildMode)
-    setPracticeFullCustomSelection(fullCustomSelection)
     setPracticeSetupError(null)
     setShowPracticeSetup(false)
     setShowPracticeStartOptions(false)
     skipNextPracticeAutoLoadRef.current = true
     clearGameState(false)
-    loadPuzzle('practice', filters, buildMode, fullCustomSelection)
+    loadPuzzle('practice', filters)
   }
 
   const handleApplyVersusFilters = (
     filters: VersusCategoryFilters,
-    buildMode: CustomBuildMode,
-    fullCustomSelection: FullCustomSelection | null,
     stealRule: VersusStealRule,
     timerOption: VersusTurnTimerOption
   ) => {
     setVersusCategoryFilters(filters)
-    setVersusBuildMode(buildMode)
-    setVersusFullCustomSelection(fullCustomSelection)
     setVersusSetupError(null)
     setVersusStealRule(stealRule)
     setVersusTimerOption(timerOption)
     setShowVersusSetup(false)
     setShowVersusStartOptions(false)
     skipNextVersusAutoLoadRef.current = true
-    loadPuzzle('versus', filters, buildMode, fullCustomSelection)
+    loadPuzzle('versus', filters)
   }
 
   const hydrateGuessDetails = useCallback(async (cellIndex: number) => {
@@ -2265,13 +2213,13 @@ export function GameClient() {
     if (mode === 'practice') {
       clearGameState(false)
       skipNextPracticeAutoLoadRef.current = true
-      loadPuzzle('practice', practiceCategoryFilters, practiceBuildMode, practiceFullCustomSelection)
+      loadPuzzle('practice', practiceCategoryFilters)
       return
     }
 
     setShowVersusStartOptions(false)
     skipNextVersusAutoLoadRef.current = true
-    loadPuzzle('versus', versusCategoryFilters, versusBuildMode, versusFullCustomSelection)
+    loadPuzzle('versus', versusCategoryFilters)
   }
 
   // Get categories for selected cell
@@ -2461,23 +2409,19 @@ export function GameClient() {
                 onClick={() => {
                   if (isPracticeStart) {
                     setPracticeCategoryFilters({})
-                    setPracticeBuildMode('auto')
-                    setPracticeFullCustomSelection(null)
                     setPracticeSetupError(null)
                     setShowPracticeStartOptions(false)
                     skipNextPracticeAutoLoadRef.current = true
                     clearGameState(false)
-                    loadPuzzle('practice', {}, 'auto', null)
+                    loadPuzzle('practice', {})
                     return
                   }
 
                   setVersusCategoryFilters({})
-                  setVersusBuildMode('auto')
-                  setVersusFullCustomSelection(null)
                   setVersusSetupError(null)
                   setShowVersusStartOptions(false)
                   skipNextVersusAutoLoadRef.current = true
-                  loadPuzzle('versus', {}, 'auto', null)
+                  loadPuzzle('versus', {})
                 }}
                 className="rounded-2xl border border-border bg-secondary/40 px-4 py-4 text-left transition-colors hover:bg-secondary/65"
               >
@@ -2512,8 +2456,6 @@ export function GameClient() {
             mode="practice"
             errorMessage={practiceSetupError}
             filters={practiceCategoryFilters}
-            buildMode={practiceBuildMode}
-            fullCustomSelection={practiceFullCustomSelection}
             stealRule="lower"
             timerOption="none"
             onApply={handleApplyPracticeFilters}
@@ -2525,8 +2467,6 @@ export function GameClient() {
             mode="versus"
             errorMessage={versusSetupError}
             filters={versusCategoryFilters}
-            buildMode={versusBuildMode}
-            fullCustomSelection={versusFullCustomSelection}
             stealRule={versusStealRule}
             timerOption={versusTimerOption}
             onApply={handleApplyVersusFilters}
@@ -2694,8 +2634,6 @@ export function GameClient() {
         onClose={() => setShowPracticeSetup(false)}
         errorMessage={practiceSetupError}
         filters={practiceCategoryFilters}
-        buildMode={practiceBuildMode}
-        fullCustomSelection={practiceFullCustomSelection}
         stealRule="lower"
         timerOption="none"
         onApply={handleApplyPracticeFilters}
@@ -2707,8 +2645,6 @@ export function GameClient() {
         mode="versus"
         errorMessage={versusSetupError}
         filters={versusCategoryFilters}
-        buildMode={versusBuildMode}
-        fullCustomSelection={versusFullCustomSelection}
         stealRule={versusStealRule}
         timerOption={versusTimerOption}
         onApply={handleApplyVersusFilters}

@@ -121,16 +121,6 @@ export interface CategoryFamily {
 
 export type CategoryFamilyKey = CategoryFamily['key']
 export type PuzzleCategoryFilters = Partial<Record<CategoryFamilyKey, Array<string>>>
-export interface ExplicitPuzzleCategorySelection {
-  id: string
-  type: CategoryFamilyKey
-  name?: string
-}
-
-export interface FullCustomPuzzleSelection {
-  rows: ExplicitPuzzleCategorySelection[]
-  cols: ExplicitPuzzleCategorySelection[]
-}
 
 export type PuzzleProgressCallback = (event: {
   stage: 'families' | 'attempt' | 'cell' | 'metadata' | 'rejected' | 'done'
@@ -153,7 +143,6 @@ interface PuzzleGenerationOptions {
   sampleSize?: number
   onProgress?: PuzzleProgressCallback
   allowedCategoryIds?: PuzzleCategoryFilters
-  fullCustomSelection?: FullCustomPuzzleSelection | null
 }
 
 interface CellValidationCacheEntry {
@@ -756,26 +745,6 @@ export function buildPuzzleCellMetadata(
   }))
 }
 
-function buildFullCustomCellMetadata(
-  cellResults: CellValidationResult[],
-  minValidOptionsPerCell: number,
-  sampleSize = DEFAULT_CELL_SAMPLE_SIZE
-): PuzzleCellMetadata[] {
-  return cellResults.map((cell) => {
-    const belowMinimum = cell.validOptionCount < minValidOptionsPerCell
-
-    return {
-      cellIndex: cell.cellIndex,
-      validOptionCount: cell.validOptionCount,
-      isCapped: false,
-      belowMinimum,
-      ...(belowMinimum
-        ? { difficulty: 'brutal' as const, difficultyLabel: 'Skull' }
-        : buildDifficultyMetadata(cell.validOptionCount, minValidOptionsPerCell, sampleSize)),
-    }
-  })
-}
-
 async function queryValidGamesForCell(
   rowCategory: Category,
   colCategory: Category,
@@ -1026,18 +995,6 @@ function buildBoardFromSelectedFamilies(selectedFamilies: CategoryFamily[]): {
   return null
 }
 
-function resolveExplicitCategories(
-  selections: ExplicitPuzzleCategorySelection[],
-  familySource: CategoryFamily[]
-): Category[] {
-  return selections
-    .map((selection) => {
-      const family = familySource.find((entry) => entry.key === selection.type)
-      const category = family?.categories.find((entry) => String(entry.id) === String(selection.id))
-      return category ?? null
-    })
-    .filter((category): category is Category => Boolean(category))
-}
 
 function mapIGDBGameToGame(game: IGDBGame): Game {
   const platforms = (game.platforms ?? []).map(platform => ({
@@ -1648,65 +1605,7 @@ export async function generatePuzzleCategories(
 
   onProgress?.({ stage: 'families', message: 'Loading category data...' })
   const allowedCategoryIds = options.allowedCategoryIds
-  const fullCustomSelection = options.fullCustomSelection
-  const familySource = (options.allowedCategoryIds || fullCustomSelection) ? await getVersusCategoryFamilies() : await getCategoryFamilies()
-
-  if (fullCustomSelection) {
-    const rows = resolveExplicitCategories(fullCustomSelection.rows, familySource)
-    const cols = resolveExplicitCategories(fullCustomSelection.cols, familySource)
-
-    if (rows.length !== 3 || cols.length !== 3) {
-      throw new Error('Full custom needs exactly 3 rows and 3 columns.')
-    }
-
-    const exactCellResults = await Promise.all(
-      rows.flatMap((rowCategory, rowIndex) =>
-        cols.map(async (colCategory, colIndex) => {
-          const cellIndex = rowIndex * 3 + colIndex
-          const validOptionCount = await getValidGameCountForCell(rowCategory, colCategory)
-          onProgress?.({
-            stage: 'metadata',
-            attempt: 1,
-            maxAttempts: 1,
-            cellIndex,
-            totalCells: rows.length * cols.length,
-            rowCategory: rowCategory.name,
-            colCategory: colCategory.name,
-            validOptionCount,
-            passed: validOptionCount >= minValidOptionsPerCell,
-            message: `Counting answers for\n${rowCategory.name} x ${colCategory.name}`,
-          })
-
-          return {
-            cellIndex,
-            rowCategory,
-            colCategory,
-            validOptionCount,
-          }
-        })
-      )
-    )
-
-    const exactValidation: PuzzleValidationResult = {
-      valid: true,
-      minValidOptionCount: exactCellResults.reduce(
-        (lowest, cell) => Math.min(lowest, cell.validOptionCount),
-        Number.POSITIVE_INFINITY
-      ),
-      cellResults: exactCellResults,
-      failedCells: [],
-    }
-
-    return {
-      rows,
-      cols,
-      rowFamilies: [],
-      colFamilies: [],
-      validation: exactValidation,
-      cellMetadata: buildFullCustomCellMetadata(exactCellResults, minValidOptionsPerCell, sampleSize),
-    }
-  }
-
+  const familySource = options.allowedCategoryIds ? await getVersusCategoryFamilies() : await getCategoryFamilies()
   const families = familySource
     .map((family) => {
       const allowedIds = allowedCategoryIds?.[family.key]

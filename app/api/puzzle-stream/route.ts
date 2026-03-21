@@ -2,7 +2,6 @@ import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import {
   buildPuzzleCellMetadata,
-  type FullCustomPuzzleSelection,
   generatePuzzleCategories,
   getValidGameCountForCell,
   type PuzzleCategoryFilters,
@@ -141,22 +140,9 @@ export async function GET(request: NextRequest) {
   const mode = searchParams.get('mode') || 'daily'
   const rawFilters = searchParams.get('filters')
   const supabase = await createClient()
-  const customization = rawFilters ? JSON.parse(rawFilters) as
-    | PuzzleCategoryFilters
-    | {
-        buildMode?: 'auto' | 'full-custom'
-        filters?: PuzzleCategoryFilters
-        fullCustom?: FullCustomPuzzleSelection | null
-      }
+  const allowedCategoryIds = rawFilters
+    ? JSON.parse(rawFilters) as PuzzleCategoryFilters
     : undefined
-  const allowedCategoryIds: PuzzleCategoryFilters | undefined =
-    customization && 'buildMode' in customization
-      ? customization.filters
-      : customization as PuzzleCategoryFilters | undefined
-  const fullCustomSelection: FullCustomPuzzleSelection | null | undefined =
-    customization && 'buildMode' in customization
-      ? customization.fullCustom
-      : undefined
 
   const encoder = new TextEncoder()
   const stream = new TransformStream<string, Uint8Array>({
@@ -243,21 +229,16 @@ export async function GET(request: NextRequest) {
             maxAttempts: plan.maxAttempts,
             sampleSize: VALIDATION_SAMPLE_SIZE,
             allowedCategoryIds,
-            fullCustomSelection,
             onProgress,
           })
 
           categories = {
             rows,
             cols,
-            validationStatus: fullCustomSelection
-              ? 'unvalidated'
-              : plan.minValidOptionsPerCell !== MIN_VALID_OPTIONS_PER_CELL
+            validationStatus: plan.minValidOptionsPerCell !== MIN_VALID_OPTIONS_PER_CELL
                 ? 'relaxed'
                 : 'validated',
-            validationMessage: fullCustomSelection
-              ? `Full custom board: exact cell counts only. Intersections under ${MIN_VALID_OPTIONS_PER_CELL} valid answers are marked with a skull.`
-              : plan.minValidOptionsPerCell !== MIN_VALID_OPTIONS_PER_CELL
+            validationMessage: plan.minValidOptionsPerCell !== MIN_VALID_OPTIONS_PER_CELL
                 ? `Generated with relaxed validation (${plan.minValidOptionsPerCell}+ valid options per cell instead of ${MIN_VALID_OPTIONS_PER_CELL}+).`
                 : null,
             cellMetadata,
