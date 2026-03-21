@@ -83,7 +83,7 @@ export const EASTER_EGGS: EasterEggConfig[] = [
   },
   {
     achievementId: 'garden-party',
-    achievementTitle: 'MachÃ© Mating Dance',
+    achievementTitle: 'Mach\u00e9 Mating Dance',
     achievementDescription: 'Unlocked by using its hidden trigger game as a correct answer.',
     triggerGameIds: [7236],
     durationMs: 5200,

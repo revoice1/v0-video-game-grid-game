@@ -69,6 +69,34 @@ export function loadUnlockedAchievementEntries(): UnlockedAchievementEntry[] {
   }
 }
 
+export function saveUnlockedAchievementEntries(entries: UnlockedAchievementEntry[]): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.localStorage.setItem(ACHIEVEMENTS_STORAGE_KEY, JSON.stringify(entries))
+}
+
+export function mergeUnlockedAchievementImages(
+  images: Record<string, string | null>
+): UnlockedAchievementEntry[] {
+  const entries = loadUnlockedAchievementEntries()
+  if (entries.length === 0) {
+    return entries
+  }
+
+  const updated = entries.map((entry) => {
+    const nextImage = images[entry.id]
+    if (typeof nextImage === 'string' && nextImage.length > 0) {
+      return { ...entry, imageUrl: nextImage }
+    }
+    return entry
+  })
+
+  saveUnlockedAchievementEntries(updated)
+  return updated
+}
+
 export function loadUnlockedAchievementIds(): string[] {
   return loadUnlockedAchievementEntries().map((entry) => entry.id)
 }
