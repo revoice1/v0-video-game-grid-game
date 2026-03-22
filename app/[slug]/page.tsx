@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { IndexEchoPage } from '@/components/game/index-echo-page'
+import { IndexNearMissPage } from '@/components/game/index-near-miss-page'
 import { ROUTE_SLUG } from '@/lib/route-index'
 
 export const metadata: Metadata = {
@@ -16,6 +17,10 @@ export default async function IndexedRoutePage({ params }: { params: Promise<{ s
 
   if (slug.toUpperCase() !== ROUTE_SLUG) {
     notFound()
+  }
+
+  if (slug !== ROUTE_SLUG) {
+    return <IndexNearMissPage attemptedSlug={slug} />
   }
 
   return <IndexEchoPage />
