@@ -15,6 +15,7 @@ interface GridCellProps {
   isGamePoint?: boolean
   isStealable?: boolean
   activeAlarmKey?: 'game-point' | 'steal' | null
+  animationsEnabled?: boolean
   isLocked?: boolean
   isLockImpact?: boolean
   isDisabled: boolean
@@ -49,6 +50,7 @@ export function GridCell({
   isGamePoint = false,
   isStealable = false,
   activeAlarmKey = null,
+  animationsEnabled = true,
   isLocked = false,
   isLockImpact = false,
   isDisabled,
@@ -66,7 +68,7 @@ export function GridCell({
           : null
   const showGamePointState = cellAlarmState === 'game-point'
   const alarmPulseOn = usePulse(
-    Boolean(cellAlarmState),
+    Boolean(cellAlarmState) && animationsEnabled,
     cellAlarmState === 'game-point' ? 700 : 620
   )
   const possibleLabel = metadata
@@ -79,17 +81,25 @@ export function GridCell({
   const alarmStyle =
     cellAlarmState === 'steal'
       ? {
-          borderColor: alarmPulseOn ? 'rgba(167, 139, 250, 0.96)' : 'rgba(167, 139, 250, 0.8)',
-          boxShadow: alarmPulseOn
-            ? '0 0 0 1px rgba(167,139,250,0.44), 0 0 32px rgba(139,92,246,0.3), 0 0 52px rgba(139,92,246,0.2)'
-            : '0 0 0 1px rgba(167,139,250,0.28), 0 0 20px rgba(139,92,246,0.18), 0 0 36px rgba(139,92,246,0.1)',
+          borderColor:
+            animationsEnabled && alarmPulseOn
+              ? 'rgba(167, 139, 250, 0.96)'
+              : 'rgba(167, 139, 250, 0.8)',
+          boxShadow:
+            animationsEnabled && alarmPulseOn
+              ? '0 0 0 1px rgba(167,139,250,0.44), 0 0 32px rgba(139,92,246,0.3), 0 0 52px rgba(139,92,246,0.2)'
+              : '0 0 0 1px rgba(167,139,250,0.28), 0 0 20px rgba(139,92,246,0.18), 0 0 36px rgba(139,92,246,0.1)',
         }
       : cellAlarmState === 'game-point'
         ? {
-            borderColor: alarmPulseOn ? 'rgba(252, 211, 77, 0.95)' : 'rgba(252, 211, 77, 0.76)',
-            boxShadow: alarmPulseOn
-              ? '0 0 0 1px rgba(251,191,36,0.4), 0 0 30px rgba(251,191,36,0.26), 0 0 46px rgba(251,191,36,0.16)'
-              : '0 0 0 1px rgba(251,191,36,0.24), 0 0 18px rgba(251,191,36,0.16), 0 0 30px rgba(251,191,36,0.08)',
+            borderColor:
+              animationsEnabled && alarmPulseOn
+                ? 'rgba(252, 211, 77, 0.95)'
+                : 'rgba(252, 211, 77, 0.76)',
+            boxShadow:
+              animationsEnabled && alarmPulseOn
+                ? '0 0 0 1px rgba(251,191,36,0.4), 0 0 30px rgba(251,191,36,0.26), 0 0 46px rgba(251,191,36,0.16)'
+                : '0 0 0 1px rgba(251,191,36,0.24), 0 0 18px rgba(251,191,36,0.16), 0 0 30px rgba(251,191,36,0.08)',
           }
         : undefined
 
@@ -102,18 +112,25 @@ export function GridCell({
         'game-cell relative aspect-square w-full rounded-lg border-2 border-border',
         'flex items-center justify-center overflow-visible',
         'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background',
-        'transition-colors duration-200',
+        animationsEnabled && 'transition-colors duration-200',
         isSelected && !hasGuess && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
         isAvailable &&
           availableTone === 'x' &&
-          'border-primary/45 shadow-[0_0_0_1px_rgba(34,197,94,0.22),0_0_18px_rgba(34,197,94,0.14)] hover:border-primary/65',
+          (animationsEnabled
+            ? 'border-primary/45 shadow-[0_0_0_1px_rgba(34,197,94,0.22),0_0_18px_rgba(34,197,94,0.14)] hover:border-primary/65'
+            : 'border-primary/45'),
         isAvailable &&
           availableTone === 'o' &&
-          'border-sky-400/45 shadow-[0_0_0_1px_rgba(56,189,248,0.22),0_0_18px_rgba(56,189,248,0.14)] hover:border-sky-300/65',
+          (animationsEnabled
+            ? 'border-sky-400/45 shadow-[0_0_0_1px_rgba(56,189,248,0.22),0_0_18px_rgba(56,189,248,0.14)] hover:border-sky-300/65'
+            : 'border-sky-400/45'),
         hasGuess && guess.isCorrect && 'correct border-primary/50',
         hasGuess && !guess.isCorrect && 'incorrect border-destructive/50',
-        hasGuess && 'cursor-pointer hover:brightness-110',
-        !hasGuess && !isDisabled && !isAvailable && 'cursor-pointer hover:border-primary/30',
+        hasGuess && (animationsEnabled ? 'cursor-pointer hover:brightness-110' : 'cursor-pointer'),
+        !hasGuess &&
+          !isDisabled &&
+          !isAvailable &&
+          (animationsEnabled ? 'cursor-pointer hover:border-primary/30' : 'cursor-pointer'),
         isDisabled && !hasGuess && 'opacity-50 cursor-not-allowed'
       )}
       style={alarmStyle}
@@ -188,7 +205,7 @@ export function GridCell({
             <div
               className={cn(
                 'absolute left-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-full border border-black/35 bg-black/70 text-white shadow-sm animate-in zoom-in-75 fade-in duration-200',
-                isLockImpact && 'lock-impact'
+                isLockImpact && animationsEnabled && 'lock-impact'
               )}
             >
               <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">

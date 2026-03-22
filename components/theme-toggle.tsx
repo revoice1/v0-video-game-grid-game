@@ -4,7 +4,11 @@ import { useEffect, useRef, useState } from 'react'
 import { Moon, Settings2 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
-import { useSearchConfirmPreference } from '@/lib/ui-preferences'
+import {
+  useAnimationPreference,
+  useSearchConfirmPreference,
+  useVersusAlarmPreference,
+} from '@/lib/ui-preferences'
 
 function FlashbangIcon({ className }: { className?: string }) {
   return (
@@ -33,7 +37,7 @@ function FlashbangIcon({ className }: { className?: string }) {
   )
 }
 
-export function ThemeToggle() {
+export function ThemeToggle({ showVersusAlarms = false }: { showVersusAlarms?: boolean }) {
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
@@ -43,6 +47,9 @@ export function ThemeToggle() {
     enabled: confirmBeforeSelect,
     setEnabled: setConfirmBeforeSelect,
   } = useSearchConfirmPreference()
+  const { enabled: animationsEnabled, setEnabled: setAnimationsEnabled } = useAnimationPreference()
+  const { enabled: versusAlarmsEnabled, setEnabled: setVersusAlarmsEnabled } =
+    useVersusAlarmPreference()
 
   useEffect(() => {
     setMounted(true)
@@ -167,6 +174,64 @@ export function ThemeToggle() {
               />
             </button>
           </div>
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-secondary/20 px-3 py-2.5">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">Animations</p>
+              <p className="text-[11px] text-muted-foreground">
+                {animationsEnabled ? 'Show effects and pulses' : 'Use still visuals only'}
+              </p>
+            </div>
+            <button
+              type="button"
+              aria-label={animationsEnabled ? 'Turn off animations' : 'Turn on animations'}
+              aria-pressed={animationsEnabled}
+              onClick={() => preferencesMounted && setAnimationsEnabled(!animationsEnabled)}
+              className={cn(
+                'relative inline-flex h-6 w-10 shrink-0 items-center rounded-full border transition-colors',
+                animationsEnabled
+                  ? 'border-primary/40 bg-primary/20'
+                  : 'border-border bg-secondary/50'
+              )}
+            >
+              <span
+                className={cn(
+                  'absolute top-0.5 h-4.5 w-4.5 rounded-full transition-[left,background-color] duration-200',
+                  animationsEnabled ? 'left-[18px] bg-primary' : 'left-0.5 bg-muted-foreground'
+                )}
+              />
+            </button>
+          </div>
+          {showVersusAlarms && (
+            <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-secondary/20 px-3 py-2.5">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground">Versus Alarms</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {versusAlarmsEnabled ? 'Show timer and threat alarms' : 'Keep versus board calm'}
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label={
+                  versusAlarmsEnabled ? 'Turn off versus alarms' : 'Turn on versus alarms'
+                }
+                aria-pressed={versusAlarmsEnabled}
+                onClick={() => preferencesMounted && setVersusAlarmsEnabled(!versusAlarmsEnabled)}
+                className={cn(
+                  'relative inline-flex h-6 w-10 shrink-0 items-center rounded-full border transition-colors',
+                  versusAlarmsEnabled
+                    ? 'border-primary/40 bg-primary/20'
+                    : 'border-border bg-secondary/50'
+                )}
+              >
+                <span
+                  className={cn(
+                    'absolute top-0.5 h-4.5 w-4.5 rounded-full transition-[left,background-color] duration-200',
+                    versusAlarmsEnabled ? 'left-[18px] bg-primary' : 'left-0.5 bg-muted-foreground'
+                  )}
+                />
+              </button>
+            </div>
+          )}
           <div className="mt-3 rounded-xl border border-border/70 bg-secondary/20 px-3 py-2.5">
             <p className="text-sm font-medium text-foreground">Feedback</p>
             <p className="mt-1 text-[11px] text-muted-foreground">

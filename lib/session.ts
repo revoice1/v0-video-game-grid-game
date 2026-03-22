@@ -72,7 +72,7 @@ export interface SavedGameState {
   date?: string
   currentPlayer?: 'x' | 'o'
   stealableCell?: number | null
-  winner?: 'x' | 'o' | null
+  winner?: 'x' | 'o' | 'draw' | null
   pendingFinalSteal?: {
     defender: 'x' | 'o'
     cellIndex: number

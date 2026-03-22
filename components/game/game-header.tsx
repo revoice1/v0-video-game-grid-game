@@ -32,7 +32,7 @@ interface GameHeaderProps {
   guessesRemaining: number
   score: number
   currentPlayer?: 'x' | 'o' | null
-  winner?: 'x' | 'o' | null
+  winner?: 'x' | 'o' | 'draw' | null
   turnTimerLabel?: string | null
   versusRecord?: { xWins: number; oWins: number }
   dailyResetLabel?: string | null
@@ -69,12 +69,11 @@ export function GameHeader({
   void versusRecord
 
   const poolLabel = hasActiveCustomSetup ? 'Custom' : 'Standard'
-  const versusTurnLabel = winner ? 'Winner' : 'Turn'
-  const versusTurnValue = (winner ?? currentPlayer ?? 'x').toUpperCase()
-
+  const versusTurnLabel = winner === 'draw' ? 'Result' : winner ? 'Winner' : 'Turn'
+  const versusTurnValue = winner === 'draw' ? 'Tie' : (winner ?? currentPlayer ?? 'x').toUpperCase()
   return (
     <header className="w-full">
-      <div className="mx-auto max-w-xl">
+      <div className="w-full">
         <div className="relative mb-4">
           <div className="px-6 text-center sm:px-24">
             <h1 className="text-3xl font-bold tracking-tight">
@@ -123,7 +122,7 @@ export function GameHeader({
                   />
                 </svg>
               </Button>
-              <ThemeToggle />
+              <ThemeToggle showVersusAlarms={mode === 'versus'} />
             </div>
           </div>
         </div>
@@ -177,54 +176,54 @@ export function GameHeader({
           )}
         </div>
 
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1">
-          <div className="flex flex-wrap items-center gap-2">
-            {(mode === 'practice' || mode === 'versus') && (
+        {(mode === 'practice' || mode === 'versus') && (
+          <div className="mb-2 text-center">
+            <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-2 px-1">
+              {mode === 'versus' && (
+                <div className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-secondary/35 px-3 text-[11px] font-medium uppercase text-muted-foreground">
+                  <span className="tracking-[0.12em]">{versusTurnLabel}</span>
+                  <span
+                    className={cn(
+                      'text-sm font-black leading-none',
+                      winner === 'draw'
+                        ? 'text-foreground'
+                        : winner === 'x'
+                          ? 'text-primary'
+                          : winner === 'o'
+                            ? 'text-sky-400'
+                            : currentPlayer === 'x'
+                              ? 'text-primary'
+                              : 'text-sky-400'
+                    )}
+                  >
+                    {versusTurnValue}
+                  </span>
+                  {turnTimerLabel && (
+                    <span className="rounded-full border border-border/70 bg-background/65 px-2 py-0.5 text-[10px] tracking-[0.12em] text-foreground">
+                      {turnTimerLabel.replace(/^Turn:\s*/, '')}
+                    </span>
+                  )}
+                </div>
+              )}
+
               <div className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-secondary/35 px-3 text-[11px] font-medium uppercase text-muted-foreground">
                 <span className="tracking-[0.12em]">Pool</span>
                 <span className="tracking-[0.12em] text-foreground">{poolLabel}</span>
               </div>
-            )}
 
-            {mode === 'versus' && (
-              <div className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-secondary/35 px-3 text-[11px] font-medium uppercase text-muted-foreground">
-                <span className="tracking-[0.12em]">{versusTurnLabel}</span>
-                <span
-                  className={cn(
-                    'text-sm font-black leading-none',
-                    winner === 'x'
-                      ? 'text-primary'
-                      : winner === 'o'
-                        ? 'text-sky-400'
-                        : currentPlayer === 'x'
-                          ? 'text-primary'
-                          : 'text-sky-400'
-                  )}
-                >
-                  {versusTurnValue}
-                </span>
-                {turnTimerLabel && (
-                  <span className="rounded-full border border-border/70 bg-background/65 px-2 py-0.5 text-[10px] tracking-[0.12em] text-foreground">
-                    {turnTimerLabel.replace(/^Turn:\s*/, '')}
-                  </span>
-                )}
-              </div>
-            )}
+              {onCustomizeGame && (
+                <Button variant="outline" size="sm" onClick={onCustomizeGame} className="h-9 px-3">
+                  {hasActiveCustomSetup ? 'Edit Setup' : 'Customize'}
+                </Button>
+              )}
+              {onNewGame && (
+                <Button variant="outline" size="sm" onClick={onNewGame} className="h-9 px-3">
+                  {mode === 'versus' ? 'New Match' : 'New Game'}
+                </Button>
+              )}
+            </div>
           </div>
-
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {(mode === 'practice' || mode === 'versus') && onCustomizeGame && (
-              <Button variant="outline" size="sm" onClick={onCustomizeGame} className="h-9 px-3">
-                {hasActiveCustomSetup ? 'Edit Setup' : 'Customize'}
-              </Button>
-            )}
-            {(mode === 'practice' || mode === 'versus') && onNewGame && (
-              <Button variant="outline" size="sm" onClick={onNewGame} className="h-9 px-3">
-                {mode === 'versus' ? 'New Match' : 'New Game'}
-              </Button>
-            )}
-          </div>
-        </div>
+        )}
       </div>
     </header>
   )

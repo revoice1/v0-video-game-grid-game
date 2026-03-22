@@ -22,7 +22,11 @@ import {
   type VersusTurnTimerOption,
 } from './versus-setup-modal'
 import { getSessionId, saveGameState, loadGameState, clearGameState } from '@/lib/session'
-import { useSearchConfirmPreference } from '@/lib/ui-preferences'
+import {
+  useAnimationPreference,
+  useSearchConfirmPreference,
+  useVersusAlarmPreference,
+} from '@/lib/ui-preferences'
 import { unlockAchievement } from '@/lib/achievements'
 import { EASTER_EGGS, type EasterEggConfig, type EasterEggPieceKind } from '@/lib/easter-eggs'
 import type { Puzzle, CellGuess, Game, Category } from '@/lib/types'
@@ -96,6 +100,11 @@ interface ActiveStealShowdown {
 }
 
 interface ActiveStealMissSplash {
+  burstId: number
+  durationMs: number
+}
+
+interface ActiveDoubleKoSplash {
   burstId: number
   durationMs: number
 }
@@ -211,6 +220,18 @@ function getInitialVersusRecord(): VersusRecord {
     }
   } catch {
     return { xWins: 0, oWins: 0 }
+  }
+}
+
+function saveVersusRecord(record: VersusRecord) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    sessionStorage.setItem(VERSUS_RECORD_KEY, JSON.stringify(record))
+  } catch {
+    // Ignore storage failures and keep the in-memory record.
   }
 }
 
@@ -538,6 +559,51 @@ function StealMissSplash({ burstId }: ActiveStealMissSplash) {
           }
           100% {
             transform: scale(1);
+            letter-spacing: 0.08em;
+            opacity: 1;
+            filter: blur(0);
+          }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+function DoubleKoSplash({ burstId }: ActiveDoubleKoSplash) {
+  return (
+    <div
+      key={burstId}
+      data-testid="double-ko-splash"
+      className="pointer-events-none fixed inset-0 z-[90] grid place-items-center p-4"
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.16),transparent_26%),radial-gradient(circle_at_center,rgba(239,68,68,0.14),transparent_44%),rgba(0,0,0,0.2)]" />
+      <div className="double-ko-splash select-none px-6 text-center font-black uppercase italic tracking-[0.08em] text-[#ffcf5a] drop-shadow-[0_10px_28px_rgba(0,0,0,0.82)]">
+        DOUBLE KO
+      </div>
+      <style jsx>{`
+        .double-ko-splash {
+          font-size: clamp(2.5rem, 8.8vw, 6rem);
+          line-height: 0.9;
+          text-shadow:
+            0 0 18px rgba(245, 158, 11, 0.28),
+            0 0 30px rgba(239, 68, 68, 0.18);
+          animation: double-ko-hit 820ms var(--ease-bounce);
+        }
+
+        @keyframes double-ko-hit {
+          0% {
+            transform: scale(1.22) rotate(-2deg);
+            letter-spacing: 0.16em;
+            opacity: 0;
+            filter: blur(12px);
+          }
+          48% {
+            transform: scale(0.94) rotate(1deg);
+            opacity: 1;
+            filter: blur(0);
+          }
+          100% {
+            transform: scale(1) rotate(0deg);
             letter-spacing: 0.08em;
             opacity: 1;
             filter: blur(0);
@@ -1434,6 +1500,7 @@ export function GameClient() {
   const skipNextPracticeAutoLoadRef = useRef(false)
   const activeTurnTimerKeyRef = useRef<string | null>(null)
   const isPuzzleLoadInFlightRef = useRef(false)
+  const recordedVersusWinnerKeyRef = useRef<string | null>(null)
   const { mode, setMode, loadedPuzzleMode, setLoadedPuzzleMode } = useGameModeState()
   const {
     puzzle,
@@ -1504,6 +1571,10 @@ export function GameClient() {
   const [activeStealMissSplash, setActiveStealMissSplash] = useState<ActiveStealMissSplash | null>(
     null
   )
+  const [activeDoubleKoSplash, setActiveDoubleKoSplash] = useState<ActiveDoubleKoSplash | null>(
+    null
+  )
+  const [showVersusWinnerBanner, setShowVersusWinnerBanner] = useState(true)
   const {
     turnTimeLeft,
     setTurnTimeLeft,
@@ -1516,7 +1587,13 @@ export function GameClient() {
   } = useVersusMatchState<VersusRecord, PendingFinalSteal>({
     initialRecord: { xWins: 0, oWins: 0 },
   })
-  const animationQuality = useAnimationQuality(detectAnimationQuality)
+  const { enabled: animationsEnabled } = useAnimationPreference()
+  const { enabled: versusAlarmsEnabled } = useVersusAlarmPreference()
+  const detectConfiguredAnimationQuality = useCallback(
+    () => (animationsEnabled ? detectAnimationQuality() : 'low'),
+    [animationsEnabled]
+  )
+  const animationQuality = useAnimationQuality(detectConfiguredAnimationQuality)
   const { enabled: confirmBeforeSelect } = useSearchConfirmPreference()
   const { toast } = useToast()
 
@@ -1538,7 +1615,7 @@ export function GameClient() {
     (gameId: number) => {
       const easterEggDefinition = getEasterEggDefinition(gameId)
 
-      if (!easterEggDefinition) {
+      if (!easterEggDefinition || !animationsEnabled) {
         return false
       }
 
@@ -1558,10 +1635,14 @@ export function GameClient() {
 
       return true
     },
-    [animationQuality]
+    [animationQuality, animationsEnabled]
   )
 
   const triggerPerfectCelebration = useCallback(() => {
+    if (!animationsEnabled) {
+      return
+    }
+
     const burstId = Date.now()
     const particles = createFallingParticles(3, ['chex'], burstId).map((particle, index) => ({
       ...particle,
@@ -1579,10 +1660,14 @@ export function GameClient() {
       durationMs: 2800,
       particles,
     })
-  }, [])
+  }, [animationsEnabled])
 
   const triggerStealShowdownPreview = useCallback(
     (options?: { successful?: boolean; attackerScore?: number; defenderScore?: number }) => {
+      if (!animationsEnabled) {
+        return
+      }
+
       setActiveStealShowdown({
         burstId: Date.now(),
         durationMs: STEAL_SHOWDOWN_DURATION_MS,
@@ -1595,15 +1680,31 @@ export function GameClient() {
         lowEffects: animationQuality === 'low',
       })
     },
-    [animationQuality, versusStealRule]
+    [animationQuality, animationsEnabled, versusStealRule]
   )
 
   const triggerStealMissPreview = useCallback(() => {
+    if (!animationsEnabled) {
+      return
+    }
+
     setActiveStealMissSplash({
       burstId: Date.now(),
       durationMs: 900,
     })
-  }, [])
+  }, [animationsEnabled])
+
+  useEffect(() => {
+    if (animationsEnabled) {
+      return
+    }
+
+    setActiveEasterEgg(null)
+    setActivePerfectCelebration(null)
+    setActiveStealShowdown(null)
+    setActiveStealMissSplash(null)
+    setActiveDoubleKoSplash(null)
+  }, [animationsEnabled])
 
   const unlockAchievementWithToast = useCallback(
     (achievementId: string, options?: { imageUrl?: string | null }) => {
@@ -1626,6 +1727,32 @@ export function GameClient() {
     setSessionId(getSessionId())
     setVersusRecord(getInitialVersusRecord())
   }, [])
+
+  useEffect(() => {
+    if (!puzzle || mode !== 'versus' || winner === null) {
+      return
+    }
+
+    if (winner === 'draw') {
+      return
+    }
+
+    const winnerKey = `${puzzle.id}:${winner}`
+    if (recordedVersusWinnerKeyRef.current === winnerKey) {
+      return
+    }
+
+    recordedVersusWinnerKeyRef.current = winnerKey
+    setVersusRecord((current) => {
+      const nextRecord =
+        winner === 'x'
+          ? { ...current, xWins: current.xWins + 1 }
+          : { ...current, oWins: current.oWins + 1 }
+
+      saveVersusRecord(nextRecord)
+      return nextRecord
+    })
+  }, [mode, puzzle, winner, setVersusRecord])
 
   useEffect(() => {
     if (!activeEasterEgg) {
@@ -1652,6 +1779,10 @@ export function GameClient() {
   }, [activePerfectCelebration])
 
   useEffect(() => {
+    setShowVersusWinnerBanner(winner !== null)
+  }, [winner])
+
+  useEffect(() => {
     if (!activeStealShowdown) {
       return
     }
@@ -1674,6 +1805,18 @@ export function GameClient() {
 
     return () => clearTimeout(timer)
   }, [activeStealMissSplash])
+
+  useEffect(() => {
+    if (!activeDoubleKoSplash) {
+      return
+    }
+
+    const timer = setTimeout(() => {
+      setActiveDoubleKoSplash(null)
+    }, activeDoubleKoSplash.durationMs)
+
+    return () => clearTimeout(timer)
+  }, [activeDoubleKoSplash])
 
   useEffect(() => {
     const isVersusBoardReady =
@@ -1738,6 +1881,10 @@ export function GameClient() {
             : undefined
 
       if (savedState?.puzzle) {
+        recordedVersusWinnerKeyRef.current =
+          gameMode === 'versus' && savedState.winner
+            ? `${savedState.puzzle.id}:${savedState.winner}`
+            : null
         activeTurnTimerKeyRef.current =
           gameMode === 'versus' && savedState.currentPlayer
             ? `${savedState.puzzle.id}:${savedState.currentPlayer}`
@@ -1765,6 +1912,7 @@ export function GameClient() {
 
       setIsLoading(true)
       activeTurnTimerKeyRef.current = null
+      recordedVersusWinnerKeyRef.current = null
       setGuesses(Array(9).fill(null))
       setGuessesRemaining(gameMode === 'versus' ? MAX_GUESSES : MAX_GUESSES)
       setCurrentPlayer('x')
@@ -2496,11 +2644,26 @@ export function GameClient() {
 
         if (winningPlayer) {
           setWinner(winningPlayer)
+          setStealableCell(null)
           toast({
             title: `${getPlayerLabel(winningPlayer)} wins!`,
             description: isVersusSteal
               ? 'That steal completed the line.'
               : 'Three in a row takes the match.',
+          })
+          return
+        }
+
+        if (newGuesses.every((guess) => guess !== null)) {
+          setActiveDoubleKoSplash({
+            burstId: Date.now(),
+            durationMs: 1400,
+          })
+          setWinner('draw')
+          setStealableCell(null)
+          toast({
+            title: 'Draw game',
+            description: 'The board filled up without a three-in-a-row.',
           })
           return
         }
@@ -2603,6 +2766,8 @@ export function GameClient() {
   if (isLoading) {
     const activeAttempt = loadingAttempts[loadingAttempts.length - 1] ?? null
     const pastAttempts = loadingAttempts.slice(0, -1).reverse()
+    const getFailedIntersections = (attempt: LoadingAttempt) =>
+      attempt.intersections.filter((intersection) => intersection.status === 'failed')
 
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
@@ -2635,6 +2800,46 @@ export function GameClient() {
                 <p className="text-right text-xs font-medium text-muted-foreground">
                   {loadingProgress}% complete
                 </p>
+              </div>
+            )}
+            {mode !== 'daily' && pastAttempts.length > 0 && (
+              <div className="mt-5 border-t border-border/70 pt-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Rejected Intersections
+                </p>
+                <div className="mt-2 space-y-1.5">
+                  {pastAttempts.map((attempt) => {
+                    const failedIntersections = getFailedIntersections(attempt)
+
+                    return (
+                      <div
+                        key={`history-${attempt.attempt}`}
+                        className="rounded-lg border border-border/60 bg-background/30 px-3 py-2 text-xs text-muted-foreground"
+                      >
+                        <p className="font-medium text-foreground/80">Attempt {attempt.attempt}</p>
+                        {failedIntersections.length > 0 ? (
+                          <div className="mt-1 space-y-1">
+                            {failedIntersections.map((intersection) => (
+                              <p
+                                key={`${attempt.attempt}-${intersection.label}`}
+                                className="break-words"
+                              >
+                                {intersection.label}
+                                {typeof intersection.validOptionCount === 'number'
+                                  ? ` (${intersection.validOptionCount})`
+                                  : ''}
+                              </p>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="mt-1 truncate">
+                            {attempt.rejectedMessage ?? 'Moved on to a new board.'}
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             )}
           </div>
@@ -2686,28 +2891,6 @@ export function GameClient() {
                       {activeAttempt.rejectedMessage}
                     </p>
                   )}
-                  {pastAttempts.length > 0 && (
-                    <div className="border-t border-border/70 pt-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        Recent Tries
-                      </p>
-                      <div className="mt-2 space-y-1.5">
-                        {pastAttempts.map((attempt) => (
-                          <div
-                            key={`history-${attempt.attempt}`}
-                            className="rounded-lg border border-border/60 bg-background/30 px-3 py-2 text-xs text-muted-foreground"
-                          >
-                            <p className="font-medium text-foreground/80">
-                              Attempt {attempt.attempt}
-                            </p>
-                            <p className="mt-1 truncate">
-                              {attempt.rejectedMessage ?? 'Moved on to a new board.'}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
             </aside>
@@ -2726,25 +2909,27 @@ export function GameClient() {
 
       return (
         <main id="top" className="min-h-screen px-4 py-6">
-          <GameHeader
-            mode={mode}
-            guessesRemaining={guessesRemaining}
-            score={score}
-            currentPlayer={currentPlayer}
-            winner={winner}
-            turnTimerLabel={null}
-            versusRecord={versusRecord}
-            isHowToPlayOpen={showHowToPlay}
-            isAchievementsOpen={showAchievements}
-            hasActiveCustomSetup={hasActiveCustomSetup}
-            onModeChange={handleModeChange}
-            onAchievements={() => setShowAchievements(true)}
-            onHowToPlay={() => setShowHowToPlay(true)}
-            onNewGame={undefined}
-            onCustomizeGame={() =>
-              isPracticeStart ? setShowPracticeSetup(true) : setShowVersusSetup(true)
-            }
-          />
+          <div className="mx-auto w-full max-w-xl">
+            <GameHeader
+              mode={mode}
+              guessesRemaining={guessesRemaining}
+              score={score}
+              currentPlayer={currentPlayer}
+              winner={winner}
+              turnTimerLabel={null}
+              versusRecord={versusRecord}
+              isHowToPlayOpen={showHowToPlay}
+              isAchievementsOpen={showAchievements}
+              hasActiveCustomSetup={hasActiveCustomSetup}
+              onModeChange={handleModeChange}
+              onAchievements={() => setShowAchievements(true)}
+              onHowToPlay={() => setShowHowToPlay(true)}
+              onNewGame={undefined}
+              onCustomizeGame={() =>
+                isPracticeStart ? setShowPracticeSetup(true) : setShowVersusSetup(true)
+              }
+            />
+          </div>
 
           <div className="mx-auto mt-16 max-w-lg rounded-3xl border border-border bg-card/80 p-6 text-center shadow-xl backdrop-blur-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
@@ -2855,37 +3040,42 @@ export function GameClient() {
 
   return (
     <main id="top" className="min-h-screen py-6 px-4">
-      {activeEasterEgg && <EasterEggCelebration {...activeEasterEgg} />}
-      {activePerfectCelebration && <PerfectGridCelebration {...activePerfectCelebration} />}
-      {activeStealShowdown && (
+      {animationsEnabled && activeEasterEgg && <EasterEggCelebration {...activeEasterEgg} />}
+      {animationsEnabled && activePerfectCelebration && (
+        <PerfectGridCelebration {...activePerfectCelebration} />
+      )}
+      {animationsEnabled && activeStealShowdown && (
         <StealShowdownOverlay {...activeStealShowdown} lowEffects={animationQuality === 'low'} />
       )}
-      {activeStealMissSplash && <StealMissSplash {...activeStealMissSplash} />}
+      {animationsEnabled && activeStealMissSplash && <StealMissSplash {...activeStealMissSplash} />}
+      {animationsEnabled && activeDoubleKoSplash && <DoubleKoSplash {...activeDoubleKoSplash} />}
 
-      <GameHeader
-        mode={mode}
-        guessesRemaining={guessesRemaining}
-        score={score}
-        currentPlayer={isVersusMode ? currentPlayer : null}
-        winner={isVersusMode ? winner : null}
-        turnTimerLabel={turnTimerLabel}
-        versusRecord={versusRecord}
-        dailyResetLabel={mode === 'daily' ? dailyResetLabel : null}
-        isHowToPlayOpen={showHowToPlay}
-        isAchievementsOpen={showAchievements}
-        hasActiveCustomSetup={hasActiveCustomSetup}
-        onModeChange={handleModeChange}
-        onAchievements={() => setShowAchievements(true)}
-        onHowToPlay={() => setShowHowToPlay(true)}
-        onNewGame={mode === 'practice' || mode === 'versus' ? handleNewGame : undefined}
-        onCustomizeGame={
-          mode === 'practice'
-            ? () => setShowPracticeSetup(true)
-            : mode === 'versus'
-              ? () => setShowVersusSetup(true)
-              : undefined
-        }
-      />
+      <div className="mx-auto w-full max-w-xl">
+        <GameHeader
+          mode={mode}
+          guessesRemaining={guessesRemaining}
+          score={score}
+          currentPlayer={isVersusMode ? currentPlayer : null}
+          winner={isVersusMode ? winner : null}
+          turnTimerLabel={turnTimerLabel}
+          versusRecord={versusRecord}
+          dailyResetLabel={mode === 'daily' ? dailyResetLabel : null}
+          isHowToPlayOpen={showHowToPlay}
+          isAchievementsOpen={showAchievements}
+          hasActiveCustomSetup={hasActiveCustomSetup}
+          onModeChange={handleModeChange}
+          onAchievements={() => setShowAchievements(true)}
+          onHowToPlay={() => setShowHowToPlay(true)}
+          onNewGame={mode === 'practice' || mode === 'versus' ? handleNewGame : undefined}
+          onCustomizeGame={
+            mode === 'practice'
+              ? () => setShowPracticeSetup(true)
+              : mode === 'versus'
+                ? () => setShowVersusSetup(true)
+                : undefined
+          }
+        />
+      </div>
 
       {puzzle.validation_status && puzzle.validation_status !== 'validated' && (
         <div className="max-w-lg mx-auto mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
@@ -2897,27 +3087,63 @@ export function GameClient() {
         </div>
       )}
 
-      <GameGrid
-        rowCategories={puzzle.row_categories}
-        colCategories={puzzle.col_categories}
-        guesses={guesses}
-        cellMetadata={puzzle.cell_metadata}
-        selectedCell={selectedCell}
-        stealableCell={isVersusMode ? stealableCell : null}
-        currentPlayer={isVersusMode ? currentPlayer : null}
-        score={!isVersusMode ? score : undefined}
-        guessesRemaining={!isVersusMode ? guessesRemaining : undefined}
-        winner={isVersusMode ? winner : null}
-        turnTimerLabel={isVersusMode ? turnTimerLabel : null}
-        turnTimerSeconds={isVersusMode ? turnTimeLeft : null}
-        turnTimerMaxSeconds={
-          isVersusMode && versusTimerOption !== 'none' ? versusTimerOption : null
-        }
-        versusRecord={versusRecord}
-        lockImpactCell={isVersusMode ? lockImpactCell : null}
-        isGameOver={isComplete}
-        onCellClick={handleCellClick}
-      />
+      <div className="relative mx-auto w-full max-w-xl">
+        <GameGrid
+          rowCategories={puzzle.row_categories}
+          colCategories={puzzle.col_categories}
+          guesses={guesses}
+          cellMetadata={puzzle.cell_metadata}
+          selectedCell={selectedCell}
+          stealableCell={isVersusMode ? stealableCell : null}
+          currentPlayer={isVersusMode ? currentPlayer : null}
+          score={!isVersusMode ? score : undefined}
+          guessesRemaining={!isVersusMode ? guessesRemaining : undefined}
+          winner={isVersusMode ? winner : null}
+          turnTimerLabel={isVersusMode ? turnTimerLabel : null}
+          turnTimerSeconds={isVersusMode ? turnTimeLeft : null}
+          turnTimerMaxSeconds={
+            isVersusMode && versusTimerOption !== 'none' ? versusTimerOption : null
+          }
+          versusRecord={versusRecord}
+          alarmsEnabled={!isVersusMode || versusAlarmsEnabled}
+          animationsEnabled={animationsEnabled}
+          lockImpactCell={isVersusMode ? lockImpactCell : null}
+          isGameOver={isComplete}
+          onCellClick={handleCellClick}
+        />
+
+        {isVersusMode && winner && showVersusWinnerBanner && (
+          <div className="pointer-events-none absolute inset-x-4 top-24 z-20 sm:inset-x-6 sm:top-28">
+            <div className="pointer-events-auto rounded-2xl border border-border bg-card/92 p-5 text-center shadow-xl backdrop-blur-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+                Match Over
+              </p>
+              <p className="mt-2 text-2xl font-bold text-foreground">
+                {winner === 'draw' ? 'Draw game' : `${getPlayerLabel(winner)} wins`}
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {winner === 'draw'
+                  ? 'No line was completed before the board filled up.'
+                  : 'Hide this panel to review the finished board, or start a new match.'}
+              </p>
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                <button
+                  onClick={() => setShowVersusWinnerBanner(false)}
+                  className="rounded-lg border border-border bg-secondary/40 px-4 py-2.5 font-medium text-foreground transition-colors hover:bg-secondary/65"
+                >
+                  Hide
+                </button>
+                <button
+                  onClick={handleNewGame}
+                  className="rounded-lg bg-primary px-5 py-2.5 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                >
+                  New Match
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Show results button when complete */}
       {!isVersusMode && isComplete && !showResults && (
@@ -2927,24 +3153,6 @@ export function GameClient() {
             className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
           >
             View Results
-          </button>
-        </div>
-      )}
-
-      {isVersusMode && winner && (
-        <div className="max-w-lg mx-auto mt-6 rounded-2xl border border-border bg-card/70 p-5 text-center shadow-lg">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-            Match Over
-          </p>
-          <p className="mt-2 text-2xl font-bold text-foreground">{getPlayerLabel(winner)} wins</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Start a new match to play the next board.
-          </p>
-          <button
-            onClick={handleNewGame}
-            className="mt-4 rounded-lg bg-primary px-5 py-2.5 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            New Match
           </button>
         </div>
       )}

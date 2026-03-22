@@ -132,6 +132,20 @@
   transform: scale(1.02);
 }
 
+html[data-gamegrid-animations='off'] *,
+html[data-gamegrid-animations='off'] *::before,
+html[data-gamegrid-animations='off'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0s !important;
+  scroll-behavior: auto !important;
+}
+
+html[data-gamegrid-animations='off'] .game-cell:hover:not(.filled) {
+  background: var(--cell-empty);
+  transform: none;
+}
+
 .game-cell.correct {
   background: var(--cell-correct);
 }

@@ -16,12 +16,14 @@ interface GameGridProps {
   score?: number
   guessesRemaining?: number
   currentPlayer?: 'x' | 'o' | null
-  winner?: 'x' | 'o' | null
+  winner?: 'x' | 'o' | 'draw' | null
   stealTargetLabel?: string | null
   turnTimerLabel?: string | null
   turnTimerSeconds?: number | null
   turnTimerMaxSeconds?: number | null
   versusRecord?: { xWins: number; oWins: number }
+  alarmsEnabled?: boolean
+  animationsEnabled?: boolean
   stealableCell?: number | null
   lockImpactCell?: number | null
   onCellClick: (index: number) => void
@@ -79,18 +81,18 @@ export function GameGrid({
   score = 0,
   guessesRemaining = 0,
   currentPlayer = null,
-  winner = null,
   stealTargetLabel = null,
   turnTimerLabel = null,
   turnTimerSeconds = null,
   turnTimerMaxSeconds = null,
   versusRecord = { xWins: 0, oWins: 0 },
+  alarmsEnabled = true,
+  animationsEnabled = true,
   stealableCell = null,
   lockImpactCell = null,
   onCellClick,
 }: GameGridProps) {
-  const winnerLabel = winner === 'x' ? 'X' : 'O'
-  const isStealPossible = stealableCell !== null
+  const isStealPossible = alarmsEnabled && !isGameOver && stealableCell !== null
 
   const gamePointCells =
     currentPlayer === null || isGameOver
@@ -124,23 +126,25 @@ export function GameGrid({
       ? Math.min(30, Math.max(10, Math.round(turnTimerMaxSeconds * 0.3)))
       : 10
   const parsedTimerSeconds = turnTimerSeconds ?? parseTimerLabel(turnTimerLabel)
-  const isTimerDanger = parsedTimerSeconds !== null && parsedTimerSeconds <= timerDangerThreshold
+  const isTimerDanger =
+    alarmsEnabled && parsedTimerSeconds !== null && parsedTimerSeconds <= timerDangerThreshold
   const timerDangerProgress =
     parsedTimerSeconds !== null && parsedTimerSeconds <= timerDangerThreshold
       ? Math.min(1, Math.max(0, (timerDangerThreshold - parsedTimerSeconds) / timerDangerThreshold))
       : 0
-  const timerDangerStyle = isTimerDanger
-    ? {
-        ['--timer-danger-duration' as string]: `${Math.max(0.36, 0.96 - timerDangerProgress * 0.5)}s`,
-        ['--timer-danger-rest-opacity' as string]: `${0.9 - timerDangerProgress * 0.08}`,
-        ['--timer-danger-rest-bg' as string]: `rgba(244,63,94,${0.1 + timerDangerProgress * 0.08})`,
-        ['--timer-danger-peak-bg' as string]: `rgba(244,63,94,${0.18 + timerDangerProgress * 0.14})`,
-        ['--timer-danger-rest-border' as string]: `rgba(251,113,133,${0.28 + timerDangerProgress * 0.14})`,
-        ['--timer-danger-peak-border' as string]: `rgba(251,113,133,${0.44 + timerDangerProgress * 0.22})`,
-        ['--timer-danger-rest-shadow' as string]: `0 0 ${14 + timerDangerProgress * 10}px rgba(244,63,94,${0.14 + timerDangerProgress * 0.12})`,
-        ['--timer-danger-peak-shadow' as string]: `0 0 ${24 + timerDangerProgress * 18}px rgba(244,63,94,${0.24 + timerDangerProgress * 0.18})`,
-      }
-    : undefined
+  const timerDangerStyle =
+    isTimerDanger && animationsEnabled
+      ? {
+          ['--timer-danger-duration' as string]: `${Math.max(0.36, 0.96 - timerDangerProgress * 0.5)}s`,
+          ['--timer-danger-rest-opacity' as string]: `${0.9 - timerDangerProgress * 0.08}`,
+          ['--timer-danger-rest-bg' as string]: `rgba(244,63,94,${0.1 + timerDangerProgress * 0.08})`,
+          ['--timer-danger-peak-bg' as string]: `rgba(244,63,94,${0.18 + timerDangerProgress * 0.14})`,
+          ['--timer-danger-rest-border' as string]: `rgba(251,113,133,${0.28 + timerDangerProgress * 0.14})`,
+          ['--timer-danger-peak-border' as string]: `rgba(251,113,133,${0.44 + timerDangerProgress * 0.22})`,
+          ['--timer-danger-rest-shadow' as string]: `0 0 ${14 + timerDangerProgress * 10}px rgba(244,63,94,${0.14 + timerDangerProgress * 0.12})`,
+          ['--timer-danger-peak-shadow' as string]: `0 0 ${24 + timerDangerProgress * 18}px rgba(244,63,94,${0.24 + timerDangerProgress * 0.18})`,
+        }
+      : undefined
   const activeAlarms = [
     ...(hasGamePoint ? ([{ label: 'Game Point', tone: 'amber' as const }] as const) : []),
     ...(isStealPossible ? ([{ label: 'Steal Active', tone: 'violet' as const }] as const) : []),
@@ -162,7 +166,7 @@ export function GameGrid({
   }, [activeAlarms.length, hasGamePoint, isStealPossible, isTimerDanger])
 
   const currentAlarm = activeAlarms[alarmIndex] ?? null
-  const alarmLabel = currentAlarm?.label ?? 'No Alarm'
+  const alarmLabel = !alarmsEnabled ? 'OFF' : (currentAlarm?.label ?? 'No Alarm')
   const isGamePointAlarm = currentAlarm?.tone === 'amber'
   const isStealAlarm = currentAlarm?.tone === 'violet'
   const isRoseAlarm = currentAlarm?.tone === 'rose'
@@ -174,30 +178,15 @@ export function GameGrid({
         : null
 
   return (
-    <div className="mx-auto w-full max-w-xl">
+    <div className="w-full">
       <div className="grid auto-rows-fr grid-cols-[1.12fr_repeat(3,minmax(0,1fr))] gap-2 sm:grid-cols-4 sm:gap-3">
         <div className="aspect-square">
           {currentPlayer ? (
             <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border/40 bg-secondary/20 px-2 py-2 text-center sm:px-3">
-              {winner && (
-                <p
-                  className={cn(
-                    'text-2xl font-bold uppercase sm:text-3xl',
-                    winner === 'x' ? 'text-primary' : 'text-sky-400'
-                  )}
-                >
-                  {winner}
-                </p>
-              )}
-              {winner && (
-                <p className="mt-1 text-[11px] text-muted-foreground sm:text-xs">
-                  {winnerLabel} Wins
-                </p>
-              )}
               <div
                 className={cn(
                   'flex w-full items-center justify-between gap-2 rounded-xl border border-border/40 bg-secondary/30 px-2 py-1.5 text-[11px] sm:text-xs',
-                  winner ? 'mt-2' : ''
+                  'mt-1'
                 )}
               >
                 <p className="flex-1 text-center font-medium uppercase tracking-[0.12em] text-muted-foreground/80">
@@ -224,26 +213,35 @@ export function GameGrid({
               </div>
               <div
                 title={
-                  activeAlarms.length > 1
-                    ? activeAlarms.map((alarm) => alarm.label).join(' | ')
-                    : isStealPossible
-                      ? (stealTargetLabel ?? undefined)
-                      : hasGamePoint
-                        ? 'A winning move is available right now'
-                        : isTimerDanger
-                          ? 'The turn timer is in its warning window'
-                          : undefined
+                  !alarmsEnabled
+                    ? 'Versus alarms are disabled in settings'
+                    : activeAlarms.length > 1
+                      ? activeAlarms.map((alarm) => alarm.label).join(' | ')
+                      : isStealPossible
+                        ? (stealTargetLabel ?? undefined)
+                        : hasGamePoint
+                          ? 'A winning move is available right now'
+                          : isTimerDanger
+                            ? 'The turn timer is in its warning window'
+                            : undefined
                 }
                 className={cn(
                   'mt-1.5 inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] leading-none',
                   isGamePointAlarm
-                    ? 'alarm-pill-amber border-amber-300/55 bg-amber-400/12 text-amber-100'
+                    ? animationsEnabled
+                      ? 'alarm-pill-amber border-amber-300/55 bg-amber-400/12 text-amber-950 dark:text-amber-100'
+                      : 'border-amber-300/55 bg-amber-400/12 text-amber-950 dark:text-amber-100'
                     : isStealAlarm
-                      ? 'steal-pill-pulse border-violet-400/70 bg-violet-500/14 text-violet-50'
+                      ? animationsEnabled
+                        ? 'steal-pill-pulse border-violet-400/70 bg-violet-500/14 text-violet-950 dark:text-violet-50'
+                        : 'border-violet-400/70 bg-violet-500/14 text-violet-950 dark:text-violet-50'
                       : isRoseAlarm
-                        ? 'timer-danger-pulse border-rose-400/40 bg-rose-500/12 text-rose-50'
+                        ? animationsEnabled
+                          ? 'timer-danger-pulse border-rose-400/40 bg-rose-500/12 text-rose-950 dark:text-rose-50'
+                          : 'border-rose-400/40 bg-rose-500/12 text-rose-950 dark:text-rose-50'
                         : 'border-border/40 bg-secondary/30 text-muted-foreground'
                 )}
+                style={isRoseAlarm ? timerDangerStyle : undefined}
               >
                 {alarmLabel}
               </div>
@@ -251,12 +249,14 @@ export function GameGrid({
                 className={cn(
                   'mt-1.5 inline-flex min-w-[88px] items-center justify-center self-center rounded-full border px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.14em] tabular-nums sm:min-w-[96px] sm:text-[11px]',
                   turnTimerLabel
-                    ? isTimerDanger
+                    ? isTimerDanger && animationsEnabled
                       ? 'timer-danger-pulse border-rose-400/40 bg-rose-500/12 text-rose-50'
-                      : 'border-primary/25 bg-primary/10 text-primary'
+                      : isTimerDanger
+                        ? 'border-rose-400/40 bg-rose-500/12 text-rose-950 dark:text-rose-50'
+                        : 'border-primary/25 bg-primary/10 text-primary'
                     : 'border-border/40 bg-secondary/30 text-muted-foreground'
                 )}
-                style={timerDangerStyle}
+                style={animationsEnabled ? timerDangerStyle : undefined}
               >
                 {turnTimerLabel ?? 'OFF'}
               </div>
@@ -315,6 +315,7 @@ export function GameGrid({
                   availableTone={currentPlayer}
                   isGamePoint={gamePointCells.has(cellIndex)}
                   activeAlarmKey={cellAlarmKey}
+                  animationsEnabled={animationsEnabled}
                   isStealable={stealableCell === cellIndex}
                   isLocked={Boolean(guess?.owner) && stealableCell !== cellIndex && !isGameOver}
                   isLockImpact={lockImpactCell === cellIndex}

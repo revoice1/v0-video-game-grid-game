@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Check, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import type { Game, Category } from '@/lib/types'
 import Image from 'next/image'
@@ -126,6 +127,7 @@ export function GameSearch({
   const [isLoading, setIsLoading] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [pendingConfirmationId, setPendingConfirmationId] = useState<number | null>(null)
+  const [previewGame, setPreviewGame] = useState<Game | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const resultRefs = useRef<Array<HTMLDivElement | null>>([])
@@ -142,6 +144,7 @@ export function GameSearch({
       setResults([])
       setSelectedIndex(0)
       setPendingConfirmationId(null)
+      setPreviewGame(null)
       setTimeout(() => inputRef.current?.focus(), 100)
     }
   }, [isOpen])
@@ -364,7 +367,14 @@ export function GameSearch({
                           'bg-primary/10 shadow-[0_0_0_1px_rgba(34,197,94,0.3)]'
                       )}
                     >
-                      <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded bg-secondary">
+                      <div
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          setPreviewGame(game)
+                        }}
+                        className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded bg-secondary transition-transform hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-card"
+                        title={`Preview cover for ${game.name}`}
+                      >
                         {game.background_image ? (
                           <Image
                             src={game.background_image}
@@ -459,6 +469,32 @@ export function GameSearch({
           )}
         </div>
       </div>
+
+      <Dialog open={previewGame !== null} onOpenChange={(open) => !open && setPreviewGame(null)}>
+        <DialogContent
+          className="max-w-2xl overflow-hidden border-border bg-card p-3 sm:p-4"
+          showCloseButton={true}
+        >
+          {previewGame?.background_image ? (
+            <div className="space-y-3">
+              <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-secondary">
+                <Image
+                  src={previewGame.background_image}
+                  alt={previewGame.name}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 90vw, 720px"
+                />
+              </div>
+              <p className="text-center text-sm font-medium text-foreground">{previewGame.name}</p>
+            </div>
+          ) : (
+            <div className="rounded-xl bg-secondary p-8 text-center text-sm text-muted-foreground">
+              No cover available.
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

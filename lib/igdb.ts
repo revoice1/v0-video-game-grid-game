@@ -18,6 +18,7 @@ interface IGDBPlatform {
   id: number
   name: string
   slug?: string
+  summary?: string
 }
 
 interface IGDBReleaseDate {
@@ -188,6 +189,7 @@ const IGDB_MIN_REQUEST_INTERVAL_MS = Number(
 const IGDB_MAX_RETRIES = Number(process.env.IGDB_MAX_RETRIES ?? DEFAULT_IGDB_MAX_RETRIES)
 const cellValidationCache = new Map<string, CellValidationCacheEntry>()
 const cellCountCache = new Map<string, CellCountCacheEntry>()
+const platformSummaryCache = new Map<number, { expiresAt: number; summary: string | null }>()
 let igdbRequestQueue = Promise.resolve()
 let igdbNextRequestAt = 0
 
@@ -584,6 +586,30 @@ async function queryIGDB<T>(endpoint: string, body: string): Promise<T[]> {
   }
 
   return []
+}
+
+export async function getIGDBPlatformSummary(platformId: number): Promise<string | null> {
+  if (!Number.isFinite(platformId)) {
+    return null
+  }
+
+  const cached = platformSummaryCache.get(platformId)
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.summary
+  }
+
+  const [platform] = await queryIGDB<Pick<IGDBPlatform, 'summary'>>(
+    'platforms',
+    `fields summary; where id = ${platformId}; limit 1;`
+  )
+  const summary = platform?.summary?.trim() || null
+
+  platformSummaryCache.set(platformId, {
+    expiresAt: Date.now() + CATEGORY_FAMILY_CACHE_TTL_MS,
+    summary,
+  })
+
+  return summary
 }
 
 async function queryIGDBCount(endpoint: string, whereClause: string): Promise<number | null> {

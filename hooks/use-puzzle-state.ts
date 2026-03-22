@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { CellGuess, Puzzle } from '@/lib/types'
 
 type TicTacToePlayer = 'x' | 'o'
+type VersusOutcome = TicTacToePlayer | 'draw'
 
 type PuzzleStateOptions = {
   cellCount: number
@@ -16,7 +17,7 @@ export function usePuzzleState({ cellCount, maxGuesses }: PuzzleStateOptions) {
   const [guessesRemaining, setGuessesRemaining] = useState(maxGuesses)
   const [currentPlayer, setCurrentPlayer] = useState<TicTacToePlayer>('x')
   const [stealableCell, setStealableCell] = useState<number | null>(null)
-  const [winner, setWinner] = useState<TicTacToePlayer | null>(null)
+  const [winner, setWinner] = useState<VersusOutcome | null>(null)
   const [selectedCell, setSelectedCell] = useState<number | null>(null)
 
   return {
