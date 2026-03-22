@@ -119,7 +119,6 @@ export function GameGrid({
         )
   const hasGamePoint = gamePointCells.size > 0
   const [alarmIndex, setAlarmIndex] = useState(0)
-  const [cellAlarmIndex, setCellAlarmIndex] = useState(0)
   const timerDangerThreshold =
     turnTimerMaxSeconds !== null
       ? Math.min(30, Math.max(10, Math.round(turnTimerMaxSeconds * 0.3)))
@@ -144,12 +143,8 @@ export function GameGrid({
     : undefined
   const activeAlarms = [
     ...(hasGamePoint ? ([{ label: 'Game Point', tone: 'amber' as const }] as const) : []),
-    ...(isStealPossible ? ([{ label: 'Steal Active', tone: 'rose' as const }] as const) : []),
+    ...(isStealPossible ? ([{ label: 'Steal Active', tone: 'violet' as const }] as const) : []),
     ...(isTimerDanger ? ([{ label: 'Timer', tone: 'rose' as const }] as const) : []),
-  ]
-  const cellAlarmOptions = [
-    ...(hasGamePoint ? (['game-point'] as const) : []),
-    ...(isStealPossible ? (['steal'] as const) : []),
   ]
 
   useEffect(() => {
@@ -166,26 +161,17 @@ export function GameGrid({
     return () => window.clearInterval(interval)
   }, [activeAlarms.length, hasGamePoint, isStealPossible, isTimerDanger])
 
-  useEffect(() => {
-    setCellAlarmIndex(0)
-
-    if (cellAlarmOptions.length <= 1) {
-      return
-    }
-
-    const interval = window.setInterval(() => {
-      setCellAlarmIndex((current) => (current + 1) % cellAlarmOptions.length)
-    }, 900)
-
-    return () => window.clearInterval(interval)
-  }, [cellAlarmOptions.length, hasGamePoint, isStealPossible])
-
   const currentAlarm = activeAlarms[alarmIndex] ?? null
   const alarmLabel = currentAlarm?.label ?? 'No Alarm'
   const isGamePointAlarm = currentAlarm?.tone === 'amber'
+  const isStealAlarm = currentAlarm?.tone === 'violet'
   const isRoseAlarm = currentAlarm?.tone === 'rose'
   const cellAlarmKey =
-    cellAlarmOptions.length > 0 ? cellAlarmOptions[cellAlarmIndex % cellAlarmOptions.length] : null
+    currentAlarm?.label === 'Game Point'
+      ? 'game-point'
+      : currentAlarm?.label === 'Steal Active'
+        ? 'steal'
+        : null
 
   return (
     <div className="mx-auto w-full max-w-xl">
@@ -252,9 +238,11 @@ export function GameGrid({
                   'mt-1.5 inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] leading-none',
                   isGamePointAlarm
                     ? 'alarm-pill-amber border-amber-300/55 bg-amber-400/12 text-amber-100'
-                    : isRoseAlarm
-                      ? 'steal-pill-pulse border-rose-400/70 bg-rose-500/14 text-rose-50'
-                      : 'border-border/40 bg-secondary/30 text-muted-foreground'
+                    : isStealAlarm
+                      ? 'steal-pill-pulse border-violet-400/70 bg-violet-500/14 text-violet-50'
+                      : isRoseAlarm
+                        ? 'timer-danger-pulse border-rose-400/40 bg-rose-500/12 text-rose-50'
+                        : 'border-border/40 bg-secondary/30 text-muted-foreground'
                 )}
               >
                 {alarmLabel}
@@ -342,9 +330,9 @@ export function GameGrid({
         .steal-pill-pulse {
           animation: steal-pill-pulse 1.05s ease-in-out infinite;
           box-shadow:
-            0 0 0 1px rgba(251, 113, 133, 0.24),
-            0 0 20px rgba(244, 63, 94, 0.18),
-            0 0 34px rgba(244, 63, 94, 0.1);
+            0 0 0 1px rgba(167, 139, 250, 0.24),
+            0 0 20px rgba(139, 92, 246, 0.18),
+            0 0 34px rgba(139, 92, 246, 0.1);
           will-change: opacity, box-shadow;
         }
 
@@ -353,16 +341,16 @@ export function GameGrid({
           100% {
             opacity: 0.94;
             box-shadow:
-              0 0 0 1px rgba(251, 113, 133, 0.24),
-              0 0 16px rgba(244, 63, 94, 0.14),
-              0 0 30px rgba(244, 63, 94, 0.08);
+              0 0 0 1px rgba(167, 139, 250, 0.24),
+              0 0 16px rgba(139, 92, 246, 0.14),
+              0 0 30px rgba(139, 92, 246, 0.08);
           }
           50% {
             opacity: 1;
             box-shadow:
-              0 0 0 1px rgba(251, 113, 133, 0.38),
-              0 0 28px rgba(244, 63, 94, 0.24),
-              0 0 44px rgba(244, 63, 94, 0.16);
+              0 0 0 1px rgba(167, 139, 250, 0.38),
+              0 0 28px rgba(139, 92, 246, 0.24),
+              0 0 44px rgba(139, 92, 246, 0.16);
           }
         }
 

@@ -79,10 +79,10 @@ export function GridCell({
   const alarmStyle =
     cellAlarmState === 'steal'
       ? {
-          borderColor: alarmPulseOn ? 'rgba(251, 113, 133, 0.96)' : 'rgba(251, 113, 133, 0.8)',
+          borderColor: alarmPulseOn ? 'rgba(167, 139, 250, 0.96)' : 'rgba(167, 139, 250, 0.8)',
           boxShadow: alarmPulseOn
-            ? '0 0 0 1px rgba(251,113,133,0.44), 0 0 32px rgba(244,63,94,0.3), 0 0 52px rgba(244,63,94,0.2)'
-            : '0 0 0 1px rgba(251,113,133,0.28), 0 0 20px rgba(244,63,94,0.18), 0 0 36px rgba(244,63,94,0.1)',
+            ? '0 0 0 1px rgba(167,139,250,0.44), 0 0 32px rgba(139,92,246,0.3), 0 0 52px rgba(139,92,246,0.2)'
+            : '0 0 0 1px rgba(167,139,250,0.28), 0 0 20px rgba(139,92,246,0.18), 0 0 36px rgba(139,92,246,0.1)',
         }
       : cellAlarmState === 'game-point'
         ? {

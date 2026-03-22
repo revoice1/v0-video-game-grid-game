@@ -8,6 +8,13 @@ import { ResultsModal } from './results-modal'
 import { HowToPlayModal } from './how-to-play-modal'
 import { GuessDetailsModal } from './guess-details-modal'
 import { AchievementsModal } from './achievements-modal'
+import { FallingParticlesOverlay } from './falling-particles-overlay'
+import {
+  buildAttemptIntersections,
+  getIntersectionLabelClass,
+  type LoadingAttempt,
+  type LoadingIntersection,
+} from './loading-helpers'
 import {
   VersusSetupModal,
   type VersusCategoryFilters,
@@ -23,6 +30,13 @@ import { cn } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
 import { useToast } from '@/hooks/use-toast'
 import { useAnimationQuality } from '@/hooks/use-animation-quality'
+import { useLoadingState } from '@/hooks/use-loading-state'
+import { useGameModeState } from '@/hooks/use-game-mode-state'
+import { useOverlayState } from '@/hooks/use-overlay-state'
+import { usePracticeSetupState } from '@/hooks/use-practice-setup-state'
+import { usePuzzleState } from '@/hooks/use-puzzle-state'
+import { useVersusMatchState } from '@/hooks/use-versus-match-state'
+import { useVersusSetupState } from '@/hooks/use-versus-setup-state'
 
 const MAX_GUESSES = 9
 const WINNING_LINES = [
@@ -1293,11 +1307,13 @@ function getEasterEggDefinition(gameId: number): EasterEggDefinition | null {
 
 function EasterEggCelebration({ burstId, renderPiece, particles }: ActiveEasterEgg) {
   return (
-    <div
-      data-testid="easter-egg-celebration"
-      className="pointer-events-none fixed inset-0 z-[80] overflow-hidden"
-    >
-      <style>{`
+    <FallingParticlesOverlay
+      burstId={burstId}
+      particles={particles}
+      dataTestId="easter-egg-celebration"
+      zIndexClassName="z-[80]"
+      animationName="easter-egg-fall"
+      animationStyles={`
         @keyframes easter-egg-fall {
           0% {
             transform: translate3d(0, -14vh, 0) rotate(var(--rotation));
@@ -1311,39 +1327,21 @@ function EasterEggCelebration({ burstId, renderPiece, particles }: ActiveEasterE
             opacity: 0.95;
           }
         }
-      `}</style>
-      {particles.map((particle) => {
-        return (
-          <div
-            key={`${burstId}-${particle.id}`}
-            className="absolute top-0"
-            style={{
-              left: particle.left,
-              animationName: 'easter-egg-fall',
-              animationDelay: particle.delay,
-              animationDuration: particle.duration,
-              animationTimingFunction: 'linear',
-              animationFillMode: 'both',
-              willChange: 'transform, opacity',
-              ['--rotation' as string]: particle.rotate,
-              ['--drift' as string]: particle.drift,
-            }}
-          >
-            {renderPiece(particle)}
-          </div>
-        )
-      })}
-    </div>
+      `}
+      renderParticle={renderPiece}
+    />
   )
 }
 
 function PerfectGridCelebration({ burstId, particles }: ActivePerfectCelebration) {
   return (
-    <div
-      data-testid="perfect-grid-celebration"
-      className="pointer-events-none fixed inset-0 z-[90] overflow-hidden"
-    >
-      <style>{`
+    <FallingParticlesOverlay
+      burstId={burstId}
+      particles={particles}
+      dataTestId="perfect-grid-celebration"
+      zIndexClassName="z-[90]"
+      animationName="perfect-grid-fall"
+      animationStyles={`
         @keyframes perfect-grid-fall {
           0% {
             transform: translate3d(0, -12vh, 0) rotate(var(--rotation)) scale(0.9);
@@ -1357,7 +1355,6 @@ function PerfectGridCelebration({ burstId, particles }: ActivePerfectCelebration
             opacity: 0;
           }
         }
-
         @keyframes perfect-grid-banner {
           0% {
             transform: translateY(16px) scale(0.96);
@@ -1376,57 +1373,43 @@ function PerfectGridCelebration({ burstId, particles }: ActivePerfectCelebration
             opacity: 0;
           }
         }
-      `}</style>
-
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(98,212,140,0.14),transparent_52%)]" />
-
-      {particles.map((particle) => (
+      `}
+      background={
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(98,212,140,0.14),transparent_52%)]" />
+      }
+      renderParticle={(particle) => (
         <div
-          key={`${burstId}-${particle.id}`}
-          className="absolute top-0"
+          className="relative"
           style={{
-            left: particle.left,
-            animationName: 'perfect-grid-fall',
-            animationDelay: particle.delay,
-            animationDuration: particle.duration,
-            animationTimingFunction: 'linear',
-            animationFillMode: 'both',
-            ['--rotation' as string]: particle.rotate,
-            ['--drift' as string]: particle.drift,
+            width: particle.size,
+            height: particle.size,
           }}
         >
           <div
-            className="relative"
+            className="absolute inset-0 flex items-center justify-center text-center text-2xl font-black italic leading-none drop-shadow-[0_8px_18px_rgba(0,0,0,0.28)]"
             style={{
-              width: particle.size,
-              height: particle.size,
+              color: particle.variant === 'g-green' ? '#16C23A' : '#F5F7FB',
             }}
           >
-            <div
-              className="absolute inset-0 flex items-center justify-center text-center text-2xl font-black italic leading-none drop-shadow-[0_8px_18px_rgba(0,0,0,0.28)]"
-              style={{
-                color: particle.variant === 'g-green' ? '#16C23A' : '#F5F7FB',
-              }}
-            >
-              G
-            </div>
+            G
           </div>
         </div>
-      ))}
-
-      <div className="absolute inset-x-4 top-14 flex justify-center sm:top-20">
-        <div
-          className="rounded-2xl border border-[#D7B65A]/60 bg-[#11161F]/92 px-5 py-4 text-center shadow-[0_18px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm"
-          style={{ animation: 'perfect-grid-banner 2600ms ease-out both' }}
-        >
-          <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-[#F7D772]">
-            Perfect Grid
-          </p>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-foreground">9/9</p>
-          <p className="mt-1 text-sm text-foreground/75">Clean sweep.</p>
+      )}
+      overlay={
+        <div className="absolute inset-x-4 top-14 flex justify-center sm:top-20">
+          <div
+            className="rounded-2xl border border-[#D7B65A]/60 bg-[#11161F]/92 px-5 py-4 text-center shadow-[0_18px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm"
+            style={{ animation: 'perfect-grid-banner 2600ms ease-out both' }}
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-[#F7D772]">
+              Perfect Grid
+            </p>
+            <p className="mt-2 text-3xl font-bold tracking-tight text-foreground">9/9</p>
+            <p className="mt-1 text-sm text-foreground/75">Clean sweep.</p>
+          </div>
         </div>
-      </div>
-    </div>
+      }
+    />
   )
 }
 
@@ -1446,87 +1429,74 @@ interface PuzzleStreamMessage {
   passed?: boolean
 }
 
-interface LoadingIntersection {
-  label: string
-  status: 'pending' | 'passed' | 'failed'
-  validOptionCount?: number
-}
-
-interface LoadingAttempt {
-  attempt: number
-  rows: string[]
-  cols: string[]
-  intersections: LoadingIntersection[]
-  rejectedMessage?: string
-}
-
-function buildAttemptIntersections(rows: string[], cols: string[]): LoadingIntersection[] {
-  return rows.flatMap((row) =>
-    cols.map((col) => ({
-      label: `${row} x ${col}`,
-      status: 'pending' as const,
-    }))
-  )
-}
-
-function getIntersectionLabelClass(label: string): string {
-  if (label.length > 42) {
-    return 'text-[10px]'
-  }
-
-  if (label.length > 30) {
-    return 'text-[11px]'
-  }
-
-  return 'text-xs'
-}
-
-function getTimeUntilNextUtcMidnight(now = new Date()) {
-  const nextReset = new Date(now)
-  nextReset.setUTCHours(24, 0, 0, 0)
-
-  const diffMs = Math.max(0, nextReset.getTime() - now.getTime())
-  const totalSeconds = Math.floor(diffMs / 1000)
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = totalSeconds % 60
-
-  return {
-    hours,
-    minutes,
-    seconds,
-    label: `${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`,
-  }
-}
-
 export function GameClient() {
   const skipNextVersusAutoLoadRef = useRef(false)
   const skipNextPracticeAutoLoadRef = useRef(false)
-  const [mode, setMode] = useState<GameMode>('daily')
-  const [loadedPuzzleMode, setLoadedPuzzleMode] = useState<GameMode | null>(null)
-  const [puzzle, setPuzzle] = useState<Puzzle | null>(null)
-  const [guesses, setGuesses] = useState<(CellGuess | null)[]>(Array(9).fill(null))
-  const [guessesRemaining, setGuessesRemaining] = useState(MAX_GUESSES)
-  const [currentPlayer, setCurrentPlayer] = useState<TicTacToePlayer>('x')
-  const [stealableCell, setStealableCell] = useState<number | null>(null)
-  const [winner, setWinner] = useState<TicTacToePlayer | null>(null)
-  const [selectedCell, setSelectedCell] = useState<number | null>(null)
+  const activeTurnTimerKeyRef = useRef<string | null>(null)
+  const isPuzzleLoadInFlightRef = useRef(false)
+  const { mode, setMode, loadedPuzzleMode, setLoadedPuzzleMode } = useGameModeState()
+  const {
+    puzzle,
+    setPuzzle,
+    guesses,
+    setGuesses,
+    guessesRemaining,
+    setGuessesRemaining,
+    currentPlayer,
+    setCurrentPlayer,
+    stealableCell,
+    setStealableCell,
+    winner,
+    setWinner,
+    selectedCell,
+    setSelectedCell,
+  } = usePuzzleState({ cellCount: 9, maxGuesses: MAX_GUESSES })
   const [isLoading, setIsLoading] = useState(true)
-  const [showResults, setShowResults] = useState(false)
-  const [showHowToPlay, setShowHowToPlay] = useState(false)
-  const [showAchievements, setShowAchievements] = useState(false)
-  const [showPracticeSetup, setShowPracticeSetup] = useState(false)
-  const [showPracticeStartOptions, setShowPracticeStartOptions] = useState(false)
-  const [practiceSetupError, setPracticeSetupError] = useState<string | null>(null)
-  const [showVersusSetup, setShowVersusSetup] = useState(false)
-  const [showVersusStartOptions, setShowVersusStartOptions] = useState(false)
-  const [versusSetupError, setVersusSetupError] = useState<string | null>(null)
-  const [detailCell, setDetailCell] = useState<number | null>(null)
-  const [sessionId, setSessionId] = useState('')
-  const [loadingProgress, setLoadingProgress] = useState(8)
-  const [loadingStage, setLoadingStage] = useState('Warming up the puzzle generator...')
-  const [loadingAttempts, setLoadingAttempts] = useState<LoadingAttempt[]>([])
-  const [dailyResetLabel, setDailyResetLabel] = useState(() => getTimeUntilNextUtcMidnight().label)
+  const {
+    showResults,
+    setShowResults,
+    showHowToPlay,
+    setShowHowToPlay,
+    showAchievements,
+    setShowAchievements,
+    detailCell,
+    setDetailCell,
+  } = useOverlayState()
+  const {
+    practiceCategoryFilters,
+    setPracticeCategoryFilters,
+    showPracticeSetup,
+    setShowPracticeSetup,
+    showPracticeStartOptions,
+    setShowPracticeStartOptions,
+    practiceSetupError,
+    setPracticeSetupError,
+  } = usePracticeSetupState()
+  const {
+    versusCategoryFilters,
+    setVersusCategoryFilters,
+    versusStealRule,
+    setVersusStealRule,
+    versusTimerOption,
+    setVersusTimerOption,
+    showVersusSetup,
+    setShowVersusSetup,
+    showVersusStartOptions,
+    setShowVersusStartOptions,
+    versusSetupError,
+    setVersusSetupError,
+  } = useVersusSetupState()
+  const {
+    sessionId,
+    setSessionId,
+    loadingProgress,
+    setLoadingProgress,
+    loadingStage,
+    setLoadingStage,
+    loadingAttempts,
+    setLoadingAttempts,
+    dailyResetLabel,
+  } = useLoadingState<LoadingAttempt>()
   const [activeEasterEgg, setActiveEasterEgg] = useState<ActiveEasterEgg | null>(null)
   const [activePerfectCelebration, setActivePerfectCelebration] =
     useState<ActivePerfectCelebration | null>(null)
@@ -1534,14 +1504,18 @@ export function GameClient() {
   const [activeStealMissSplash, setActiveStealMissSplash] = useState<ActiveStealMissSplash | null>(
     null
   )
-  const [practiceCategoryFilters, setPracticeCategoryFilters] = useState<VersusCategoryFilters>({})
-  const [versusCategoryFilters, setVersusCategoryFilters] = useState<VersusCategoryFilters>({})
-  const [versusStealRule, setVersusStealRule] = useState<VersusStealRule>('lower')
-  const [versusTimerOption, setVersusTimerOption] = useState<VersusTurnTimerOption>('none')
-  const [turnTimeLeft, setTurnTimeLeft] = useState<number | null>(null)
-  const [versusRecord, setVersusRecord] = useState<VersusRecord>({ xWins: 0, oWins: 0 })
-  const [pendingFinalSteal, setPendingFinalSteal] = useState<PendingFinalSteal | null>(null)
-  const [lockImpactCell, setLockImpactCell] = useState<number | null>(null)
+  const {
+    turnTimeLeft,
+    setTurnTimeLeft,
+    versusRecord,
+    setVersusRecord,
+    pendingFinalSteal,
+    setPendingFinalSteal,
+    lockImpactCell,
+    setLockImpactCell,
+  } = useVersusMatchState<VersusRecord, PendingFinalSteal>({
+    initialRecord: { xWins: 0, oWins: 0 },
+  })
   const animationQuality = useAnimationQuality(detectAnimationQuality)
   const { enabled: confirmBeforeSelect } = useSearchConfirmPreference()
   const { toast } = useToast()
@@ -1654,17 +1628,6 @@ export function GameClient() {
   }, [])
 
   useEffect(() => {
-    const updateResetCountdown = () => {
-      setDailyResetLabel(getTimeUntilNextUtcMidnight().label)
-    }
-
-    updateResetCountdown()
-    const timer = setInterval(updateResetCountdown, 1000)
-
-    return () => clearInterval(timer)
-  }, [])
-
-  useEffect(() => {
     if (!activeEasterEgg) {
       return
     }
@@ -1713,13 +1676,23 @@ export function GameClient() {
   }, [activeStealMissSplash])
 
   useEffect(() => {
-    if (!isVersusMode || winner || versusTimerOption === 'none') {
+    const isVersusBoardReady =
+      isVersusMode && !isLoading && loadedPuzzleMode === 'versus' && puzzle !== null
+
+    if (!isVersusBoardReady || winner || versusTimerOption === 'none') {
+      activeTurnTimerKeyRef.current = null
       setTurnTimeLeft(null)
       return
     }
 
-    setTurnTimeLeft(versusTimerOption)
-  }, [currentPlayer, isVersusMode, versusTimerOption, winner])
+    const turnTimerKey = `${puzzle.id}:${currentPlayer}`
+    if (activeTurnTimerKeyRef.current === turnTimerKey) {
+      return
+    }
+
+    activeTurnTimerKeyRef.current = turnTimerKey
+    setTurnTimeLeft((current) => (current === null ? versusTimerOption : versusTimerOption))
+  }, [currentPlayer, isLoading, isVersusMode, loadedPuzzleMode, puzzle, versusTimerOption, winner])
 
   useEffect(() => {
     if (!isVersusMode || winner || turnTimeLeft === null) {
@@ -1749,6 +1722,11 @@ export function GameClient() {
   // Load puzzle
   const loadPuzzle = useCallback(
     async (gameMode: GameMode, customFilters?: VersusCategoryFilters) => {
+      if (isPuzzleLoadInFlightRef.current) {
+        return
+      }
+
+      isPuzzleLoadInFlightRef.current = true
       const shouldPersist = true
       const streamMode = gameMode === 'daily' ? 'daily' : 'practice'
       const savedState = loadGameState(gameMode)
@@ -1760,6 +1738,10 @@ export function GameClient() {
             : undefined
 
       if (savedState?.puzzle) {
+        activeTurnTimerKeyRef.current =
+          gameMode === 'versus' && savedState.currentPlayer
+            ? `${savedState.puzzle.id}:${savedState.currentPlayer}`
+            : null
         setLoadedPuzzleMode(gameMode)
         setPuzzle(savedState.puzzle)
         setGuesses(savedState.guesses as (CellGuess | null)[])
@@ -1777,10 +1759,12 @@ export function GameClient() {
         setShowResults(savedState.isComplete)
         setDetailCell(null)
         setIsLoading(false)
+        isPuzzleLoadInFlightRef.current = false
         return
       }
 
       setIsLoading(true)
+      activeTurnTimerKeyRef.current = null
       setGuesses(Array(9).fill(null))
       setGuessesRemaining(gameMode === 'versus' ? MAX_GUESSES : MAX_GUESSES)
       setCurrentPlayer('x')
@@ -1962,6 +1946,7 @@ export function GameClient() {
           })
         }
       } finally {
+        isPuzzleLoadInFlightRef.current = false
         setIsLoading(false)
       }
     },
@@ -2050,6 +2035,10 @@ export function GameClient() {
 
     if (mode === 'versus' && skipNextVersusAutoLoadRef.current) {
       skipNextVersusAutoLoadRef.current = false
+      return
+    }
+
+    if (isPuzzleLoadInFlightRef.current) {
       return
     }
 
@@ -2843,7 +2832,7 @@ export function GameClient() {
           <HowToPlayModal
             isOpen={showHowToPlay}
             onClose={() => setShowHowToPlay(false)}
-            mode="versus"
+            mode={mode}
             minimumCellOptions={resolvedMinimumCellOptions}
             validationStatus={undefined}
             dailyResetLabel={dailyResetLabel}
