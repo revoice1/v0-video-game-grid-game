@@ -71,6 +71,8 @@ interface IGDBTokenCache {
   expiresAt: number
 }
 
+// These caches are intentionally in-memory, so they help on warm Node instances
+// but are not shared across serverless cold starts or between regions.
 let tokenCache: IGDBTokenCache | null = null
 const igdbGameCache = new Map<number, Game | null>()
 let categoryFamiliesCache: {
@@ -918,7 +920,7 @@ export async function getVersusCategoryFamilies(): Promise<CategoryFamily[]> {
   return families
 }
 
-function buildIGDBWhereClause(category: Category): string | null {
+export function buildIGDBWhereClause(category: Category): string | null {
   switch (category.type) {
     case 'platform':
       return getPlatformAliases(category.name).size > 1 ? null : `platforms = (${category.id})`
@@ -946,7 +948,10 @@ function buildIGDBWhereClause(category: Category): string | null {
   }
 }
 
-function getPairRejectionReason(rowCategory: Category, colCategory: Category): string | null {
+export function getPairRejectionReason(
+  rowCategory: Category,
+  colCategory: Category
+): string | null {
   const leftName = normalizeName(rowCategory.name)
   const rightName = normalizeName(colCategory.name)
   const names = new Set([leftName, rightName])

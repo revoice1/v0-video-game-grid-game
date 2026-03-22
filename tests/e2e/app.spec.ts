@@ -742,6 +742,21 @@ test('indexed route unlocks the hidden route achievement', async ({ page }) => {
   ).toBeVisible()
 })
 
+test('indexed route gives a near-miss hint without unlocking on wrong casing', async ({ page }) => {
+  await resetStorage(page)
+  await page.goto(`/${ROUTE_SLUG.toLowerCase()}`)
+
+  await expect(page.getByText('almost...')).toBeVisible()
+  await expect(page.getByText('some routes only open when entered exactly.')).toBeVisible()
+  await expect(page).toHaveURL(`/${ROUTE_SLUG.toLowerCase()}`)
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Achievements' }).click()
+  const achievementsDialog = page.getByRole('dialog')
+  await expect(achievementsDialog.getByText(ROUTE_SLUG, { exact: true })).toHaveCount(0)
+  await expect(achievementsDialog.getByText('???', { exact: true })).toBeVisible()
+})
+
 test('correct easter egg answer unlocks achievement toast and collection entry', async ({
   page,
 }) => {

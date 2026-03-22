@@ -38,6 +38,7 @@ import { useAnimationQuality } from '@/hooks/use-animation-quality'
 import { useLoadingState } from '@/hooks/use-loading-state'
 import { useGameModeState } from '@/hooks/use-game-mode-state'
 import { useOverlayState } from '@/hooks/use-overlay-state'
+import { useGameGridDevTools } from '@/hooks/use-game-grid-dev-tools'
 import { usePracticeSetupState } from '@/hooks/use-practice-setup-state'
 import { usePuzzleState } from '@/hooks/use-puzzle-state'
 import { useVersusMatchState } from '@/hooks/use-versus-match-state'
@@ -120,21 +121,6 @@ interface VersusRecord {
 interface PendingFinalSteal {
   defender: TicTacToePlayer
   cellIndex: number
-}
-
-declare global {
-  interface Window {
-    __gameGridDev?: {
-      triggerEasterEgg: (gameId: number) => boolean
-      triggerPerfectCelebration: () => void
-      triggerStealShowdown: (options?: {
-        successful?: boolean
-        attackerScore?: number
-        defenderScore?: number
-      }) => void
-      triggerStealMiss: () => void
-    }
-  }
 }
 
 function getNextPlayer(player: TicTacToePlayer): TicTacToePlayer {
@@ -1695,6 +1681,13 @@ export function GameClient() {
     })
   }, [animationsEnabled])
 
+  useGameGridDevTools({
+    triggerEasterEgg: triggerEasterEggCelebration,
+    triggerPerfectCelebration,
+    triggerStealShowdown: triggerStealShowdownPreview,
+    triggerStealMiss: triggerStealMissPreview,
+  })
+
   useEffect(() => {
     if (animationsEnabled) {
       return
@@ -2165,30 +2158,6 @@ export function GameClient() {
     versusStealRule,
     versusTimerOption,
     winner,
-  ])
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || process.env.NODE_ENV === 'production') {
-      return
-    }
-
-    window.__gameGridDev = {
-      triggerEasterEgg: triggerEasterEggCelebration,
-      triggerPerfectCelebration,
-      triggerStealShowdown: triggerStealShowdownPreview,
-      triggerStealMiss: triggerStealMissPreview,
-    }
-
-    return () => {
-      if (window.__gameGridDev) {
-        delete window.__gameGridDev
-      }
-    }
-  }, [
-    triggerEasterEggCelebration,
-    triggerPerfectCelebration,
-    triggerStealMissPreview,
-    triggerStealShowdownPreview,
   ])
 
   useEffect(() => {

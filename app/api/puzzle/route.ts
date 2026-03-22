@@ -5,6 +5,7 @@ import {
   generatePuzzleCategories,
   getValidGameCountForCell,
 } from '@/lib/igdb'
+import { buildGenerationPlans } from '@/lib/puzzle-generation-plans'
 import type { Category, PuzzleCellMetadata } from '@/lib/types'
 
 export const revalidate = 3600
@@ -12,24 +13,6 @@ export const revalidate = 3600
 const MIN_VALID_OPTIONS_PER_CELL = Number(process.env.PUZZLE_MIN_VALID_OPTIONS ?? '3')
 const MAX_GENERATION_ATTEMPTS = Number(process.env.PUZZLE_GENERATION_MAX_ATTEMPTS ?? '12')
 const VALIDATION_SAMPLE_SIZE = Number(process.env.PUZZLE_VALIDATION_SAMPLE_SIZE ?? '40')
-
-function getGenerationPlans() {
-  const fallbackThresholds = [
-    MIN_VALID_OPTIONS_PER_CELL,
-    Math.max(6, Math.min(MIN_VALID_OPTIONS_PER_CELL - 2, MIN_VALID_OPTIONS_PER_CELL)),
-    3,
-  ]
-  const uniqueThresholds = fallbackThresholds.filter(
-    (threshold, index) => threshold > 0 && fallbackThresholds.indexOf(threshold) === index
-  )
-  return uniqueThresholds.map((threshold, index) => ({
-    minValidOptionsPerCell: threshold,
-    maxAttempts:
-      index === 0
-        ? MAX_GENERATION_ATTEMPTS
-        : Math.max(4, Math.ceil(MAX_GENERATION_ATTEMPTS / (index + 1))),
-  }))
-}
 
 function sanitizeCategories(
   categories: Category[]
@@ -92,7 +75,7 @@ async function generateValidPuzzle(): Promise<{
   validationMessage: string | null
   cellMetadata: PuzzleCellMetadata[]
 }> {
-  const plans = getGenerationPlans()
+  const plans = buildGenerationPlans(MIN_VALID_OPTIONS_PER_CELL, MAX_GENERATION_ATTEMPTS)
   let lastError: Error | null = null
 
   for (const plan of plans) {

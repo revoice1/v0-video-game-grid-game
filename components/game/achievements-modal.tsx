@@ -128,7 +128,7 @@ export function AchievementsModal({ isOpen, onClose }: AchievementsModalProps) {
                       >
                         {isUnlocked && imageUrl ? (
                           <img src={imageUrl} alt="" className="h-full w-full object-cover" />
-                        ) : isSecretRouteAchievement ? (
+                        ) : isSecretRouteAchievement && !isUnlocked ? (
                           <div
                             className={cn(
                               'flex h-9 min-w-[38px] items-center justify-center rounded-md border px-1 font-mono text-[15px] font-black uppercase tracking-[0.08em]',
@@ -139,6 +139,29 @@ export function AchievementsModal({ isOpen, onClose }: AchievementsModalProps) {
                             aria-label={`Secret clue ${achievementsClue.index}${achievementsClue.letter}`}
                           >
                             {`${achievementsClue.index}${achievementsClue.letter}`}
+                          </div>
+                        ) : isSecretRouteAchievement ? (
+                          <div
+                            className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-md border border-primary/35 bg-[radial-gradient(circle_at_30%_30%,rgba(34,197,94,0.18),transparent_40%),radial-gradient(circle_at_72%_70%,rgba(59,130,246,0.2),transparent_38%),linear-gradient(180deg,rgba(17,24,39,0.98),rgba(10,14,23,0.96))] text-primary shadow-[0_0_24px_rgba(34,197,94,0.16)]"
+                            aria-label="Hidden route unlocked"
+                          >
+                            <div className="absolute inset-x-2 top-1/2 h-px -translate-y-1/2 bg-white/10" />
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="relative h-8 w-8 drop-shadow-[0_0_10px_rgba(34,197,94,0.28)]"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.6"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M12 3.5 18.5 7v10L12 20.5 5.5 17V7Z" />
+                              <path d="M12 3.5V20.5" className="opacity-70" />
+                              <path d="M5.5 7 12 10.5 18.5 7" className="opacity-70" />
+                              <path d="M9.6 12.2h4.8" />
+                              <path d="M10.4 14.9h3.2" />
+                              <circle cx="12" cy="8.2" r="1.05" fill="currentColor" stroke="none" />
+                            </svg>
                           </div>
                         ) : isUnlocked && isPerfectGrid ? (
                           <svg

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { applyAnonymousSessionCookie, resolveAnonymousSession } from '@/lib/server-session'
 
 interface GuessStatRow {
   puzzle_id: string
@@ -121,12 +122,13 @@ export async function POST(request: NextRequest) {
 
   try {
     const { puzzleId, sessionId, score, rarityScore } = await request.json()
+    const resolvedSession = resolveAnonymousSession(request, sessionId)
 
     const { data: existingCompletion, error: existingCompletionError } = await supabase
       .from('puzzle_completions')
       .select('session_id')
       .eq('puzzle_id', puzzleId)
-      .eq('session_id', sessionId)
+      .eq('session_id', resolvedSession.sessionId)
       .maybeSingle()
 
     if (existingCompletionError) throw existingCompletionError
@@ -135,7 +137,7 @@ export async function POST(request: NextRequest) {
 
     const { error } = await supabase.from('puzzle_completions').upsert({
       puzzle_id: puzzleId,
-      session_id: sessionId,
+      session_id: resolvedSession.sessionId,
       score,
       rarity_score: rarityScore,
     })
@@ -147,7 +149,7 @@ export async function POST(request: NextRequest) {
         .from('guesses')
         .select('cell_index,game_id,game_name,game_image')
         .eq('puzzle_id', puzzleId)
-        .eq('session_id', sessionId)
+        .eq('session_id', resolvedSession.sessionId)
         .eq('is_correct', true)
 
       if (guessesError) throw guessesError
@@ -163,7 +165,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true })
+    return applyAnonymousSessionCookie(NextResponse.json({ success: true }), resolvedSession)
   } catch (error) {
     console.error('Stats POST error:', error)
     return NextResponse.json({ error: 'Failed to save completion' }, { status: 500 })

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { validateIGDBGameForCell } from '@/lib/igdb'
+import { applyAnonymousSessionCookie, resolveAnonymousSession } from '@/lib/server-session'
 import type { Category } from '@/lib/types'
 
 function serializeGameDetails(game: Awaited<ReturnType<typeof validateIGDBGameForCell>>['game']) {
@@ -56,6 +57,8 @@ export async function POST(request: NextRequest) {
       lookupOnly?: boolean
     }
 
+    const resolvedSession = resolveAnonymousSession(request, sessionId)
+
     // Validate the guess
     const { valid, game, matchesRow, matchesCol } = await validateIGDBGameForCell(
       gameId,
@@ -64,13 +67,16 @@ export async function POST(request: NextRequest) {
     )
 
     if (lookupOnly) {
-      return NextResponse.json({
-        valid,
-        duplicate: false,
-        matchesRow,
-        matchesCol,
-        game: serializeGameDetails(game),
-      })
+      return applyAnonymousSessionCookie(
+        NextResponse.json({
+          valid,
+          duplicate: false,
+          matchesRow,
+          matchesCol,
+          game: serializeGameDetails(game),
+        }),
+        resolvedSession
+      )
     }
 
     if (isDaily) {
@@ -78,18 +84,21 @@ export async function POST(request: NextRequest) {
         .from('guesses')
         .select('id')
         .eq('puzzle_id', puzzleId)
-        .eq('session_id', sessionId)
+        .eq('session_id', resolvedSession.sessionId)
         .eq('game_id', gameId)
         .maybeSingle()
 
       if (existingGuess) {
-        return NextResponse.json({
-          valid: false,
-          duplicate: true,
-          matchesRow: false,
-          matchesCol: false,
-          game: null,
-        })
+        return applyAnonymousSessionCookie(
+          NextResponse.json({
+            valid: false,
+            duplicate: true,
+            matchesRow: false,
+            matchesCol: false,
+            game: null,
+          }),
+          resolvedSession
+        )
       }
     }
 
@@ -122,7 +131,7 @@ export async function POST(request: NextRequest) {
         game_id: gameId,
         game_name: gameName,
         game_image: gameImage,
-        session_id: sessionId,
+        session_id: resolvedSession.sessionId,
         is_correct: valid,
       })
 
@@ -139,7 +148,7 @@ export async function POST(request: NextRequest) {
             game_id: gameId,
             game_name: gameName,
             game_image: gameImage,
-            session_id: sessionId,
+            session_id: resolvedSession.sessionId,
           })
 
           if (legacyGuessInsertError) {
@@ -149,13 +158,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      valid,
-      duplicate: false,
-      matchesRow,
-      matchesCol,
-      game: serializeGameDetails(game),
-    })
+    return applyAnonymousSessionCookie(
+      NextResponse.json({
+        valid,
+        duplicate: false,
+        matchesRow,
+        matchesCol,
+        game: serializeGameDetails(game),
+      }),
+      resolvedSession
+    )
   } catch (error) {
     console.error('Guess error:', error)
     return NextResponse.json({ error: 'Failed to process guess', valid: false }, { status: 500 })
