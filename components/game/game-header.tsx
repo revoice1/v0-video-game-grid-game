@@ -71,68 +71,102 @@ export function GameHeader({
   const poolLabel = hasActiveCustomSetup ? 'Custom' : 'Standard'
   const versusTurnLabel = winner === 'draw' ? 'Result' : winner ? 'Winner' : 'Turn'
   const versusTurnValue = winner === 'draw' ? 'Tie' : (winner ?? currentPlayer ?? 'x').toUpperCase()
+  const utilityButtons = (
+    <div className="flex items-center gap-2">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onAchievements}
+        aria-label="Achievements"
+        title="Achievements"
+        className={cn(
+          'h-10 w-10 rounded-xl border transition-colors',
+          isAchievementsOpen
+            ? 'border-foreground bg-foreground text-background hover:bg-foreground/90 hover:text-background'
+            : 'border-border bg-secondary/30 text-muted-foreground hover:bg-secondary/50 hover:text-foreground'
+        )}
+      >
+        <AchievementEggIcon className="h-[18px] w-[18px]" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onHowToPlay}
+        aria-label="How to Play"
+        title="How to Play"
+        className={cn(
+          'h-10 w-10 rounded-xl border transition-colors',
+          isHowToPlayOpen
+            ? 'border-foreground bg-foreground text-background hover:bg-foreground/90 hover:text-background'
+            : 'border-primary/30 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground'
+        )}
+      >
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+      </Button>
+      <ThemeToggle showVersusAlarms={mode === 'versus'} />
+    </div>
+  )
+
+  const dailyResetPill = dailyResetLabel ? (
+    <div className="inline-flex flex-col items-start justify-center rounded-2xl border border-border bg-secondary/35 px-4 py-2 text-[10px] font-medium uppercase leading-none text-muted-foreground">
+      <span className="shrink-0 tracking-[0.16em]">Next grid</span>
+      <span className="mt-1 tabular-nums text-[11px] tracking-[0.14em] text-foreground">
+        {dailyResetLabel}
+      </span>
+    </div>
+  ) : null
+
+  const dailyMobileStats = (
+    <>
+      <div className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-secondary/35 px-3 text-[10px] font-medium uppercase text-muted-foreground">
+        <span className="tracking-[0.12em]">Score</span>
+        <span className="text-sm font-black leading-none tracking-normal text-foreground">
+          {score}
+        </span>
+      </div>
+      <div className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-secondary/35 px-3 text-[10px] font-medium uppercase text-muted-foreground">
+        <span className="tracking-[0.12em]">Guesses</span>
+        <span className="text-sm font-black leading-none tracking-normal text-foreground">
+          {guessesRemaining}
+        </span>
+      </div>
+    </>
+  )
+
   return (
     <header className="w-full">
       <div className="w-full">
+        <div className="mb-3 flex justify-end sm:hidden">{utilityButtons}</div>
+
         <div className="relative mb-4">
-          <div className="px-6 text-center sm:px-24">
-            <h1 className="text-3xl font-bold tracking-tight">
+          <div className="px-3 text-center sm:px-24">
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
               <span className="text-primary">Game</span>
               <span className="text-foreground">Grid</span>
             </h1>
-            <p className="mt-1 text-sm text-foreground/75">The video game trivia challenge</p>
+            <p className="mt-1 text-sm text-foreground/75 sm:text-base">
+              The video game trivia challenge
+            </p>
           </div>
 
-          <div className="absolute right-0 top-0 flex flex-col items-end gap-2 pt-0.5">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onAchievements}
-                aria-label="Achievements"
-                title="Achievements"
-                className={cn(
-                  'h-10 w-10 rounded-xl border transition-colors',
-                  isAchievementsOpen
-                    ? 'border-foreground bg-foreground text-background hover:bg-foreground/90 hover:text-background'
-                    : 'border-border bg-secondary/30 text-muted-foreground hover:bg-secondary/50 hover:text-foreground'
-                )}
-              >
-                <AchievementEggIcon className="h-[18px] w-[18px]" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onHowToPlay}
-                aria-label="How to Play"
-                title="How to Play"
-                className={cn(
-                  'h-10 w-10 rounded-xl border transition-colors',
-                  isHowToPlayOpen
-                    ? 'border-foreground bg-foreground text-background hover:bg-foreground/90 hover:text-background'
-                    : 'border-primary/30 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground'
-                )}
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </Button>
-              <ThemeToggle showVersusAlarms={mode === 'versus'} />
-            </div>
+          <div className="absolute right-0 top-0 hidden flex-col items-end gap-2 pt-0.5 sm:flex">
+            {utilityButtons}
           </div>
         </div>
 
-        <div className="relative mb-3 flex justify-center">
-          <div className="inline-flex rounded-lg bg-secondary/50 p-1">
+        <div className="relative mb-3 flex flex-col items-center gap-2 sm:flex sm:justify-center">
+          <div className="grid w-full max-w-[22rem] grid-cols-3 rounded-lg bg-secondary/50 p-1 sm:inline-flex sm:w-auto sm:max-w-none">
             <button
               onClick={() => onModeChange('daily')}
               className={cn(
-                'rounded-md px-4 py-2 text-sm font-medium transition-colors',
+                'rounded-md px-3 py-2 text-sm font-medium transition-colors sm:px-4',
                 mode === 'daily'
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:text-foreground'
@@ -143,7 +177,7 @@ export function GameHeader({
             <button
               onClick={() => onModeChange('practice')}
               className={cn(
-                'rounded-md px-4 py-2 text-sm font-medium transition-colors',
+                'rounded-md px-3 py-2 text-sm font-medium transition-colors sm:px-4',
                 mode === 'practice'
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:text-foreground'
@@ -154,7 +188,7 @@ export function GameHeader({
             <button
               onClick={() => onModeChange('versus')}
               className={cn(
-                'rounded-md px-4 py-2 text-sm font-medium transition-colors',
+                'rounded-md px-3 py-2 text-sm font-medium transition-colors sm:px-4',
                 mode === 'versus'
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:text-foreground'
@@ -164,23 +198,24 @@ export function GameHeader({
             </button>
           </div>
 
-          {mode === 'daily' && dailyResetLabel && (
-            <div className="absolute right-0 top-1/2 -translate-y-1/2">
-              <div className="inline-flex flex-col items-start justify-center rounded-2xl border border-border bg-secondary/35 px-4 py-2 text-[10px] font-medium uppercase leading-none text-muted-foreground">
-                <span className="shrink-0 tracking-[0.16em]">Next grid</span>
-                <span className="mt-1 tabular-nums text-[11px] tracking-[0.14em] text-foreground">
-                  {dailyResetLabel}
-                </span>
+          {mode === 'daily' && dailyResetPill && (
+            <>
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:hidden">
+                {dailyMobileStats}
+                {dailyResetPill}
               </div>
-            </div>
+              <div className="absolute right-0 top-1/2 hidden -translate-y-1/2 sm:block">
+                {dailyResetPill}
+              </div>
+            </>
           )}
         </div>
 
         {(mode === 'practice' || mode === 'versus') && (
           <div className="mb-2 text-center">
-            <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-2 px-1">
+            <div className="grid w-full max-w-[22rem] grid-cols-2 gap-1.5 px-1 sm:inline-flex sm:w-auto sm:max-w-full sm:flex-wrap sm:items-center sm:justify-center sm:gap-2">
               {mode === 'versus' && (
-                <div className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-secondary/35 px-3 text-[11px] font-medium uppercase text-muted-foreground">
+                <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border bg-secondary/35 px-2.5 text-[10px] font-medium uppercase text-muted-foreground sm:h-9 sm:gap-2 sm:px-3 sm:text-[11px]">
                   <span className="tracking-[0.12em]">{versusTurnLabel}</span>
                   <span
                     className={cn(
@@ -199,25 +234,35 @@ export function GameHeader({
                     {versusTurnValue}
                   </span>
                   {turnTimerLabel && (
-                    <span className="rounded-full border border-border/70 bg-background/65 px-2 py-0.5 text-[10px] tracking-[0.12em] text-foreground">
+                    <span className="rounded-full border border-border/70 bg-background/65 px-1.5 py-0.5 text-[9px] tracking-[0.1em] text-foreground sm:px-2 sm:text-[10px] sm:tracking-[0.12em]">
                       {turnTimerLabel.replace(/^Turn:\s*/, '')}
                     </span>
                   )}
                 </div>
               )}
 
-              <div className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-secondary/35 px-3 text-[11px] font-medium uppercase text-muted-foreground">
+              <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border bg-secondary/35 px-2.5 text-[10px] font-medium uppercase text-muted-foreground sm:h-9 sm:gap-2 sm:px-3 sm:text-[11px]">
                 <span className="tracking-[0.12em]">Pool</span>
                 <span className="tracking-[0.12em] text-foreground">{poolLabel}</span>
               </div>
 
               {onCustomizeGame && (
-                <Button variant="outline" size="sm" onClick={onCustomizeGame} className="h-9 px-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onCustomizeGame}
+                  className="h-8 w-full px-2.5 text-xs sm:h-9 sm:w-auto sm:px-3 sm:text-sm"
+                >
                   {hasActiveCustomSetup ? 'Edit Setup' : 'Customize'}
                 </Button>
               )}
               {onNewGame && (
-                <Button variant="outline" size="sm" onClick={onNewGame} className="h-9 px-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onNewGame}
+                  className="h-8 w-full px-2.5 text-xs sm:h-9 sm:w-auto sm:px-3 sm:text-sm"
+                >
                   {mode === 'versus' ? 'New Match' : 'New Game'}
                 </Button>
               )}

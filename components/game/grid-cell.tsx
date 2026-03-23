@@ -36,7 +36,7 @@ const difficultyEmoji: Record<NonNullable<PuzzleCellMetadata['difficulty']>, str
   spicy: '\u{1F525}',
   tricky: '\u{1F9E9}',
   fair: '\u{1F3AF}',
-  cozy: '\u{1FACB}',
+  cozy: '\u{1F6CB}',
   feast: '\u{1F3C6}',
 }
 

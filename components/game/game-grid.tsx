@@ -89,7 +89,6 @@ export function GameGrid({
   turnTimerLabel = null,
   turnTimerSeconds = null,
   turnTimerMaxSeconds = null,
-  versusRecord = { xWins: 0, oWins: 0 },
   alarmsEnabled = true,
   animationsEnabled = true,
   stealableCell = null,
@@ -183,38 +182,10 @@ export function GameGrid({
 
   return (
     <div className="w-full">
-      <div className="grid auto-rows-fr grid-cols-[1.12fr_repeat(3,minmax(0,1fr))] gap-2 sm:grid-cols-4 sm:gap-3">
+      <div className="grid auto-rows-fr grid-cols-[minmax(0,0.96fr)_repeat(3,minmax(0,1fr))] gap-1.5 sm:grid-cols-4 sm:gap-3">
         <div className="aspect-square">
           {currentPlayer ? (
-            <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border/40 bg-secondary/20 px-2 py-2 text-center sm:px-3">
-              <div
-                className={cn(
-                  'flex w-full items-center justify-between gap-2 rounded-xl border border-border/40 bg-secondary/30 px-2 py-1.5 text-[11px] sm:text-xs',
-                  'mt-1'
-                )}
-              >
-                <p className="flex-1 text-center font-medium uppercase tracking-[0.12em] text-muted-foreground/80">
-                  Wins:
-                </p>
-                <div className="flex flex-col items-start gap-1">
-                  <div className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/85">
-                      X
-                    </span>
-                    <span className="text-sm font-bold leading-none text-primary">
-                      {versusRecord.xWins}
-                    </span>
-                  </div>
-                  <div className="inline-flex items-center gap-1 rounded-full border border-sky-400/20 bg-sky-400/10 px-2 py-0.5">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300/90">
-                      O
-                    </span>
-                    <span className="text-sm font-bold leading-none text-sky-300">
-                      {versusRecord.oWins}
-                    </span>
-                  </div>
-                </div>
-              </div>
+            <div className="flex h-full flex-col justify-center rounded-lg border border-border/40 bg-secondary/20 px-1 py-1 text-center sm:px-3 sm:py-2">
               <div
                 title={
                   !alarmsEnabled
@@ -230,7 +201,7 @@ export function GameGrid({
                             : undefined
                 }
                 className={cn(
-                  'mt-1.5 inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] leading-none',
+                  'mt-1 inline-flex max-w-full items-center justify-center self-center rounded-full border px-2 py-0.75 text-[8px] font-semibold uppercase tracking-[0.08em] leading-none sm:mt-1.5 sm:px-3 sm:py-1.5 sm:text-[10px] sm:tracking-[0.1em]',
                   isGamePointAlarm
                     ? animationsEnabled
                       ? 'alarm-pill-amber border-amber-300/55 bg-amber-400/12 text-amber-950 dark:text-amber-100'
@@ -251,7 +222,7 @@ export function GameGrid({
               </div>
               <div
                 className={cn(
-                  'mt-1.5 inline-flex min-w-[88px] items-center justify-center self-center rounded-full border px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.14em] tabular-nums sm:min-w-[96px] sm:text-[11px]',
+                  'mt-1 inline-flex min-w-0 max-w-full items-center justify-center self-center rounded-full border px-2 py-0.75 text-center text-[8px] font-semibold uppercase tracking-[0.08em] tabular-nums sm:mt-1.5 sm:min-w-[96px] sm:px-2.5 sm:py-1 sm:text-[11px] sm:tracking-[0.14em]',
                   turnTimerLabel
                     ? isTimerDanger && animationsEnabled
                       ? 'timer-danger-pulse border-rose-400/40 bg-rose-500/12 text-rose-50'
@@ -264,29 +235,40 @@ export function GameGrid({
               >
                 {turnTimerLabel ?? 'OFF'}
               </div>
+              <div className="mt-1 hidden sm:block" aria-hidden="true" />
             </div>
           ) : (
-            <div className="flex h-full flex-col justify-center rounded-lg border border-border/40 bg-secondary/20 px-2 py-2 text-center sm:px-3">
-              <div className="grid grid-cols-2 gap-2">
+            <div className="flex h-full flex-col justify-center rounded-lg border border-border/40 bg-secondary/20 px-1.5 py-2 text-center sm:px-3">
+              <div className="grid hidden grid-cols-2 gap-1.5 sm:grid sm:gap-2">
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-foreground sm:text-3xl">{score}</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground sm:text-xs">Score</p>
+                  <p className="text-[1.7rem] font-bold text-foreground sm:text-3xl">{score}</p>
+                  <p className="mt-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground sm:text-xs sm:normal-case sm:tracking-normal">
+                    Score
+                  </p>
                 </div>
                 <div className="text-center">
                   <p
                     className={cn(
-                      'text-2xl font-bold sm:text-3xl',
+                      'text-[1.7rem] font-bold sm:text-3xl',
                       guessesRemaining <= 3 ? 'text-destructive' : 'text-foreground'
                     )}
                   >
                     {guessesRemaining}
                   </p>
-                  <p className="mt-1 text-[11px] leading-tight text-muted-foreground sm:text-xs">
-                    Guesses
-                    <br />
-                    Left
+                  <p className="mt-1 text-[10px] uppercase tracking-[0.08em] leading-tight text-muted-foreground sm:text-xs sm:normal-case sm:tracking-normal">
+                    <span className="block sm:hidden">Guesses</span>
+                    <span className="hidden sm:inline">
+                      Guesses
+                      <br />
+                      Left
+                    </span>
                   </p>
                 </div>
+              </div>
+              <div className="flex h-full items-center justify-center sm:hidden">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+                  Daily
+                </span>
               </div>
             </div>
           )}

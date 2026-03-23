@@ -118,6 +118,7 @@ export function CategoryHeader({ category, orientation }: CategoryHeaderProps) {
 
 export function CategoryHeaderSimple({ category, orientation, clueSlot }: CategoryHeaderProps) {
   const displayName = getCategoryDisplayName(category)
+  const typeLabel = getCategoryTypeLabel(category.type)
   const [isOpen, setIsOpen] = useState(false)
 
   return (
@@ -147,11 +148,11 @@ export function CategoryHeaderSimple({ category, orientation, clueSlot }: Catego
           className={cn(
             'block w-full text-[10px] uppercase tracking-[0.16em] text-muted-foreground/90',
             orientation === 'col'
-              ? 'max-sm:text-[9px] max-sm:tracking-[0.08em]'
-              : 'max-sm:text-[9px] max-sm:tracking-[0.06em]'
+              ? 'max-sm:text-[8px] max-sm:tracking-[0.08em]'
+              : 'max-sm:text-[8px] max-sm:tracking-[0.04em]'
           )}
         >
-          {category.type}
+          {typeLabel}
         </span>
       </button>
       <CategoryDefinitionDialog
