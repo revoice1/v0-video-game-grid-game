@@ -8,11 +8,21 @@ function createSessionId(): string {
     return ''
   }
 
-  if (typeof window.crypto !== 'undefined' && typeof window.crypto.randomUUID === 'function') {
-    return window.crypto.randomUUID()
+  const cryptoApi = window.crypto
+
+  if (typeof cryptoApi !== 'undefined' && typeof cryptoApi.randomUUID === 'function') {
+    return cryptoApi.randomUUID()
   }
 
-  return `gg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+  if (typeof cryptoApi !== 'undefined' && typeof cryptoApi.getRandomValues === 'function') {
+    const randomBytes = cryptoApi.getRandomValues(new Uint8Array(8))
+    const randomSuffix = Array.from(randomBytes, (byte) => byte.toString(16).padStart(2, '0')).join(
+      ''
+    )
+    return `gg-${Date.now().toString(36)}-${randomSuffix}`
+  }
+
+  return `gg-${Date.now().toString(36)}-fallback`
 }
 
 export function getSessionId(): string {
