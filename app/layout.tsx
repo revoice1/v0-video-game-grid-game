@@ -57,9 +57,9 @@ export const metadata: Metadata = {
       'Fill the 3x3 grid with games that match both categories. Daily and practice video game trivia for genre, platform, decade, theme, and perspective nerds.',
     images: [
       {
-        url: '/placeholder.jpg',
-        width: 1064,
-        height: 1064,
+        url: '/og-homepage.png',
+        width: 1200,
+        height: 630,
         alt: 'GameGrid daily video game puzzle',
       },
     ],
@@ -69,7 +69,7 @@ export const metadata: Metadata = {
     title: 'GameGrid | Daily Video Game Grid Puzzle',
     description:
       'A daily video game trivia grid for people who know their JRPGs, boomer shooters, consoles, decades, and deep-cut metadata.',
-    images: ['/placeholder.jpg'],
+    images: ['/og-homepage.png'],
   },
   category: 'games',
   icons: {
