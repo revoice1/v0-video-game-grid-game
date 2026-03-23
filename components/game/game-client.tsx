@@ -43,6 +43,11 @@ import { usePracticeSetupState } from '@/hooks/use-practice-setup-state'
 import { usePuzzleState } from '@/hooks/use-puzzle-state'
 import { useVersusMatchState } from '@/hooks/use-versus-match-state'
 import { useVersusSetupState } from '@/hooks/use-versus-setup-state'
+import {
+  resolveStealOutcome,
+  type PendingVersusSteal,
+  type StealAction,
+} from '@/hooks/use-versus-steal'
 
 const MAX_GUESSES = 9
 const WINNING_LINES = [
@@ -1486,6 +1491,7 @@ export function GameClient() {
   const skipNextVersusAutoLoadRef = useRef(false)
   const skipNextPracticeAutoLoadRef = useRef(false)
   const activeTurnTimerKeyRef = useRef<string | null>(null)
+  const activePuzzleLoadControllerRef = useRef<AbortController | null>(null)
   const isPuzzleLoadInFlightRef = useRef(false)
   const recordedVersusWinnerKeyRef = useRef<string | null>(null)
   const { mode, setMode, loadedPuzzleMode, setLoadedPuzzleMode } = useGameModeState()
@@ -1583,6 +1589,16 @@ export function GameClient() {
   const animationQuality = useAnimationQuality(detectConfiguredAnimationQuality)
   const { enabled: confirmBeforeSelect } = useSearchConfirmPreference()
   const { toast } = useToast()
+  const versusStealRuleRef = useRef(versusStealRule)
+  const versusTimerOptionRef = useRef(versusTimerOption)
+
+  useEffect(() => {
+    versusStealRuleRef.current = versusStealRule
+  }, [versusStealRule])
+
+  useEffect(() => {
+    versusTimerOptionRef.current = versusTimerOption
+  }, [versusTimerOption])
 
   const score = guesses.filter((g) => g?.isCorrect).length
   const isVersusMode = mode === 'versus'
@@ -1814,6 +1830,57 @@ export function GameClient() {
   }, [activeStealShowdown])
 
   useEffect(() => {
+    return () => {
+      activePuzzleLoadControllerRef.current?.abort()
+    }
+  }, [])
+
+  const triggerLockImpact = useCallback(
+    (cell: number) => {
+      setLockImpactCell(cell)
+      window.setTimeout(() => {
+        setLockImpactCell((current) => (current === cell ? null : current))
+      }, 550)
+    },
+    [setLockImpactCell]
+  )
+
+  const applyStealActions = useCallback(
+    (actions: StealAction[]) => {
+      for (const action of actions) {
+        switch (action.kind) {
+          case 'clearSelection':
+            setSelectedCell(null)
+            break
+          case 'clearStealable':
+            setStealableCell(null)
+            break
+          case 'clearPendingSteal':
+            setPendingFinalSteal(null)
+            break
+          case 'setLockImpact':
+            triggerLockImpact(action.cell)
+            break
+          case 'setNextPlayer':
+            setCurrentPlayer(action.player)
+            break
+          case 'setWinner':
+            setWinner(action.player)
+            break
+        }
+      }
+    },
+    [
+      setCurrentPlayer,
+      setPendingFinalSteal,
+      setSelectedCell,
+      setStealableCell,
+      setWinner,
+      triggerLockImpact,
+    ]
+  )
+
+  useEffect(() => {
     if (!activeStealMissSplash) {
       return
     }
@@ -1948,6 +2015,9 @@ export function GameClient() {
         gameMode === 'daily' ? "Loading today's board..." : 'Warming up the puzzle generator...'
       )
       setLoadingAttempts([])
+      const controller = new AbortController()
+      activePuzzleLoadControllerRef.current?.abort()
+      activePuzzleLoadControllerRef.current = controller
 
       try {
         let puzzleData: Puzzle | null = null
@@ -1959,7 +2029,9 @@ export function GameClient() {
           }
         }
 
-        const response = await fetch(`/api/puzzle-stream?${params.toString()}`)
+        const response = await fetch(`/api/puzzle-stream?${params.toString()}`, {
+          signal: controller.signal,
+        })
         if (!response.ok || !response.body) {
           throw new Error('Failed to open puzzle stream')
         }
@@ -2072,9 +2144,10 @@ export function GameClient() {
                     winner: null,
                     pendingFinalSteal: null,
                     versusCategoryFilters: effectiveFilters ?? {},
-                    versusStealRule,
-                    versusTimerOption,
-                    turnTimeLeft: versusTimerOption === 'none' ? null : versusTimerOption,
+                    versusStealRule: versusStealRuleRef.current,
+                    versusTimerOption: versusTimerOptionRef.current,
+                    turnTimeLeft:
+                      versusTimerOptionRef.current === 'none' ? null : versusTimerOptionRef.current,
                   }
                 : {}),
             },
@@ -2088,6 +2161,10 @@ export function GameClient() {
           if (savedState.isComplete) setShowResults(true)
         }
       } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          return
+        }
+
         console.error('Failed to load puzzle:', error)
         const hadCustomFilters = Boolean(
           effectiveFilters && Object.keys(effectiveFilters).length > 0
@@ -2113,11 +2190,14 @@ export function GameClient() {
           })
         }
       } finally {
+        if (activePuzzleLoadControllerRef.current === controller) {
+          activePuzzleLoadControllerRef.current = null
+        }
         isPuzzleLoadInFlightRef.current = false
         setIsLoading(false)
       }
     },
-    [practiceCategoryFilters, toast, versusCategoryFilters, versusStealRule, versusTimerOption]
+    [practiceCategoryFilters, toast, versusCategoryFilters]
   )
 
   useEffect(() => {
@@ -2195,6 +2275,8 @@ export function GameClient() {
   // Handle mode change
   const handleModeChange = (newMode: GameMode) => {
     if (newMode !== mode) {
+      activePuzzleLoadControllerRef.current?.abort()
+
       if (newMode === 'practice') {
         const hasSavedPracticeState = Boolean(loadGameState('practice')?.puzzle)
         setShowVersusStartOptions(false)
@@ -2505,67 +2587,53 @@ export function GameClient() {
       }
 
       if (mode === 'versus' && isVersusSteal) {
-        const defendingScore = existingGuess?.stealRating
+        const outcome = resolveStealOutcome({
+          currentPlayer,
+          defendingGuess: existingGuess,
+          attackingGuess: newGuess,
+          rule: versusStealRule,
+          pendingFinalSteal: pendingFinalSteal as PendingVersusSteal | null,
+          selectedCell,
+        })
+        const defendingScore = existingGuess.stealRating
         const attackingScore = newGuess.stealRating
-        const hasShowdownScores =
-          defendingScore !== null &&
-          defendingScore !== undefined &&
-          attackingScore !== null &&
-          attackingScore !== undefined
-        const canStealByScore =
-          hasShowdownScores &&
-          (versusStealRule === 'lower'
-            ? attackingScore < defendingScore
-            : attackingScore > defendingScore)
+        const showdownDuration =
+          animationsEnabled && outcome.hasShowdownScores ? STEAL_SHOWDOWN_DURATION_MS : 0
 
-        if (hasShowdownScores) {
+        if (outcome.hasShowdownScores) {
           setActiveStealShowdown({
             burstId: Date.now(),
-            durationMs: STEAL_SHOWDOWN_DURATION_MS,
+            durationMs: showdownDuration,
             defenderName: existingGuess.gameName,
-            defenderScore: defendingScore,
+            defenderScore: defendingScore!,
             attackerName: game.name,
-            attackerScore: attackingScore,
+            attackerScore: attackingScore!,
             rule: versusStealRule,
-            successful: canStealByScore,
+            successful: outcome.successful,
           })
         }
 
-        if (!canStealByScore) {
+        if (!outcome.successful) {
+          const failureDescription =
+            pendingFinalSteal && pendingFinalSteal.cellIndex === selectedCell
+              ? !outcome.hasShowdownScores
+                ? `${getPlayerLabel(pendingFinalSteal.defender)} keeps the win because both answers needed a score.`
+                : `${game.name} (${attackingScore}) needed to be ${versusStealRule === 'lower' ? 'lower' : 'higher'} than ${existingGuess.gameName} (${defendingScore}). ${getPlayerLabel(pendingFinalSteal.defender)} keeps the win.`
+              : !outcome.hasShowdownScores
+                ? `${getPlayerLabel(getNextPlayer(currentPlayer))} is up. Both answers need a score to settle the steal.`
+                : `${getPlayerLabel(getNextPlayer(currentPlayer))} is up. ${game.name} (${attackingScore}) had to be ${versusStealRule === 'lower' ? 'lower' : 'higher'} than ${existingGuess.gameName} (${defendingScore}).`
+
           const resolveFailedSteal = () => {
-            setSelectedCell(null)
-            setStealableCell(null)
-            setLockImpactCell(selectedCell)
-            window.setTimeout(() => {
-              setLockImpactCell((current) => (current === selectedCell ? null : current))
-            }, 550)
-
-            if (pendingFinalSteal && pendingFinalSteal.cellIndex === selectedCell) {
-              setWinner(pendingFinalSteal.defender)
-              setPendingFinalSteal(null)
-              toast({
-                variant: 'destructive',
-                title: 'Steal failed',
-                description: !hasShowdownScores
-                  ? `${getPlayerLabel(pendingFinalSteal.defender)} keeps the win because both answers needed a score.`
-                  : `${game.name} (${attackingScore}) needed to be ${versusStealRule === 'lower' ? 'lower' : 'higher'} than ${existingGuess.gameName} (${defendingScore}). ${getPlayerLabel(pendingFinalSteal.defender)} keeps the win.`,
-              })
-              return
-            }
-
-            const nextPlayer = getNextPlayer(currentPlayer)
-            setCurrentPlayer(nextPlayer)
+            applyStealActions(outcome.actions)
             toast({
               variant: 'destructive',
               title: 'Steal failed',
-              description: !hasShowdownScores
-                ? `${getPlayerLabel(nextPlayer)} is up. Both answers need a score to settle the steal.`
-                : `${getPlayerLabel(nextPlayer)} is up. ${game.name} (${attackingScore}) had to be ${versusStealRule === 'lower' ? 'lower' : 'higher'} than ${existingGuess.gameName} (${defendingScore}).`,
+              description: failureDescription,
             })
           }
 
-          if (hasShowdownScores) {
-            window.setTimeout(resolveFailedSteal, STEAL_SHOWDOWN_DURATION_MS)
+          if (showdownDuration > 0) {
+            window.setTimeout(resolveFailedSteal, showdownDuration)
           } else {
             resolveFailedSteal()
           }
@@ -2708,6 +2776,8 @@ export function GameClient() {
 
   // Handle starting a fresh non-daily board
   const handleNewGame = () => {
+    activePuzzleLoadControllerRef.current?.abort()
+
     if (mode === 'practice') {
       clearGameState('practice')
       skipNextPracticeAutoLoadRef.current = true
