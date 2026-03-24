@@ -1047,6 +1047,107 @@ test('versus draw restore renders tie state without a winner', async ({ page }) 
   await expect(page.locator('header').getByText('Tie', { exact: true })).toBeVisible()
 })
 
+test('disable draws awards the full-board versus winner by claimed cells', async ({ page }) => {
+  const versusSearchResult = {
+    id: 202,
+    name: 'Tie Breaker Game',
+    slug: 'tie-breaker-game',
+    background_image: null,
+    released: '2005-10-11',
+    metacritic: 81,
+    genres: [{ id: 1, name: 'Action', slug: 'action' }],
+    platforms: [{ platform: { id: 6, name: 'PC (Microsoft Windows)', slug: 'pc' } }],
+  }
+
+  await page.route('**/api/search?*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ results: [versusSearchResult] }),
+    })
+  })
+
+  await page.route('**/api/guess', async (route) => {
+    const requestBody = route.request().postDataJSON()
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        valid: true,
+        duplicate: false,
+        matchesRow: true,
+        matchesCol: true,
+        game: {
+          id: requestBody.gameId,
+          name: requestBody.gameName,
+          slug: versusSearchResult.slug,
+          url: null,
+          background_image: null,
+          released: versusSearchResult.released,
+          releaseDates: [versusSearchResult.released],
+          metacritic: versusSearchResult.metacritic,
+          stealRating: 81,
+          genres: ['Action'],
+          platforms: ['PC (Microsoft Windows)'],
+          developers: [],
+          publishers: [],
+          tags: [],
+          gameModes: ['Single player'],
+          themes: [],
+          perspectives: [],
+          companies: [],
+        },
+      }),
+    })
+  })
+
+  await resetStorage(page)
+  await seedStorageValue(page, 'gamegrid_versus_state', {
+    puzzleId: 'versus-disable-draws-finish',
+    puzzle: { ...fakePuzzle, id: 'versus-disable-draws-finish', is_daily: false, date: null },
+    guesses: [
+      { gameId: 1, gameName: 'X1', gameImage: null, isCorrect: true, owner: 'x' },
+      { gameId: 2, gameName: 'O2', gameImage: null, isCorrect: true, owner: 'o' },
+      { gameId: 3, gameName: 'X3', gameImage: null, isCorrect: true, owner: 'x' },
+      { gameId: 4, gameName: 'X4', gameImage: null, isCorrect: true, owner: 'x' },
+      { gameId: 5, gameName: 'O5', gameImage: null, isCorrect: true, owner: 'o' },
+      { gameId: 6, gameName: 'O6', gameImage: null, isCorrect: true, owner: 'o' },
+      { gameId: 7, gameName: 'O7', gameImage: null, isCorrect: true, owner: 'o' },
+      { gameId: 8, gameName: 'X8', gameImage: null, isCorrect: true, owner: 'x' },
+      null,
+    ],
+    guessesRemaining: 9,
+    isComplete: false,
+    currentPlayer: 'x',
+    stealableCell: null,
+    winner: null,
+    pendingFinalSteal: null,
+    versusCategoryFilters: {},
+    versusStealRule: 'lower',
+    versusTimerOption: 'none',
+    versusDisableDraws: true,
+    turnTimeLeft: null,
+  })
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Versus' }).click()
+
+  await page.getByTestId('grid-cell-8').click()
+  await page.getByPlaceholder('Search for a video game...').fill('ti')
+  await expect(page.getByText('Tie Breaker Game')).toBeVisible()
+  await page.getByRole('button', { name: /Tie Breaker Game/i }).click()
+  await expect(page.getByText('Confirm this answer?')).toBeVisible()
+  await page.getByRole('button', { name: 'Confirm Tie Breaker Game' }).click()
+
+  await expect(page.getByText('X wins', { exact: true })).toBeVisible()
+  await expect(page.getByText('Draw game')).toHaveCount(0)
+
+  const notifications = page.getByRole('region', { name: 'Notifications (F8)' })
+  await expect(notifications.getByText('X wins on cells!')).toBeVisible()
+  await expect(notifications.getByText('X claimed 5 squares to 4.')).toBeVisible()
+})
+
 test('double alarm cells alternate between steal and game point only', async ({ page }) => {
   await resetStorage(page)
   await seedStorageValue(page, 'gamegrid_versus_state', {
@@ -1144,4 +1245,51 @@ test('reduced motion mode still supports the animation hooks', async ({ page }) 
     })
   })
   await expect(page.getByTestId('steal-showdown-overlay')).toBeVisible()
+})
+
+test('search disambiguation surfaces port-family representative labels', async ({ page }) => {
+  await page.route('**/api/search?*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        results: [
+          {
+            id: 1086,
+            name: 'Donkey Kong',
+            slug: 'donkey-kong-arcade',
+            background_image: null,
+            released: '1981-07-09',
+            metacritic: 84,
+            gameTypeLabel: 'Original',
+            originalPlatformName: 'Arcade',
+            hasSameNamePortFamily: true,
+            genres: [{ id: 1, name: 'Platform', slug: 'platform' }],
+            platforms: [{ platform: { id: 52, name: 'Arcade', slug: 'arcade' } }],
+          },
+          {
+            id: 1089,
+            name: 'Donkey Kong',
+            slug: 'donkey-kong-gb',
+            background_image: null,
+            released: '1994-06-14',
+            metacritic: 87,
+            gameTypeLabel: 'Remake',
+            originalPlatformName: 'Game Boy',
+            hasSameNamePortFamily: false,
+            genres: [{ id: 1, name: 'Platform', slug: 'platform' }],
+            platforms: [{ platform: { id: 33, name: 'Game Boy', slug: 'game-boy' } }],
+          },
+        ],
+      }),
+    })
+  })
+
+  await seedDailyPuzzle(page)
+  await page.goto('/')
+
+  await page.getByTestId('grid-cell-0').click()
+  await page.getByPlaceholder('Search for a video game...').fill('don')
+  await expect(page.getByText('Donkey Kong (ARC+Ports)', { exact: true })).toBeVisible()
+  await expect(page.getByText('Donkey Kong (GB)', { exact: true })).toBeVisible()
 })
