@@ -44,9 +44,9 @@ export function PuzzleLoadingScreen({
   const pastAttempts = loadingAttempts.slice(0, -1).reverse()
 
   return (
-    <div className="min-h-screen px-4 py-6">
-      <div className="mx-auto flex max-w-5xl flex-col gap-4 md:flex-row md:items-start">
-        <div className="w-full rounded-2xl border border-border bg-card/85 p-6 shadow-xl backdrop-blur-sm md:flex-1">
+    <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="w-full max-w-5xl md:flex md:items-start md:justify-center md:gap-4">
+        <div className="w-full max-w-md rounded-2xl border border-border bg-card/85 p-6 shadow-xl backdrop-blur-sm">
           <p className="text-center text-sm font-semibold uppercase tracking-[0.24em] text-primary">
             {mode === 'daily'
               ? 'Daily Puzzle'

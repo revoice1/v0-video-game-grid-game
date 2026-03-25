@@ -825,13 +825,18 @@ function buildOfficialGameWhereClause(): string {
   ].join(' & ')
 }
 
-function buildSearchGameWhereClause(): string {
-  return [
+function buildSearchGameWhereClause(options: { requireRecognizedRating?: boolean } = {}): string {
+  const clauses = [
     'version_parent = null',
     'first_release_date != null',
     'involved_companies != null',
-    '(rating != null | aggregated_rating != null)',
-  ].join(' & ')
+  ]
+
+  if (options.requireRecognizedRating !== false) {
+    clauses.push('(rating != null | aggregated_rating != null)')
+  }
+
+  return clauses.join(' & ')
 }
 
 function buildSupplementalPortFamilyWhereClause(parentId: number): string {
@@ -1171,10 +1176,14 @@ export async function searchIGDBGames(query: string): Promise<Game[]> {
     return []
   }
 
-  const runSearch = async (searchTerm: string, limit = 30) => {
+  const runSearch = async (
+    searchTerm: string,
+    limit = 30,
+    options: { requireRecognizedRating?: boolean } = {}
+  ) => {
     const searchQuery = [
       IGDB_GAME_FIELDS,
-      `where ${buildSearchGameWhereClause()};`,
+      `where ${buildSearchGameWhereClause(options)};`,
       `search "${escapeIGDBSearch(searchTerm)}";`,
       `limit ${limit};`,
     ].join(' ')
@@ -1182,24 +1191,37 @@ export async function searchIGDBGames(query: string): Promise<Game[]> {
     return queryIGDB<IGDBGame>('games', searchQuery)
   }
 
-  const primaryResults = await runSearch(query)
-  let mergedResults = [...primaryResults]
+  const gatherVisibleResults = async (options: { requireRecognizedRating?: boolean } = {}) => {
+    const primaryResults = await runSearch(query, 30, options)
+    let mergedResults = [...primaryResults]
 
-  if (primaryResults.length < 5) {
-    const fallbackTerms = getFallbackSearchTerms(query)
-    for (const fallbackTerm of fallbackTerms.slice(0, 2)) {
-      const fallbackResults = await runSearch(fallbackTerm, 40)
-      mergedResults = [...mergedResults, ...fallbackResults]
-      if (mergedResults.length >= 30) {
-        break
+    if (primaryResults.length < 5) {
+      const fallbackTerms = getFallbackSearchTerms(query)
+      for (const fallbackTerm of fallbackTerms.slice(0, 2)) {
+        const fallbackResults = await runSearch(fallbackTerm, 40, options)
+        mergedResults = [...mergedResults, ...fallbackResults]
+        if (mergedResults.length >= 30) {
+          break
+        }
       }
     }
+
+    const filteredResults = Array.from(
+      new Map(mergedResults.map((result) => [result.id, result])).values()
+    ).filter((result) =>
+      options.requireRecognizedRating === false
+        ? hasOfficialCompanyData(result)
+        : isOfficialCatalogGame(result)
+    )
+
+    return hideSameNamePortResults(filteredResults)
   }
 
-  const filteredResults = Array.from(
-    new Map(mergedResults.map((result) => [result.id, result])).values()
-  ).filter(isOfficialCatalogGame)
-  const visibleResults = await hideSameNamePortResults(filteredResults)
+  let visibleResults = await gatherVisibleResults()
+  if (visibleResults.length === 0) {
+    visibleResults = await gatherVisibleResults({ requireRecognizedRating: false })
+  }
+
   const rankedResults = visibleResults.sort(
     (left, right) => scoreSearchCandidate(right, query) - scoreSearchCandidate(left, query)
   )
