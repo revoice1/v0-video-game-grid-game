@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { generatePuzzleCategories } from '@/lib/igdb'
-import { LOG_PREFIX } from '@/lib/logging'
+import { logError, logInfo, logWarn } from '@/lib/logging'
 import {
   computePuzzleCellMetadata,
   getExistingDailyPuzzle,
@@ -37,8 +37,8 @@ async function generateValidPuzzle(): Promise<{
         }
       )
 
-      console.log(
-        `${LOG_PREFIX} Generated puzzle - rows: ${rows.map((row) => row.name).join(', ')} ` +
+      logInfo(
+        `Generated puzzle - rows: ${rows.map((row) => row.name).join(', ')} ` +
           `(${rowFamilies.map((family) => `${family.key}:${family.source}`).join(', ')}), ` +
           `cols: ${cols.map((col) => col.name).join(', ')} ` +
           `(${colFamilies.map((family) => `${family.key}:${family.source}`).join(', ')})`
@@ -48,15 +48,15 @@ async function generateValidPuzzle(): Promise<{
         const validationMessage =
           `This puzzle was generated with relaxed validation ` +
           `(${plan.minValidOptionsPerCell}+ valid options per cell instead of ${MIN_VALID_OPTIONS_PER_CELL}+).`
-        console.warn(`${LOG_PREFIX} ${validationMessage}`)
+        logWarn(validationMessage)
         return { rows, cols, validationStatus: 'relaxed', validationMessage, cellMetadata }
       }
 
       return { rows, cols, validationStatus: 'validated', validationMessage: null, cellMetadata }
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('Unknown puzzle generation error')
-      console.warn(
-        `${LOG_PREFIX} Puzzle generation failed at threshold ${plan.minValidOptionsPerCell} after ${plan.maxAttempts} attempts: ${lastError.message}`
+      logWarn(
+        `Puzzle generation failed at threshold ${plan.minValidOptionsPerCell} after ${plan.maxAttempts} attempts: ${lastError.message}`
       )
     }
   }
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
         let cellMetadata: PuzzleCellMetadata[] = existingPuzzle.cell_metadata
 
         if (!cellMetadata) {
-          console.log(`${LOG_PREFIX} Backfilling cell_metadata for puzzle ${existingPuzzle.id}`)
+          logInfo(`Backfilling cell_metadata for puzzle ${existingPuzzle.id}`)
           cellMetadata = await computePuzzleCellMetadata(
             existingPuzzle.row_categories,
             existingPuzzle.col_categories,
@@ -171,7 +171,7 @@ export async function GET(request: NextRequest) {
       cell_metadata: categories.cellMetadata,
     })
   } catch (error) {
-    console.error(`${LOG_PREFIX} Error in puzzle API:`, error)
+    logError('Error in puzzle API:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json({ error: `Failed to get puzzle: ${errorMessage}` }, { status: 500 })
   }

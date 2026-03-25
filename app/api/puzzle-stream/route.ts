@@ -5,7 +5,7 @@ import {
   type PuzzleCategoryFilters,
   type PuzzleProgressCallback,
 } from '@/lib/igdb'
-import { LOG_PREFIX } from '@/lib/logging'
+import { logError } from '@/lib/logging'
 import {
   computePuzzleCellMetadata,
   getExistingDailyPuzzle,
@@ -282,7 +282,7 @@ export async function GET(request: NextRequest) {
         },
       })
     } catch (err) {
-      console.error(`${LOG_PREFIX} puzzle-stream error:`, err)
+      logError('puzzle-stream error:', err)
       await send({ type: 'error', message: err instanceof Error ? err.message : 'Unknown error' })
     } finally {
       await writer.close()

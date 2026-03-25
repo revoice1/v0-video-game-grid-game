@@ -185,7 +185,7 @@ function getCategoryIdentity(category: Category): string {
   return `${category.type}:${String(category.slug ?? category.id)}`
 }
 
-function getCanonicalCategoryPairKey(left: Category, right: Category): string {
+export function getCanonicalCategoryPairKey(left: Category, right: Category): string {
   return [getCategoryIdentity(left), getCategoryIdentity(right)].sort().join('|')
 }
 

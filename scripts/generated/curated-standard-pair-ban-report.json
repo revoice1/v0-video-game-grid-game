@@ -1,0 +1,1567 @@
+{
+  "generatedAt": "2026-03-25T02:28:06.978Z",
+  "startedAt": "2026-03-25T02:15:33.586Z",
+  "checkedPairs": 2081,
+  "totalBans": 173,
+  "intrinsicBans": 96,
+  "observedZeroBans": 77,
+  "rows": [
+    {
+      "pairKey": "genre:rpg|platform:atari2600",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "genre",
+      "colCategory": "Role-playing (RPG)",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "genre:tactical|platform:gb",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy",
+      "colFamily": "genre",
+      "colCategory": "Tactical",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:atari2600",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2000-01-01,2009-12-31|platform:atari2600",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "decade",
+      "colCategory": "2000s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2010-01-01,2019-12-31|platform:atari2600",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "decade",
+      "colCategory": "2010s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2020-01-01,2029-12-31|platform:atari2600",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "decade",
+      "colCategory": "2020s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:nes",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Entertainment System",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2000-01-01,2009-12-31|platform:nes",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Entertainment System",
+      "colFamily": "decade",
+      "colCategory": "2000s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2010-01-01,2019-12-31|platform:nes",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Entertainment System",
+      "colFamily": "decade",
+      "colCategory": "2010s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2020-01-01,2029-12-31|platform:nes",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Entertainment System",
+      "colFamily": "decade",
+      "colCategory": "2020s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:snes",
+      "rowFamily": "platform",
+      "rowCategory": "Super Nintendo Entertainment System",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2000-01-01,2009-12-31|platform:snes",
+      "rowFamily": "platform",
+      "rowCategory": "Super Nintendo Entertainment System",
+      "colFamily": "decade",
+      "colCategory": "2000s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2010-01-01,2019-12-31|platform:snes",
+      "rowFamily": "platform",
+      "rowCategory": "Super Nintendo Entertainment System",
+      "colFamily": "decade",
+      "colCategory": "2010s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2020-01-01,2029-12-31|platform:snes",
+      "rowFamily": "platform",
+      "rowCategory": "Super Nintendo Entertainment System",
+      "colFamily": "decade",
+      "colCategory": "2020s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:genesis-slash-megadrive",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Mega Drive/Genesis",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2000-01-01,2009-12-31|platform:genesis-slash-megadrive",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Mega Drive/Genesis",
+      "colFamily": "decade",
+      "colCategory": "2000s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2010-01-01,2019-12-31|platform:genesis-slash-megadrive",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Mega Drive/Genesis",
+      "colFamily": "decade",
+      "colCategory": "2010s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2020-01-01,2029-12-31|platform:genesis-slash-megadrive",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Mega Drive/Genesis",
+      "colFamily": "decade",
+      "colCategory": "2020s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:saturn",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Saturn",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2000-01-01,2009-12-31|platform:saturn",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Saturn",
+      "colFamily": "decade",
+      "colCategory": "2000s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2010-01-01,2019-12-31|platform:saturn",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Saturn",
+      "colFamily": "decade",
+      "colCategory": "2010s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2020-01-01,2029-12-31|platform:saturn",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Saturn",
+      "colFamily": "decade",
+      "colCategory": "2020s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:dc",
+      "rowFamily": "platform",
+      "rowCategory": "Dreamcast",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2010-01-01,2019-12-31|platform:dc",
+      "rowFamily": "platform",
+      "rowCategory": "Dreamcast",
+      "colFamily": "decade",
+      "colCategory": "2010s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2020-01-01,2029-12-31|platform:dc",
+      "rowFamily": "platform",
+      "rowCategory": "Dreamcast",
+      "colFamily": "decade",
+      "colCategory": "2020s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:gb",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2000-01-01,2009-12-31|platform:gb",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy",
+      "colFamily": "decade",
+      "colCategory": "2000s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2010-01-01,2019-12-31|platform:gb",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy",
+      "colFamily": "decade",
+      "colCategory": "2010s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2020-01-01,2029-12-31|platform:gb",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy",
+      "colFamily": "decade",
+      "colCategory": "2020s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:gba",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy Advance",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1990-01-01,1999-12-31|platform:gba",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy Advance",
+      "colFamily": "decade",
+      "colCategory": "1990s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2010-01-01,2019-12-31|platform:gba",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy Advance",
+      "colFamily": "decade",
+      "colCategory": "2010s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2020-01-01,2029-12-31|platform:gba",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy Advance",
+      "colFamily": "decade",
+      "colCategory": "2020s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:nds",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo DS",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1990-01-01,1999-12-31|platform:nds",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo DS",
+      "colFamily": "decade",
+      "colCategory": "1990s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2020-01-01,2029-12-31|platform:nds",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo DS",
+      "colFamily": "decade",
+      "colCategory": "2020s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:3ds",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo 3DS",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1990-01-01,1999-12-31|platform:3ds",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo 3DS",
+      "colFamily": "decade",
+      "colCategory": "1990s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2000-01-01,2009-12-31|platform:3ds",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo 3DS",
+      "colFamily": "decade",
+      "colCategory": "2000s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2020-01-01,2029-12-31|platform:3ds",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo 3DS",
+      "colFamily": "decade",
+      "colCategory": "2020s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:n64",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo 64",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2000-01-01,2009-12-31|platform:n64",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo 64",
+      "colFamily": "decade",
+      "colCategory": "2000s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2010-01-01,2019-12-31|platform:n64",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo 64",
+      "colFamily": "decade",
+      "colCategory": "2010s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2020-01-01,2029-12-31|platform:n64",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo 64",
+      "colFamily": "decade",
+      "colCategory": "2020s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:ngc",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo GameCube",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1990-01-01,1999-12-31|platform:ngc",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo GameCube",
+      "colFamily": "decade",
+      "colCategory": "1990s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2010-01-01,2019-12-31|platform:ngc",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo GameCube",
+      "colFamily": "decade",
+      "colCategory": "2010s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2020-01-01,2029-12-31|platform:ngc",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo GameCube",
+      "colFamily": "decade",
+      "colCategory": "2020s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:wii",
+      "rowFamily": "platform",
+      "rowCategory": "Wii",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1990-01-01,1999-12-31|platform:wii",
+      "rowFamily": "platform",
+      "rowCategory": "Wii",
+      "colFamily": "decade",
+      "colCategory": "1990s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2020-01-01,2029-12-31|platform:wii",
+      "rowFamily": "platform",
+      "rowCategory": "Wii",
+      "colFamily": "decade",
+      "colCategory": "2020s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:wiiu",
+      "rowFamily": "platform",
+      "rowCategory": "Wii U",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1990-01-01,1999-12-31|platform:wiiu",
+      "rowFamily": "platform",
+      "rowCategory": "Wii U",
+      "colFamily": "decade",
+      "colCategory": "1990s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2000-01-01,2009-12-31|platform:wiiu",
+      "rowFamily": "platform",
+      "rowCategory": "Wii U",
+      "colFamily": "decade",
+      "colCategory": "2000s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2020-01-01,2029-12-31|platform:wiiu",
+      "rowFamily": "platform",
+      "rowCategory": "Wii U",
+      "colFamily": "decade",
+      "colCategory": "2020s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:switch",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Switch",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1990-01-01,1999-12-31|platform:switch",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Switch",
+      "colFamily": "decade",
+      "colCategory": "1990s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2000-01-01,2009-12-31|platform:switch",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Switch",
+      "colFamily": "decade",
+      "colCategory": "2000s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:switch-2",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Switch 2",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1990-01-01,1999-12-31|platform:switch-2",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Switch 2",
+      "colFamily": "decade",
+      "colCategory": "1990s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2000-01-01,2009-12-31|platform:switch-2",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Switch 2",
+      "colFamily": "decade",
+      "colCategory": "2000s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2010-01-01,2019-12-31|platform:switch-2",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Switch 2",
+      "colFamily": "decade",
+      "colCategory": "2010s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2010-01-01,2019-12-31|platform:ps",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation (Original)",
+      "colFamily": "decade",
+      "colCategory": "2010s",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "decade:2020-01-01,2029-12-31|platform:ps",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation (Original)",
+      "colFamily": "decade",
+      "colCategory": "2020s",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:ps2",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation 2",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1990-01-01,1999-12-31|platform:ps2",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation 2",
+      "colFamily": "decade",
+      "colCategory": "1990s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2010-01-01,2019-12-31|platform:ps2",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation 2",
+      "colFamily": "decade",
+      "colCategory": "2010s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2020-01-01,2029-12-31|platform:ps2",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation 2",
+      "colFamily": "decade",
+      "colCategory": "2020s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:ps3",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation 3",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1990-01-01,1999-12-31|platform:ps3",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation 3",
+      "colFamily": "decade",
+      "colCategory": "1990s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2020-01-01,2029-12-31|platform:ps3",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation 3",
+      "colFamily": "decade",
+      "colCategory": "2020s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:pc",
+      "rowFamily": "platform",
+      "rowCategory": "PC (Windows/DOS)",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:ps4--1",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation 4",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1990-01-01,1999-12-31|platform:ps4--1",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation 4",
+      "colFamily": "decade",
+      "colCategory": "1990s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2000-01-01,2009-12-31|platform:ps4--1",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation 4",
+      "colFamily": "decade",
+      "colCategory": "2000s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:ps5",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation 5",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1990-01-01,1999-12-31|platform:ps5",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation 5",
+      "colFamily": "decade",
+      "colCategory": "1990s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2000-01-01,2009-12-31|platform:ps5",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation 5",
+      "colFamily": "decade",
+      "colCategory": "2000s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2010-01-01,2019-12-31|platform:ps5",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation 5",
+      "colFamily": "decade",
+      "colCategory": "2010s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:psp",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation Portable",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1990-01-01,1999-12-31|platform:psp",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation Portable",
+      "colFamily": "decade",
+      "colCategory": "1990s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2020-01-01,2029-12-31|platform:psp",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation Portable",
+      "colFamily": "decade",
+      "colCategory": "2020s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:psvita",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation Vita",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1990-01-01,1999-12-31|platform:psvita",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation Vita",
+      "colFamily": "decade",
+      "colCategory": "1990s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2000-01-01,2009-12-31|platform:psvita",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation Vita",
+      "colFamily": "decade",
+      "colCategory": "2000s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2020-01-01,2029-12-31|platform:psvita",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation Vita",
+      "colFamily": "decade",
+      "colCategory": "2020s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:xbox",
+      "rowFamily": "platform",
+      "rowCategory": "Xbox (Original)",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "decade:2010-01-01,2019-12-31|platform:xbox",
+      "rowFamily": "platform",
+      "rowCategory": "Xbox (Original)",
+      "colFamily": "decade",
+      "colCategory": "2010s",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:xbox360",
+      "rowFamily": "platform",
+      "rowCategory": "Xbox 360",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1990-01-01,1999-12-31|platform:xbox360",
+      "rowFamily": "platform",
+      "rowCategory": "Xbox 360",
+      "colFamily": "decade",
+      "colCategory": "1990s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2020-01-01,2029-12-31|platform:xbox360",
+      "rowFamily": "platform",
+      "rowCategory": "Xbox 360",
+      "colFamily": "decade",
+      "colCategory": "2020s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:xboxone",
+      "rowFamily": "platform",
+      "rowCategory": "Xbox One",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1990-01-01,1999-12-31|platform:xboxone",
+      "rowFamily": "platform",
+      "rowCategory": "Xbox One",
+      "colFamily": "decade",
+      "colCategory": "1990s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2000-01-01,2009-12-31|platform:xboxone",
+      "rowFamily": "platform",
+      "rowCategory": "Xbox One",
+      "colFamily": "decade",
+      "colCategory": "2000s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|platform:series-x-s",
+      "rowFamily": "platform",
+      "rowCategory": "Xbox Series X|S",
+      "colFamily": "decade",
+      "colCategory": "1980s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1990-01-01,1999-12-31|platform:series-x-s",
+      "rowFamily": "platform",
+      "rowCategory": "Xbox Series X|S",
+      "colFamily": "decade",
+      "colCategory": "1990s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2000-01-01,2009-12-31|platform:series-x-s",
+      "rowFamily": "platform",
+      "rowCategory": "Xbox Series X|S",
+      "colFamily": "decade",
+      "colCategory": "2000s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:2010-01-01,2019-12-31|platform:series-x-s",
+      "rowFamily": "platform",
+      "rowCategory": "Xbox Series X|S",
+      "colFamily": "decade",
+      "colCategory": "2010s",
+      "reason": "platform is outside its supported decades",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "company:electronic-arts|platform:atari2600",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "company",
+      "colCategory": "Electronic Arts",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:capcom|platform:atari2600",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "company",
+      "colCategory": "Capcom",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:square-enix|platform:atari2600",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "company",
+      "colCategory": "Square Enix",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:ubisoft|platform:atari2600",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "company",
+      "colCategory": "Ubisoft",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:thq|platform:atari2600",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "company",
+      "colCategory": "THQ",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:sony|platform:atari2600",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "company",
+      "colCategory": "Sony",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:sega|platform:nes",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Entertainment System",
+      "colFamily": "company",
+      "colCategory": "Sega",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:microsoft-xbox|platform:nes",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Entertainment System",
+      "colFamily": "company",
+      "colCategory": "Microsoft",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:sony|platform:nes",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Entertainment System",
+      "colFamily": "company",
+      "colCategory": "Sony",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:ubisoft|platform:snes",
+      "rowFamily": "platform",
+      "rowCategory": "Super Nintendo Entertainment System",
+      "colFamily": "company",
+      "colCategory": "Ubisoft",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:square-enix|platform:genesis-slash-megadrive",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Mega Drive/Genesis",
+      "colFamily": "company",
+      "colCategory": "Square Enix",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:ubisoft|platform:genesis-slash-megadrive",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Mega Drive/Genesis",
+      "colFamily": "company",
+      "colCategory": "Ubisoft",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:sega|platform:gb",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy",
+      "colFamily": "company",
+      "colCategory": "Sega",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:microsoft-xbox|platform:gb",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy",
+      "colFamily": "company",
+      "colCategory": "Microsoft",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:sony|platform:gb",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy",
+      "colFamily": "company",
+      "colCategory": "Sony",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:microsoft-xbox|platform:gba",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy Advance",
+      "colFamily": "company",
+      "colCategory": "Microsoft",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:sony|platform:gba",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy Advance",
+      "colFamily": "company",
+      "colCategory": "Sony",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:sony|platform:nds",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo DS",
+      "colFamily": "company",
+      "colCategory": "Sony",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:microsoft-xbox|platform:3ds",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo 3DS",
+      "colFamily": "company",
+      "colCategory": "Microsoft",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:sony|platform:3ds",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo 3DS",
+      "colFamily": "company",
+      "colCategory": "Sony",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:microsoft-xbox|platform:n64",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo 64",
+      "colFamily": "company",
+      "colCategory": "Microsoft",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:activision|platform:switch-2",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Switch 2",
+      "colFamily": "company",
+      "colCategory": "Activision",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:thq|platform:switch-2",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Switch 2",
+      "colFamily": "company",
+      "colCategory": "THQ",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:thq|platform:psvita",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation Vita",
+      "colFamily": "company",
+      "colCategory": "THQ",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:nintendo|platform:series-x-s",
+      "rowFamily": "platform",
+      "rowCategory": "Xbox Series X|S",
+      "colFamily": "company",
+      "colCategory": "Nintendo",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:thq|platform:series-x-s",
+      "rowFamily": "platform",
+      "rowCategory": "Xbox Series X|S",
+      "colFamily": "company",
+      "colCategory": "THQ",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:mmo|platform:atari2600",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|platform:atari2600",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:mmo|platform:nes",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Entertainment System",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|platform:nes",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Entertainment System",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:mmo|platform:snes",
+      "rowFamily": "platform",
+      "rowCategory": "Super Nintendo Entertainment System",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|platform:snes",
+      "rowFamily": "platform",
+      "rowCategory": "Super Nintendo Entertainment System",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|platform:genesis-slash-megadrive",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Mega Drive/Genesis",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:mmo|platform:saturn",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Saturn",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|platform:saturn",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Saturn",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|platform:dc",
+      "rowFamily": "platform",
+      "rowCategory": "Dreamcast",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:co-operative|platform:gb",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy",
+      "colFamily": "game_mode",
+      "colCategory": "Co-operative",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:mmo|platform:gb",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|platform:gb",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|platform:gba",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy Advance",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|platform:nds",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo DS",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:mmo|platform:3ds",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo 3DS",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|platform:3ds",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo 3DS",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:mmo|platform:n64",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo 64",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|platform:n64",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo 64",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|platform:ngc",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo GameCube",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|platform:wiiu",
+      "rowFamily": "platform",
+      "rowCategory": "Wii U",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:mmo|platform:ps",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation (Original)",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|platform:ps",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation (Original)",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|platform:ps2",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation 2",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|platform:ps3",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation 3",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|platform:psp",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation Portable",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|platform:psvita",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation Vita",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:mmo|platform:xbox",
+      "rowFamily": "platform",
+      "rowCategory": "Xbox (Original)",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|platform:xbox",
+      "rowFamily": "platform",
+      "rowCategory": "Xbox (Original)",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|platform:xbox360",
+      "rowFamily": "platform",
+      "rowCategory": "Xbox 360",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "platform:atari2600|theme:open-world",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "theme",
+      "colCategory": "Open world",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "platform:snes|theme:mystery",
+      "rowFamily": "platform",
+      "rowCategory": "Super Nintendo Entertainment System",
+      "colFamily": "theme",
+      "colCategory": "Mystery",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "platform:genesis-slash-megadrive|theme:mystery",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Mega Drive/Genesis",
+      "colFamily": "theme",
+      "colCategory": "Mystery",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "platform:saturn|theme:open-world",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Saturn",
+      "colFamily": "theme",
+      "colCategory": "Open world",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "platform:gb|theme:survival",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy",
+      "colFamily": "theme",
+      "colCategory": "Survival",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "platform:gba|theme:mystery",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy Advance",
+      "colFamily": "theme",
+      "colCategory": "Mystery",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "platform:n64|theme:mystery",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo 64",
+      "colFamily": "theme",
+      "colCategory": "Mystery",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:thq|decade:1980-01-01,1989-12-31",
+      "rowFamily": "decade",
+      "rowCategory": "1980s",
+      "colFamily": "company",
+      "colCategory": "THQ",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:thq|decade:2020-01-01,2029-12-31",
+      "rowFamily": "decade",
+      "rowCategory": "2020s",
+      "colFamily": "company",
+      "colCategory": "THQ",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|game_mode:mmo",
+      "rowFamily": "decade",
+      "rowCategory": "1980s",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "reason": "modern online mode paired with an early decade",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1980-01-01,1989-12-31|game_mode:battle-royale",
+      "rowFamily": "decade",
+      "rowCategory": "1980s",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "modern online mode paired with an early decade",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1990-01-01,1999-12-31|game_mode:mmo",
+      "rowFamily": "decade",
+      "rowCategory": "1990s",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "reason": "modern online mode paired with an early decade",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1990-01-01,1999-12-31|game_mode:battle-royale",
+      "rowFamily": "decade",
+      "rowCategory": "1990s",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "modern online mode paired with an early decade",
+      "source": "intrinsic"
+    },
+    {
+      "pairKey": "company:konami|game_mode:mmo",
+      "rowFamily": "company",
+      "rowCategory": "Konami",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:capcom|game_mode:mmo",
+      "rowFamily": "company",
+      "rowCategory": "Capcom",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:capcom|game_mode:battle-royale",
+      "rowFamily": "company",
+      "rowCategory": "Capcom",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "company:sony|game_mode:battle-royale",
+      "rowFamily": "company",
+      "rowCategory": "Sony",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:mmo|theme:mystery",
+      "rowFamily": "game_mode",
+      "rowCategory": "Massively Multiplayer Online (MMO)",
+      "colFamily": "theme",
+      "colCategory": "Mystery",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|theme:mystery",
+      "rowFamily": "game_mode",
+      "rowCategory": "Battle Royale",
+      "colFamily": "theme",
+      "colCategory": "Mystery",
+      "reason": "no catalog matches in curated pair table",
+      "source": "observed-zero"
+    }
+  ]
+}

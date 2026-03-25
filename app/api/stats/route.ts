@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { LOG_PREFIX } from '@/lib/logging'
+import { logError, logWarn } from '@/lib/logging'
 import { applyAnonymousSessionCookie, resolveAnonymousSession } from '@/lib/server-session'
 
 interface GuessStatRow {
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
       .eq('puzzle_id', puzzleId)
 
     if (guessResponse.error) {
-      console.warn(`${LOG_PREFIX} Guess stats unavailable:`, guessResponse.error.message)
+      logWarn('Guess stats unavailable:', guessResponse.error.message)
     } else {
       guessRows = guessResponse.data
     }
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
       totalCompletions: completionCount || 0,
     })
   } catch (error) {
-    console.error(`${LOG_PREFIX} Stats error:`, error)
+    logError('Stats error:', error)
     return NextResponse.json({ error: 'Failed to get stats' }, { status: 500 })
   }
 }
@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
 
     return applyAnonymousSessionCookie(NextResponse.json({ success: true }), resolvedSession)
   } catch (error) {
-    console.error(`${LOG_PREFIX} Stats POST error:`, error)
+    logError('Stats POST error:', error)
     return NextResponse.json({ error: 'Failed to save completion' }, { status: 500 })
   }
 }

@@ -9,6 +9,7 @@
 - [Company Alias Buckets](#company-alias-buckets)
 - [Platform Amalgams](#platform-amalgams)
 - [Banned Pair Philosophy](#banned-pair-philosophy)
+- [Regenerating Pair Bans](#regenerating-pair-bans)
 - [Tag Status](#tag-status)
 
 ## Philosophy
@@ -109,6 +110,18 @@ Examples:
   - intrinsic structural impossibilities
   - observed zero-result curated pairs
 - The ban table should be regenerated from live counts when the curated families change.
+
+## Regenerating Pair Bans
+
+- Regenerate the checked-in standard ban table with `npm run regen:pair-bans`.
+- The command writes:
+  - [curated-standard-pair-bans.ts](../lib/curated-standard-pair-bans.ts)
+  - [curated-standard-pair-ban-report.json](../scripts/generated/curated-standard-pair-ban-report.json)
+- The script uses:
+  - curated standard families from [versus-category-options.ts](../lib/versus-category-options.ts)
+  - intrinsic rejection rules from [igdb-validation.ts](../lib/igdb-validation.ts)
+  - live count checks from [igdb.ts](../lib/igdb.ts)
+- Intrinsic bans and observed zero-result bans stay layered separately in the generated output.
 
 ## Tag Status
 

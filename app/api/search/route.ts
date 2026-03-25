@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { searchIGDBGames } from '@/lib/igdb'
-import { LOG_PREFIX } from '@/lib/logging'
+import { logError } from '@/lib/logging'
 import { createClient } from '@/lib/supabase/server'
 import type { Category } from '@/lib/types'
 
@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ results: safeResults })
   } catch (error) {
-    console.error(`${LOG_PREFIX} Search error:`, error)
+    logError('Search error:', error)
     return NextResponse.json({ results: [] })
   }
 }

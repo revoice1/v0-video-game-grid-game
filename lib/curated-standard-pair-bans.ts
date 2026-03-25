@@ -1,4 +1,4 @@
-// Generated from tmp-standard-interfamily-zero-report.json
+// Generated via `npm run regen:pair-bans`
 // Canonical unordered pair keys for curated standard-family bans.
 export const CURATED_STANDARD_PAIR_BAN_REASONS: Record<string, string> = {
   'company:activision|platform:switch-2': 'no catalog matches in curated pair table',
