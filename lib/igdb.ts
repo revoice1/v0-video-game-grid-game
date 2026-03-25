@@ -1205,7 +1205,6 @@ export async function searchIGDBGames(query: string): Promise<Game[]> {
   }
 
   const visibleResults = await gatherVisibleResults()
-
   const rankedResults = visibleResults.sort(
     (left, right) => scoreSearchCandidate(right, query) - scoreSearchCandidate(left, query)
   )
