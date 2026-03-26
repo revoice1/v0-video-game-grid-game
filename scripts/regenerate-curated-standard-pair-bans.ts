@@ -6,7 +6,8 @@ const projectRoot = process.cwd()
 const outputPath = path.join(projectRoot, 'lib', 'curated-standard-pair-bans.ts')
 const reportDir = path.join(projectRoot, 'scripts', 'generated')
 const reportPath = path.join(reportDir, 'curated-standard-pair-ban-report.json')
-const ZERO_RESULT_REASON = 'no catalog matches in curated pair table'
+const PREBAN_COUNT_THRESHOLD = 3
+const LOW_RESULT_REASON = `${PREBAN_COUNT_THRESHOLD} or fewer catalog matches in curated pair table`
 
 function buildFileContents(pairBanReasons: Record<string, string>) {
   return `// Generated via \`npm run regen:pair-bans\`\n// Canonical unordered pair keys for curated standard-family bans.\nexport const CURATED_STANDARD_PAIR_BAN_REASONS: Record<string, string> = ${JSON.stringify(pairBanReasons, null, 2)}\n\nexport function getCuratedStandardPairBanReason(pairKey: string): string | null {\n  return CURATED_STANDARD_PAIR_BAN_REASONS[pairKey] ?? null\n}\n`
@@ -54,7 +55,7 @@ async function main() {
   const startedAt = new Date().toISOString()
   let checkedPairs = 0
   let intrinsicBans = 0
-  let observedZeroBans = 0
+  let observedLowCountBans = 0
 
   for (const [rowFamily, colFamily] of getFamilyPairs(CURATED_STANDARD_CATEGORY_FAMILIES)) {
     for (const rowCategory of rowFamily.categories) {
@@ -83,23 +84,24 @@ async function main() {
           ignoreCuratedPairBans: true,
         })
 
-        if (count === 0) {
-          pairBanReasons[pairKey] = ZERO_RESULT_REASON
-          observedZeroBans += 1
+        if (count <= PREBAN_COUNT_THRESHOLD) {
+          pairBanReasons[pairKey] = LOW_RESULT_REASON
+          observedLowCountBans += 1
           reportRows.push({
             pairKey,
             rowFamily: rowFamily.key,
             rowCategory: rowCategory.name,
             colFamily: colFamily.key,
             colCategory: colCategory.name,
-            reason: ZERO_RESULT_REASON,
-            source: 'observed-zero',
+            count: String(count),
+            reason: LOW_RESULT_REASON,
+            source: 'observed-low-count',
           })
         }
 
         if (checkedPairs % 100 === 0) {
           console.log(
-            `[GG] regen:pair-bans checked ${checkedPairs} pairs (${intrinsicBans} intrinsic, ${observedZeroBans} zero-result)`
+            `[GG] regen:pair-bans checked ${checkedPairs} pairs (${intrinsicBans} intrinsic, ${observedLowCountBans} low-count)`
           )
         }
       }
@@ -121,7 +123,8 @@ async function main() {
         checkedPairs,
         totalBans: Object.keys(sortedPairBanReasons).length,
         intrinsicBans,
-        observedZeroBans,
+        prebanCountThreshold: PREBAN_COUNT_THRESHOLD,
+        observedLowCountBans,
         rows: reportRows,
       },
       null,

@@ -119,6 +119,42 @@ describe('GameSearch', () => {
     })
   })
 
+  it('uses enter and escape to interact with the confirm step', async () => {
+    const onSelect = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <GameSearch
+        isOpen
+        confirmBeforeSelect
+        rowCategory={rowCategory}
+        colCategory={colCategory}
+        onSelect={onSelect}
+        onClose={() => {}}
+      />
+    )
+
+    await user.type(screen.getByPlaceholderText('Search for a video game...'), 'wo')
+
+    await screen.findByText('World of Warcraft')
+    await user.click(screen.getByRole('button', { name: /World of Warcraft/i }))
+
+    expect(screen.getByText('Confirm this answer?')).toBeInTheDocument()
+
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByText('Confirm this answer?')).not.toBeInTheDocument()
+    expect(onSelect).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: /World of Warcraft/i }))
+    expect(screen.getByText('Confirm this answer?')).toBeInTheDocument()
+
+    fireEvent.keyDown(window, { key: 'Enter' })
+
+    await waitFor(() => {
+      expect(onSelect).toHaveBeenCalledWith(fakeGame)
+    })
+  })
+
   it('renders shared short labels for duplicate titles and same-name port families', async () => {
     vi.stubGlobal(
       'fetch',

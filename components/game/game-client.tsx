@@ -2139,6 +2139,25 @@ export function GameClient() {
         if (invalidGuessResolution.kind === 'defender-wins') {
           setWinner(invalidGuessResolution.defender)
           setPendingFinalSteal(null)
+          saveGameState(
+            {
+              puzzleId: puzzle.id,
+              puzzle,
+              guesses,
+              guessesRemaining,
+              isComplete: true,
+              currentPlayer,
+              stealableCell: null,
+              winner: invalidGuessResolution.defender,
+              pendingFinalSteal: null,
+              versusCategoryFilters,
+              versusStealRule,
+              versusTimerOption,
+              versusDisableDraws,
+              turnTimeLeft,
+            },
+            mode
+          )
           toast({
             variant: 'destructive',
             title: invalidGuessResolution.title,
@@ -2146,6 +2165,25 @@ export function GameClient() {
           })
         } else {
           setCurrentPlayer(invalidGuessResolution.nextPlayer)
+          saveGameState(
+            {
+              puzzleId: puzzle.id,
+              puzzle,
+              guesses,
+              guessesRemaining,
+              isComplete,
+              currentPlayer: invalidGuessResolution.nextPlayer,
+              stealableCell: null,
+              winner,
+              pendingFinalSteal,
+              versusCategoryFilters,
+              versusStealRule,
+              versusTimerOption,
+              versusDisableDraws,
+              turnTimeLeft,
+            },
+            mode
+          )
           toast({
             variant: 'destructive',
             title: invalidGuessResolution.title,

@@ -107,7 +107,13 @@ const STANDARD_COMPANY_CATEGORIES: Category[] = [
     companyIds: [1],
   },
   { type: 'company', id: 'konami', name: 'Konami', slug: 'konami', companyIds: [129] },
-  { type: 'company', id: 'activision', name: 'Activision', slug: 'activision', companyIds: [66] },
+  {
+    type: 'company',
+    id: 'activision',
+    name: 'Activision / Blizzard',
+    slug: 'activision',
+    companyIds: [66],
+  },
   { type: 'company', id: 'capcom', name: 'Capcom', slug: 'capcom', companyIds: [37] },
   {
     type: 'company',
@@ -123,7 +129,7 @@ const STANDARD_COMPANY_CATEGORIES: Category[] = [
     slug: 'ubisoft',
     companyNamePatterns: ['Ubisoft'],
   },
-  { type: 'company', id: 'thq', name: 'THQ', slug: 'thq', companyIds: [197] },
+  { type: 'company', id: 'thq', name: 'THQ / Nordic', slug: 'thq', companyIds: [197] },
   {
     type: 'company',
     id: 'microsoft-xbox',
@@ -242,6 +248,7 @@ export const CURATED_VERSUS_CATEGORY_FAMILIES: VersusCategoryFamilyOption[] =
             String(category.id) === '7')) ||
         (family.key === 'company' &&
           (String(category.id) === 'bandai-namco' ||
+            String(category.id) === 'thq' ||
             String(category.id) === 'atlus' ||
             String(category.id) === 'taito' ||
             String(category.id) === 'snk' ||

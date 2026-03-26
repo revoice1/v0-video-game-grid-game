@@ -16,6 +16,8 @@ import { buildGenerationPlans } from '@/lib/puzzle-generation-plans'
 import type { IGDBGame } from '@/lib/igdb'
 import type { Category, Game } from '@/lib/types'
 
+const CURATED_LOW_COUNT_REASON = '3 or fewer catalog matches in curated pair table'
+
 const baseGame: Game = {
   id: 1,
   name: 'Test Game',
@@ -104,6 +106,10 @@ describe('resolveGenerationCategoryFamilies', () => {
     const companyFamily = families.find((family) => family.key === 'company')
 
     expect(companyFamily?.categories.map((category) => category.name)).toContain('Microsoft')
+    expect(companyFamily?.categories.map((category) => category.name)).toContain(
+      'Activision / Blizzard'
+    )
+    expect(companyFamily?.categories.map((category) => category.name)).toContain('THQ / Nordic')
     expect(companyFamily?.categories.map((category) => category.name)).not.toContain('Atlus')
   })
 })
@@ -139,6 +145,48 @@ describe('buildIGDBWhereClause', () => {
     )
   })
 
+  it('matches THQ / Nordic through aliases when no direct company ids are provided', () => {
+    expect(
+      igdbGameMatchesCategory(
+        {
+          ...baseGame,
+          igdb: {
+            ...baseGame.igdb!,
+            companies: ['THQ Nordic'],
+            keywords: [],
+          },
+        },
+        {
+          type: 'company',
+          id: 'thq',
+          name: 'THQ / Nordic',
+          slug: 'thq',
+        }
+      )
+    ).toBe(true)
+  })
+
+  it('matches Blizzard through the Activision / Blizzard alias group', () => {
+    expect(
+      igdbGameMatchesCategory(
+        {
+          ...baseGame,
+          igdb: {
+            ...baseGame.igdb!,
+            companies: ['Blizzard Entertainment'],
+            keywords: [],
+          },
+        },
+        {
+          type: 'company',
+          id: 'activision',
+          name: 'Activision / Blizzard',
+          slug: 'activision',
+        }
+      )
+    ).toBe(true)
+  })
+
   it('builds a decade release-date clause', () => {
     expect(buildIGDBWhereClause({ type: 'decade', id: '2000', name: '2000s' })).toContain(
       'first_release_date != null'
@@ -171,7 +219,7 @@ describe('getPairRejectionReason', () => {
     }
 
     expect(getIntrinsicPairRejectionReason(sony, nes)).toBeNull()
-    expect(getPairRejectionReason(sony, nes)).toBe('no catalog matches in curated pair table')
+    expect(getPairRejectionReason(sony, nes)).toBe(CURATED_LOW_COUNT_REASON)
   })
 
   it('rejects conflicting solo and multiplayer pairings', () => {
@@ -216,8 +264,8 @@ describe('getPairRejectionReason', () => {
       slug: 'nes',
     }
 
-    expect(getPairRejectionReason(left, right)).toBe('no catalog matches in curated pair table')
-    expect(getPairRejectionReason(right, left)).toBe('no catalog matches in curated pair table')
+    expect(getPairRejectionReason(left, right)).toBe(CURATED_LOW_COUNT_REASON)
+    expect(getPairRejectionReason(right, left)).toBe(CURATED_LOW_COUNT_REASON)
   })
 
   it('uses curated structural bans for known empty platform-theme pairs', () => {
@@ -226,7 +274,7 @@ describe('getPairRejectionReason', () => {
         { type: 'platform', id: 59, name: 'Atari 2600', slug: 'atari2600' },
         { type: 'theme', id: 38, name: 'Open world', slug: 'open-world' }
       )
-    ).toBe('no catalog matches in curated pair table')
+    ).toBe(CURATED_LOW_COUNT_REASON)
   })
 })
 

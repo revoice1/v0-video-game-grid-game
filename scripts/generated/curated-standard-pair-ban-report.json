@@ -1,19 +1,51 @@
 {
-  "generatedAt": "2026-03-25T02:28:06.978Z",
-  "startedAt": "2026-03-25T02:15:33.586Z",
+  "generatedAt": "2026-03-26T04:19:02.398Z",
+  "startedAt": "2026-03-26T04:06:16.255Z",
   "checkedPairs": 2081,
-  "totalBans": 173,
+  "totalBans": 276,
   "intrinsicBans": 96,
-  "observedZeroBans": 77,
+  "prebanCountThreshold": 3,
+  "observedLowCountBans": 180,
   "rows": [
+    {
+      "pairKey": "genre:fighting|platform:atari2600",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "genre",
+      "colCategory": "Fighting",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
     {
       "pairKey": "genre:rpg|platform:atari2600",
       "rowFamily": "platform",
       "rowCategory": "Atari 2600",
       "colFamily": "genre",
       "colCategory": "Role-playing (RPG)",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "genre:tactical|platform:atari2600",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "genre",
+      "colCategory": "Tactical",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "genre:tactical|platform:genesis-slash-megadrive",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Mega Drive/Genesis",
+      "colFamily": "genre",
+      "colCategory": "Tactical",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "genre:tactical|platform:gb",
@@ -21,8 +53,19 @@
       "rowCategory": "Game Boy",
       "colFamily": "genre",
       "colCategory": "Tactical",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "genre:tactical|platform:n64",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo 64",
+      "colFamily": "genre",
+      "colCategory": "Tactical",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "decade:1980-01-01,1989-12-31|platform:atari2600",
@@ -32,6 +75,16 @@
       "colCategory": "1980s",
       "reason": "platform is outside its supported decades",
       "source": "intrinsic"
+    },
+    {
+      "pairKey": "decade:1990-01-01,1999-12-31|platform:atari2600",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "decade",
+      "colCategory": "1990s",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "decade:2000-01-01,2009-12-31|platform:atari2600",
@@ -570,8 +623,9 @@
       "rowCategory": "PlayStation (Original)",
       "colFamily": "decade",
       "colCategory": "2010s",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "decade:2020-01-01,2029-12-31|platform:ps",
@@ -579,8 +633,9 @@
       "rowCategory": "PlayStation (Original)",
       "colFamily": "decade",
       "colCategory": "2020s",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "decade:1980-01-01,1989-12-31|platform:ps2",
@@ -786,8 +841,19 @@
       "rowCategory": "Xbox (Original)",
       "colFamily": "decade",
       "colCategory": "1980s",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "decade:1990-01-01,1999-12-31|platform:xbox",
+      "rowFamily": "platform",
+      "rowCategory": "Xbox (Original)",
+      "colFamily": "decade",
+      "colCategory": "1990s",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "decade:2010-01-01,2019-12-31|platform:xbox",
@@ -795,8 +861,19 @@
       "rowCategory": "Xbox (Original)",
       "colFamily": "decade",
       "colCategory": "2010s",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "decade:2020-01-01,2029-12-31|platform:xbox",
+      "rowFamily": "platform",
+      "rowCategory": "Xbox (Original)",
+      "colFamily": "decade",
+      "colCategory": "2020s",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "decade:1980-01-01,1989-12-31|platform:xbox360",
@@ -889,13 +966,34 @@
       "source": "intrinsic"
     },
     {
+      "pairKey": "company:nintendo|platform:atari2600",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "company",
+      "colCategory": "Nintendo",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:sega|platform:atari2600",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "company",
+      "colCategory": "Sega",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
       "pairKey": "company:electronic-arts|platform:atari2600",
       "rowFamily": "platform",
       "rowCategory": "Atari 2600",
       "colFamily": "company",
       "colCategory": "Electronic Arts",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:capcom|platform:atari2600",
@@ -903,8 +1001,9 @@
       "rowCategory": "Atari 2600",
       "colFamily": "company",
       "colCategory": "Capcom",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:square-enix|platform:atari2600",
@@ -912,8 +1011,9 @@
       "rowCategory": "Atari 2600",
       "colFamily": "company",
       "colCategory": "Square Enix",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:ubisoft|platform:atari2600",
@@ -921,17 +1021,29 @@
       "rowCategory": "Atari 2600",
       "colFamily": "company",
       "colCategory": "Ubisoft",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:thq|platform:atari2600",
       "rowFamily": "platform",
       "rowCategory": "Atari 2600",
       "colFamily": "company",
-      "colCategory": "THQ",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "colCategory": "THQ / Nordic",
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:microsoft-xbox|platform:atari2600",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "company",
+      "colCategory": "Microsoft",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:sony|platform:atari2600",
@@ -939,8 +1051,9 @@
       "rowCategory": "Atari 2600",
       "colFamily": "company",
       "colCategory": "Sony",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:sega|platform:nes",
@@ -948,8 +1061,29 @@
       "rowCategory": "Nintendo Entertainment System",
       "colFamily": "company",
       "colCategory": "Sega",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:activision|platform:nes",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Entertainment System",
+      "colFamily": "company",
+      "colCategory": "Activision",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:ubisoft|platform:nes",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Entertainment System",
+      "colFamily": "company",
+      "colCategory": "Ubisoft",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:microsoft-xbox|platform:nes",
@@ -957,8 +1091,9 @@
       "rowCategory": "Nintendo Entertainment System",
       "colFamily": "company",
       "colCategory": "Microsoft",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:sony|platform:nes",
@@ -966,8 +1101,9 @@
       "rowCategory": "Nintendo Entertainment System",
       "colFamily": "company",
       "colCategory": "Sony",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:ubisoft|platform:snes",
@@ -975,8 +1111,29 @@
       "rowCategory": "Super Nintendo Entertainment System",
       "colFamily": "company",
       "colCategory": "Ubisoft",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:microsoft-xbox|platform:snes",
+      "rowFamily": "platform",
+      "rowCategory": "Super Nintendo Entertainment System",
+      "colFamily": "company",
+      "colCategory": "Microsoft",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:sony|platform:snes",
+      "rowFamily": "platform",
+      "rowCategory": "Super Nintendo Entertainment System",
+      "colFamily": "company",
+      "colCategory": "Sony",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:square-enix|platform:genesis-slash-megadrive",
@@ -984,8 +1141,9 @@
       "rowCategory": "Sega Mega Drive/Genesis",
       "colFamily": "company",
       "colCategory": "Square Enix",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:ubisoft|platform:genesis-slash-megadrive",
@@ -993,8 +1151,119 @@
       "rowCategory": "Sega Mega Drive/Genesis",
       "colFamily": "company",
       "colCategory": "Ubisoft",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:microsoft-xbox|platform:genesis-slash-megadrive",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Mega Drive/Genesis",
+      "colFamily": "company",
+      "colCategory": "Microsoft",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:sony|platform:genesis-slash-megadrive",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Mega Drive/Genesis",
+      "colFamily": "company",
+      "colCategory": "Sony",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:nintendo|platform:saturn",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Saturn",
+      "colFamily": "company",
+      "colCategory": "Nintendo",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:ubisoft|platform:saturn",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Saturn",
+      "colFamily": "company",
+      "colCategory": "Ubisoft",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:thq|platform:saturn",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Saturn",
+      "colFamily": "company",
+      "colCategory": "THQ / Nordic",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:microsoft-xbox|platform:saturn",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Saturn",
+      "colFamily": "company",
+      "colCategory": "Microsoft",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:nintendo|platform:dc",
+      "rowFamily": "platform",
+      "rowCategory": "Dreamcast",
+      "colFamily": "company",
+      "colCategory": "Nintendo",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:electronic-arts|platform:dc",
+      "rowFamily": "platform",
+      "rowCategory": "Dreamcast",
+      "colFamily": "company",
+      "colCategory": "Electronic Arts",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:ubisoft|platform:dc",
+      "rowFamily": "platform",
+      "rowCategory": "Dreamcast",
+      "colFamily": "company",
+      "colCategory": "Ubisoft",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:thq|platform:dc",
+      "rowFamily": "platform",
+      "rowCategory": "Dreamcast",
+      "colFamily": "company",
+      "colCategory": "THQ / Nordic",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:microsoft-xbox|platform:dc",
+      "rowFamily": "platform",
+      "rowCategory": "Dreamcast",
+      "colFamily": "company",
+      "colCategory": "Microsoft",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:sega|platform:gb",
@@ -1002,8 +1271,29 @@
       "rowCategory": "Game Boy",
       "colFamily": "company",
       "colCategory": "Sega",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:electronic-arts|platform:gb",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy",
+      "colFamily": "company",
+      "colCategory": "Electronic Arts",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:ubisoft|platform:gb",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy",
+      "colFamily": "company",
+      "colCategory": "Ubisoft",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:microsoft-xbox|platform:gb",
@@ -1011,8 +1301,9 @@
       "rowCategory": "Game Boy",
       "colFamily": "company",
       "colCategory": "Microsoft",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:sony|platform:gb",
@@ -1020,8 +1311,9 @@
       "rowCategory": "Game Boy",
       "colFamily": "company",
       "colCategory": "Sony",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:microsoft-xbox|platform:gba",
@@ -1029,8 +1321,9 @@
       "rowCategory": "Game Boy Advance",
       "colFamily": "company",
       "colCategory": "Microsoft",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:sony|platform:gba",
@@ -1038,8 +1331,19 @@
       "rowCategory": "Game Boy Advance",
       "colFamily": "company",
       "colCategory": "Sony",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:microsoft-xbox|platform:nds",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo DS",
+      "colFamily": "company",
+      "colCategory": "Microsoft",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:sony|platform:nds",
@@ -1047,8 +1351,29 @@
       "rowCategory": "Nintendo DS",
       "colFamily": "company",
       "colCategory": "Sony",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:electronic-arts|platform:3ds",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo 3DS",
+      "colFamily": "company",
+      "colCategory": "Electronic Arts",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:thq|platform:3ds",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo 3DS",
+      "colFamily": "company",
+      "colCategory": "THQ / Nordic",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:microsoft-xbox|platform:3ds",
@@ -1056,8 +1381,9 @@
       "rowCategory": "Nintendo 3DS",
       "colFamily": "company",
       "colCategory": "Microsoft",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:sony|platform:3ds",
@@ -1065,8 +1391,29 @@
       "rowCategory": "Nintendo 3DS",
       "colFamily": "company",
       "colCategory": "Sony",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:sega|platform:n64",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo 64",
+      "colFamily": "company",
+      "colCategory": "Sega",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:capcom|platform:n64",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo 64",
+      "colFamily": "company",
+      "colCategory": "Capcom",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:microsoft-xbox|platform:n64",
@@ -1074,8 +1421,79 @@
       "rowCategory": "Nintendo 64",
       "colFamily": "company",
       "colCategory": "Microsoft",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:square-enix|platform:ngc",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo GameCube",
+      "colFamily": "company",
+      "colCategory": "Square Enix",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:microsoft-xbox|platform:ngc",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo GameCube",
+      "colFamily": "company",
+      "colCategory": "Microsoft",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:sony|platform:ngc",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo GameCube",
+      "colFamily": "company",
+      "colCategory": "Sony",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:microsoft-xbox|platform:wii",
+      "rowFamily": "platform",
+      "rowCategory": "Wii",
+      "colFamily": "company",
+      "colCategory": "Microsoft",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:microsoft-xbox|platform:wiiu",
+      "rowFamily": "platform",
+      "rowCategory": "Wii U",
+      "colFamily": "company",
+      "colCategory": "Microsoft",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:sony|platform:wiiu",
+      "rowFamily": "platform",
+      "rowCategory": "Wii U",
+      "colFamily": "company",
+      "colCategory": "Sony",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:konami|platform:switch-2",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Switch 2",
+      "colFamily": "company",
+      "colCategory": "Konami",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:activision|platform:switch-2",
@@ -1083,26 +1501,179 @@
       "rowCategory": "Nintendo Switch 2",
       "colFamily": "company",
       "colCategory": "Activision",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:ubisoft|platform:switch-2",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Switch 2",
+      "colFamily": "company",
+      "colCategory": "Ubisoft",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:thq|platform:switch-2",
       "rowFamily": "platform",
       "rowCategory": "Nintendo Switch 2",
       "colFamily": "company",
-      "colCategory": "THQ",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "colCategory": "THQ / Nordic",
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:microsoft-xbox|platform:switch-2",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Switch 2",
+      "colFamily": "company",
+      "colCategory": "Microsoft",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:sony|platform:switch-2",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Switch 2",
+      "colFamily": "company",
+      "colCategory": "Sony",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:nintendo|platform:ps",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation (Original)",
+      "colFamily": "company",
+      "colCategory": "Nintendo",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:microsoft-xbox|platform:ps",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation (Original)",
+      "colFamily": "company",
+      "colCategory": "Microsoft",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:nintendo|platform:ps2",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation 2",
+      "colFamily": "company",
+      "colCategory": "Nintendo",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:nintendo|platform:ps3",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation 3",
+      "colFamily": "company",
+      "colCategory": "Nintendo",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:nintendo|platform:ps5",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation 5",
+      "colFamily": "company",
+      "colCategory": "Nintendo",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:thq|platform:ps5",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation 5",
+      "colFamily": "company",
+      "colCategory": "THQ / Nordic",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:nintendo|platform:psp",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation Portable",
+      "colFamily": "company",
+      "colCategory": "Nintendo",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:microsoft-xbox|platform:psp",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation Portable",
+      "colFamily": "company",
+      "colCategory": "Microsoft",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:nintendo|platform:psvita",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation Vita",
+      "colFamily": "company",
+      "colCategory": "Nintendo",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:thq|platform:psvita",
       "rowFamily": "platform",
       "rowCategory": "PlayStation Vita",
       "colFamily": "company",
-      "colCategory": "THQ",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "colCategory": "THQ / Nordic",
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:nintendo|platform:xbox",
+      "rowFamily": "platform",
+      "rowCategory": "Xbox (Original)",
+      "colFamily": "company",
+      "colCategory": "Nintendo",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:sony|platform:xbox",
+      "rowFamily": "platform",
+      "rowCategory": "Xbox (Original)",
+      "colFamily": "company",
+      "colCategory": "Sony",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:nintendo|platform:xbox360",
+      "rowFamily": "platform",
+      "rowCategory": "Xbox 360",
+      "colFamily": "company",
+      "colCategory": "Nintendo",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:nintendo|platform:series-x-s",
@@ -1110,17 +1681,39 @@
       "rowCategory": "Xbox Series X|S",
       "colFamily": "company",
       "colCategory": "Nintendo",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:thq|platform:series-x-s",
       "rowFamily": "platform",
       "rowCategory": "Xbox Series X|S",
       "colFamily": "company",
-      "colCategory": "THQ",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "colCategory": "THQ / Nordic",
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "game_mode:co-operative|platform:atari2600",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "game_mode",
+      "colCategory": "Co-operative",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "game_mode:split-screen|platform:atari2600",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "game_mode",
+      "colCategory": "Split screen",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:mmo|platform:atari2600",
@@ -1128,8 +1721,9 @@
       "rowCategory": "Atari 2600",
       "colFamily": "game_mode",
       "colCategory": "Massively Multiplayer Online (MMO)",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:battle-royale|platform:atari2600",
@@ -1137,8 +1731,9 @@
       "rowCategory": "Atari 2600",
       "colFamily": "game_mode",
       "colCategory": "Battle Royale",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:mmo|platform:nes",
@@ -1146,8 +1741,9 @@
       "rowCategory": "Nintendo Entertainment System",
       "colFamily": "game_mode",
       "colCategory": "Massively Multiplayer Online (MMO)",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:battle-royale|platform:nes",
@@ -1155,8 +1751,9 @@
       "rowCategory": "Nintendo Entertainment System",
       "colFamily": "game_mode",
       "colCategory": "Battle Royale",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:mmo|platform:snes",
@@ -1164,8 +1761,9 @@
       "rowCategory": "Super Nintendo Entertainment System",
       "colFamily": "game_mode",
       "colCategory": "Massively Multiplayer Online (MMO)",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:battle-royale|platform:snes",
@@ -1173,8 +1771,19 @@
       "rowCategory": "Super Nintendo Entertainment System",
       "colFamily": "game_mode",
       "colCategory": "Battle Royale",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "game_mode:mmo|platform:genesis-slash-megadrive",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Mega Drive/Genesis",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:battle-royale|platform:genesis-slash-megadrive",
@@ -1182,8 +1791,9 @@
       "rowCategory": "Sega Mega Drive/Genesis",
       "colFamily": "game_mode",
       "colCategory": "Battle Royale",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:mmo|platform:saturn",
@@ -1191,8 +1801,9 @@
       "rowCategory": "Sega Saturn",
       "colFamily": "game_mode",
       "colCategory": "Massively Multiplayer Online (MMO)",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:battle-royale|platform:saturn",
@@ -1200,8 +1811,19 @@
       "rowCategory": "Sega Saturn",
       "colFamily": "game_mode",
       "colCategory": "Battle Royale",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "game_mode:mmo|platform:dc",
+      "rowFamily": "platform",
+      "rowCategory": "Dreamcast",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:battle-royale|platform:dc",
@@ -1209,8 +1831,9 @@
       "rowCategory": "Dreamcast",
       "colFamily": "game_mode",
       "colCategory": "Battle Royale",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:co-operative|platform:gb",
@@ -1218,8 +1841,9 @@
       "rowCategory": "Game Boy",
       "colFamily": "game_mode",
       "colCategory": "Co-operative",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:mmo|platform:gb",
@@ -1227,8 +1851,9 @@
       "rowCategory": "Game Boy",
       "colFamily": "game_mode",
       "colCategory": "Massively Multiplayer Online (MMO)",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:battle-royale|platform:gb",
@@ -1236,8 +1861,19 @@
       "rowCategory": "Game Boy",
       "colFamily": "game_mode",
       "colCategory": "Battle Royale",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "game_mode:mmo|platform:gba",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy Advance",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:battle-royale|platform:gba",
@@ -1245,8 +1881,19 @@
       "rowCategory": "Game Boy Advance",
       "colFamily": "game_mode",
       "colCategory": "Battle Royale",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "game_mode:mmo|platform:nds",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo DS",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:battle-royale|platform:nds",
@@ -1254,8 +1901,9 @@
       "rowCategory": "Nintendo DS",
       "colFamily": "game_mode",
       "colCategory": "Battle Royale",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:mmo|platform:3ds",
@@ -1263,8 +1911,9 @@
       "rowCategory": "Nintendo 3DS",
       "colFamily": "game_mode",
       "colCategory": "Massively Multiplayer Online (MMO)",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:battle-royale|platform:3ds",
@@ -1272,8 +1921,9 @@
       "rowCategory": "Nintendo 3DS",
       "colFamily": "game_mode",
       "colCategory": "Battle Royale",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:mmo|platform:n64",
@@ -1281,8 +1931,9 @@
       "rowCategory": "Nintendo 64",
       "colFamily": "game_mode",
       "colCategory": "Massively Multiplayer Online (MMO)",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:battle-royale|platform:n64",
@@ -1290,8 +1941,19 @@
       "rowCategory": "Nintendo 64",
       "colFamily": "game_mode",
       "colCategory": "Battle Royale",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "game_mode:mmo|platform:ngc",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo GameCube",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:battle-royale|platform:ngc",
@@ -1299,8 +1961,39 @@
       "rowCategory": "Nintendo GameCube",
       "colFamily": "game_mode",
       "colCategory": "Battle Royale",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "game_mode:mmo|platform:wii",
+      "rowFamily": "platform",
+      "rowCategory": "Wii",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|platform:wii",
+      "rowFamily": "platform",
+      "rowCategory": "Wii",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "game_mode:mmo|platform:wiiu",
+      "rowFamily": "platform",
+      "rowCategory": "Wii U",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:battle-royale|platform:wiiu",
@@ -1308,8 +2001,29 @@
       "rowCategory": "Wii U",
       "colFamily": "game_mode",
       "colCategory": "Battle Royale",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "game_mode:mmo|platform:switch-2",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Switch 2",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|platform:switch-2",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Switch 2",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:mmo|platform:ps",
@@ -1317,8 +2031,9 @@
       "rowCategory": "PlayStation (Original)",
       "colFamily": "game_mode",
       "colCategory": "Massively Multiplayer Online (MMO)",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:battle-royale|platform:ps",
@@ -1326,8 +2041,19 @@
       "rowCategory": "PlayStation (Original)",
       "colFamily": "game_mode",
       "colCategory": "Battle Royale",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "game_mode:mmo|platform:ps2",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation 2",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:battle-royale|platform:ps2",
@@ -1335,8 +2061,9 @@
       "rowCategory": "PlayStation 2",
       "colFamily": "game_mode",
       "colCategory": "Battle Royale",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:battle-royale|platform:ps3",
@@ -1344,8 +2071,19 @@
       "rowCategory": "PlayStation 3",
       "colFamily": "game_mode",
       "colCategory": "Battle Royale",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "game_mode:mmo|platform:psp",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation Portable",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:battle-royale|platform:psp",
@@ -1353,8 +2091,19 @@
       "rowCategory": "PlayStation Portable",
       "colFamily": "game_mode",
       "colCategory": "Battle Royale",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "game_mode:mmo|platform:psvita",
+      "rowFamily": "platform",
+      "rowCategory": "PlayStation Vita",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:battle-royale|platform:psvita",
@@ -1362,8 +2111,9 @@
       "rowCategory": "PlayStation Vita",
       "colFamily": "game_mode",
       "colCategory": "Battle Royale",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:mmo|platform:xbox",
@@ -1371,8 +2121,9 @@
       "rowCategory": "Xbox (Original)",
       "colFamily": "game_mode",
       "colCategory": "Massively Multiplayer Online (MMO)",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:battle-royale|platform:xbox",
@@ -1380,8 +2131,9 @@
       "rowCategory": "Xbox (Original)",
       "colFamily": "game_mode",
       "colCategory": "Battle Royale",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:battle-royale|platform:xbox360",
@@ -1389,8 +2141,19 @@
       "rowCategory": "Xbox 360",
       "colFamily": "game_mode",
       "colCategory": "Battle Royale",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "platform:atari2600|theme:survival",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "theme",
+      "colCategory": "Survival",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "platform:atari2600|theme:open-world",
@@ -1398,8 +2161,29 @@
       "rowCategory": "Atari 2600",
       "colFamily": "theme",
       "colCategory": "Open world",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "platform:atari2600|theme:mystery",
+      "rowFamily": "platform",
+      "rowCategory": "Atari 2600",
+      "colFamily": "theme",
+      "colCategory": "Mystery",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "platform:snes|theme:survival",
+      "rowFamily": "platform",
+      "rowCategory": "Super Nintendo Entertainment System",
+      "colFamily": "theme",
+      "colCategory": "Survival",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "platform:snes|theme:mystery",
@@ -1407,8 +2191,29 @@
       "rowCategory": "Super Nintendo Entertainment System",
       "colFamily": "theme",
       "colCategory": "Mystery",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "platform:genesis-slash-megadrive|theme:survival",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Mega Drive/Genesis",
+      "colFamily": "theme",
+      "colCategory": "Survival",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "platform:genesis-slash-megadrive|theme:open-world",
+      "rowFamily": "platform",
+      "rowCategory": "Sega Mega Drive/Genesis",
+      "colFamily": "theme",
+      "colCategory": "Open world",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "platform:genesis-slash-megadrive|theme:mystery",
@@ -1416,8 +2221,9 @@
       "rowCategory": "Sega Mega Drive/Genesis",
       "colFamily": "theme",
       "colCategory": "Mystery",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "platform:saturn|theme:open-world",
@@ -1425,8 +2231,19 @@
       "rowCategory": "Sega Saturn",
       "colFamily": "theme",
       "colCategory": "Open world",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "platform:dc|theme:mystery",
+      "rowFamily": "platform",
+      "rowCategory": "Dreamcast",
+      "colFamily": "theme",
+      "colCategory": "Mystery",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "platform:gb|theme:survival",
@@ -1434,8 +2251,59 @@
       "rowCategory": "Game Boy",
       "colFamily": "theme",
       "colCategory": "Survival",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "platform:gb|theme:open-world",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy",
+      "colFamily": "theme",
+      "colCategory": "Open world",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "platform:gb|theme:warfare",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy",
+      "colFamily": "theme",
+      "colCategory": "Warfare",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "platform:gb|theme:mystery",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy",
+      "colFamily": "theme",
+      "colCategory": "Mystery",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "platform:gba|theme:survival",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy Advance",
+      "colFamily": "theme",
+      "colCategory": "Survival",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "platform:gba|theme:open-world",
+      "rowFamily": "platform",
+      "rowCategory": "Game Boy Advance",
+      "colFamily": "theme",
+      "colCategory": "Open world",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "platform:gba|theme:mystery",
@@ -1443,8 +2311,19 @@
       "rowCategory": "Game Boy Advance",
       "colFamily": "theme",
       "colCategory": "Mystery",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "platform:n64|theme:survival",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo 64",
+      "colFamily": "theme",
+      "colCategory": "Survival",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "platform:n64|theme:mystery",
@@ -1452,26 +2331,109 @@
       "rowCategory": "Nintendo 64",
       "colFamily": "theme",
       "colCategory": "Mystery",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "platform:ngc|theme:mystery",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo GameCube",
+      "colFamily": "theme",
+      "colCategory": "Mystery",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "platform:switch-2|theme:warfare",
+      "rowFamily": "platform",
+      "rowCategory": "Nintendo Switch 2",
+      "colFamily": "theme",
+      "colCategory": "Warfare",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:thq|genre:tactical",
+      "rowFamily": "genre",
+      "rowCategory": "Tactical",
+      "colFamily": "company",
+      "colCategory": "THQ / Nordic",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "game_mode:battle-royale|genre:sport",
+      "rowFamily": "genre",
+      "rowCategory": "Sport",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "genre:racing|theme:mystery",
+      "rowFamily": "genre",
+      "rowCategory": "Racing",
+      "colFamily": "theme",
+      "colCategory": "Mystery",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "genre:sport|theme:mystery",
+      "rowFamily": "genre",
+      "rowCategory": "Sport",
+      "colFamily": "theme",
+      "colCategory": "Mystery",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:ubisoft|decade:1980-01-01,1989-12-31",
+      "rowFamily": "decade",
+      "rowCategory": "1980s",
+      "colFamily": "company",
+      "colCategory": "Ubisoft",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:thq|decade:1980-01-01,1989-12-31",
       "rowFamily": "decade",
       "rowCategory": "1980s",
       "colFamily": "company",
-      "colCategory": "THQ",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "colCategory": "THQ / Nordic",
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:sony|decade:1980-01-01,1989-12-31",
+      "rowFamily": "decade",
+      "rowCategory": "1980s",
+      "colFamily": "company",
+      "colCategory": "Sony",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:thq|decade:2020-01-01,2029-12-31",
       "rowFamily": "decade",
       "rowCategory": "2020s",
       "colFamily": "company",
-      "colCategory": "THQ",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "colCategory": "THQ / Nordic",
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "decade:1980-01-01,1989-12-31|game_mode:mmo",
@@ -1510,13 +2472,84 @@
       "source": "intrinsic"
     },
     {
+      "pairKey": "decade:2000-01-01,2009-12-31|game_mode:battle-royale",
+      "rowFamily": "decade",
+      "rowCategory": "2000s",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:nintendo|game_mode:mmo",
+      "rowFamily": "company",
+      "rowCategory": "Nintendo",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:nintendo|game_mode:battle-royale",
+      "rowFamily": "company",
+      "rowCategory": "Nintendo",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:sega|game_mode:battle-royale",
+      "rowFamily": "company",
+      "rowCategory": "Sega",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
       "pairKey": "company:konami|game_mode:mmo",
       "rowFamily": "company",
       "rowCategory": "Konami",
       "colFamily": "game_mode",
       "colCategory": "Massively Multiplayer Online (MMO)",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:konami|game_mode:battle-royale",
+      "rowFamily": "company",
+      "rowCategory": "Konami",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:activision|game_mode:mmo",
+      "rowFamily": "company",
+      "rowCategory": "Activision",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:activision|game_mode:battle-royale",
+      "rowFamily": "company",
+      "rowCategory": "Activision",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:capcom|game_mode:mmo",
@@ -1524,8 +2557,9 @@
       "rowCategory": "Capcom",
       "colFamily": "game_mode",
       "colCategory": "Massively Multiplayer Online (MMO)",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:capcom|game_mode:battle-royale",
@@ -1533,8 +2567,59 @@
       "rowCategory": "Capcom",
       "colFamily": "game_mode",
       "colCategory": "Battle Royale",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:square-enix|game_mode:battle-royale",
+      "rowFamily": "company",
+      "rowCategory": "Square Enix",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:ubisoft|game_mode:battle-royale",
+      "rowFamily": "company",
+      "rowCategory": "Ubisoft",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:thq|game_mode:battle-royale",
+      "rowFamily": "company",
+      "rowCategory": "THQ / Nordic",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:microsoft-xbox|game_mode:battle-royale",
+      "rowFamily": "company",
+      "rowCategory": "Microsoft",
+      "colFamily": "game_mode",
+      "colCategory": "Battle Royale",
+      "count": "2",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:sony|game_mode:mmo",
+      "rowFamily": "company",
+      "rowCategory": "Sony",
+      "colFamily": "game_mode",
+      "colCategory": "Massively Multiplayer Online (MMO)",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "company:sony|game_mode:battle-royale",
@@ -1542,8 +2627,29 @@
       "rowCategory": "Sony",
       "colFamily": "game_mode",
       "colCategory": "Battle Royale",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:activision|theme:mystery",
+      "rowFamily": "company",
+      "rowCategory": "Activision",
+      "colFamily": "theme",
+      "colCategory": "Mystery",
+      "count": "1",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
+    },
+    {
+      "pairKey": "company:thq|theme:mystery",
+      "rowFamily": "company",
+      "rowCategory": "THQ / Nordic",
+      "colFamily": "theme",
+      "colCategory": "Mystery",
+      "count": "3",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:mmo|theme:mystery",
@@ -1551,8 +2657,9 @@
       "rowCategory": "Massively Multiplayer Online (MMO)",
       "colFamily": "theme",
       "colCategory": "Mystery",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     },
     {
       "pairKey": "game_mode:battle-royale|theme:mystery",
@@ -1560,8 +2667,9 @@
       "rowCategory": "Battle Royale",
       "colFamily": "theme",
       "colCategory": "Mystery",
-      "reason": "no catalog matches in curated pair table",
-      "source": "observed-zero"
+      "count": "0",
+      "reason": "3 or fewer catalog matches in curated pair table",
+      "source": "observed-low-count"
     }
   ]
 }

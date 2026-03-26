@@ -133,11 +133,14 @@ const COMPANY_ALIAS_GROUPS: Record<string, { aliases?: string[]; prefixes?: stri
   sega: { aliases: ['Sega'], prefixes: ['sega'] },
   'electronic-arts': { aliases: ['Electronic Arts'] },
   konami: { aliases: ['Konami'], prefixes: ['konami'] },
-  activision: { aliases: ['Activision'], prefixes: ['activision'] },
+  activision: {
+    aliases: ['Activision', 'Activision Blizzard', 'Blizzard', 'Blizzard Entertainment'],
+    prefixes: ['activision', 'blizzard'],
+  },
   capcom: { aliases: ['Capcom'], prefixes: ['capcom'] },
   'square-enix': { aliases: ['Square Enix', 'Square', 'Enix'] },
   ubisoft: { aliases: ['Ubisoft'], prefixes: ['ubisoft'] },
-  thq: { aliases: ['THQ'] },
+  thq: { aliases: ['THQ', 'THQ Nordic'] },
   'bandai-namco': { aliases: ['Bandai Namco', 'Namco'] },
   'microsoft-xbox': {
     aliases: ['Microsoft', 'Microsoft Game Studios', 'Microsoft Studios', 'Xbox Game Studios'],

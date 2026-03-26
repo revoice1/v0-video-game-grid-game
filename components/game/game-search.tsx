@@ -279,6 +279,32 @@ export function GameSearch({
     onSelect(pendingConfirmationGame)
   }, [onSelect, pendingConfirmationGame])
 
+  useEffect(() => {
+    if (!isOpen || pendingConfirmationId === null) {
+      return
+    }
+
+    const handlePendingConfirmationKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        event.stopPropagation()
+        setPendingConfirmationId(null)
+        return
+      }
+
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        event.stopPropagation()
+        handleConfirm()
+      }
+    }
+
+    window.addEventListener('keydown', handlePendingConfirmationKeyDown, true)
+    return () => {
+      window.removeEventListener('keydown', handlePendingConfirmationKeyDown, true)
+    }
+  }, [handleConfirm, isOpen, pendingConfirmationId])
+
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
@@ -303,6 +329,7 @@ export function GameSearch({
       handleSelect(results[selectedIndex])
     } else if (e.key === 'Escape') {
       if (pendingConfirmationId !== null) {
+        e.preventDefault()
         setPendingConfirmationId(null)
         return
       }
