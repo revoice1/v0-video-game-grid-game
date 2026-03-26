@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/generate-daily-puzzle",
+      "schedule": "50 23 * * *"
+    }
+  ]
+}

@@ -12,6 +12,12 @@ export function getTodayDate(): string {
   return new Date().toISOString().split('T')[0]
 }
 
+export function getUtcDateOffset(days: number): string {
+  const date = new Date()
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().split('T')[0]
+}
+
 export async function getExistingDailyPuzzle(supabase: SupabaseClient, today: string) {
   const { data } = await supabase
     .from('puzzles')
