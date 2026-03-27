@@ -18,6 +18,17 @@ export function getUtcDateOffset(days: number): string {
   return date.toISOString().split('T')[0]
 }
 
+export function getCronDailyTargetDate(now = new Date()): string {
+  const date = new Date(now)
+  const utcHour = date.getUTCHours()
+
+  if (utcHour === 23) {
+    date.setUTCDate(date.getUTCDate() + 1)
+  }
+
+  return date.toISOString().split('T')[0]
+}
+
 export async function getExistingDailyPuzzle(supabase: SupabaseClient, today: string) {
   const { data } = await supabase
     .from('puzzles')
