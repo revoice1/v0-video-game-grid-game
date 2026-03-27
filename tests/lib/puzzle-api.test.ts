@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { getTodayDate, getUtcDateOffset } from '@/lib/puzzle-api'
+import { getCronDailyTargetDate, getTodayDate, getUtcDateOffset } from '@/lib/puzzle-api'
 
 describe('puzzle-api date helpers', () => {
   it('returns the current UTC date for today', () => {
@@ -19,5 +19,11 @@ describe('puzzle-api date helpers', () => {
     expect(getUtcDateOffset(-1)).toBe('2026-03-24')
 
     vi.useRealTimers()
+  })
+
+  it('targets tomorrow only during the pre-midnight UTC hour', () => {
+    expect(getCronDailyTargetDate(new Date('2026-03-25T23:50:00.000Z'))).toBe('2026-03-26')
+    expect(getCronDailyTargetDate(new Date('2026-03-26T00:10:00.000Z'))).toBe('2026-03-26')
+    expect(getCronDailyTargetDate(new Date('2026-03-26T12:00:00.000Z'))).toBe('2026-03-26')
   })
 })

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { isAuthorizedCronRequest } from '@/lib/cron-auth'
 import { ensureDailyPuzzleForDate } from '@/lib/daily-puzzle'
 import { logError, logInfo, logWarn } from '@/lib/logging'
-import { getUtcDateOffset } from '@/lib/puzzle-api'
+import { getCronDailyTargetDate } from '@/lib/puzzle-api'
 import { createClient } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const supabase = await createClient()
-    const targetDate = getUtcDateOffset(1)
+    const targetDate = getCronDailyTargetDate()
     const result = await ensureDailyPuzzleForDate(supabase, targetDate)
 
     logInfo(
