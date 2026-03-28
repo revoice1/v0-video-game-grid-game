@@ -222,6 +222,11 @@ describe('game client helpers', () => {
       companies: ['Sony'],
       matchedRow: true,
       matchedCol: false,
+      objectionUsed: false,
+      objectionVerdict: null,
+      objectionExplanation: null,
+      objectionOriginalMatchedRow: null,
+      objectionOriginalMatchedCol: null,
     })
   })
 
@@ -287,6 +292,11 @@ describe('game client helpers', () => {
       companies: ['Hudson Soft', 'Imagineer'],
       matchedRow: false,
       matchedCol: false,
+      objectionUsed: false,
+      objectionVerdict: null,
+      objectionExplanation: null,
+      objectionOriginalMatchedRow: null,
+      objectionOriginalMatchedCol: null,
     })
   })
 

@@ -37,9 +37,12 @@ test('versus mode shows start options and opens setup controls', async ({ page }
   await page.getByRole('button', { name: 'Custom Match' }).click()
 
   await expect(page.getByRole('heading', { name: 'Versus Setup' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Steal Rule' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Rules/i })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Categories/i })).toBeVisible()
+  await page.getByRole('button', { name: /Rules/i }).click()
+  await expect(page.getByRole('heading', { name: 'Steals' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Turn Timer' })).toBeVisible()
-  await expect(page.getByRole('button', { name: '20 sec' })).toBeVisible()
+  await expect(page.getByRole('combobox')).toHaveCount(4)
   await expect(page.getByRole('button', { name: 'Reset to Default' })).toBeVisible()
 })
 

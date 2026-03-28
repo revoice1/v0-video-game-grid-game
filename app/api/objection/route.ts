@@ -11,6 +11,7 @@ import type { Category, CellGuess } from '@/lib/types'
 
 const GEMINI_KEY = process.env.GEMINI_KEY
 const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'models/gemini-3.1-flash-lite-preview'
+const IS_DEV = process.env.NODE_ENV !== 'production'
 
 function normalizeGeminiModelName(model: string): string {
   return model.replace(/^models\//, '').trim()
@@ -73,10 +74,20 @@ export async function POST(request: NextRequest) {
     }
 
     for (const model of getGeminiModelCandidates()) {
-      logInfo('Gemini objection request payload', {
-        model,
-        body: JSON.stringify(requestBody, null, 2),
-      })
+      if (IS_DEV) {
+        logInfo('Gemini objection request payload', {
+          model,
+          body: JSON.stringify(requestBody, null, 2),
+        })
+      } else {
+        logInfo('Gemini objection request', {
+          model,
+          gameId: body.guess.gameId,
+          rowCategory: body.rowCategory.name,
+          colCategory: body.colCategory.name,
+          familyCount: familyNames.length,
+        })
+      }
 
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
@@ -93,12 +104,20 @@ export async function POST(request: NextRequest) {
         const payload = (await response.json()) as unknown
         const extractedText = extractGeminiText(payload)
         const parsedJudgment = extractedText ? normalizeObjectionResponse(extractedText) : null
-        logInfo('Gemini objection raw response', {
-          model,
-          payload: JSON.stringify(payload, null, 2),
-          extractedText,
-          parsedJudgment,
-        })
+        if (IS_DEV) {
+          logInfo('Gemini objection raw response', {
+            model,
+            payload: JSON.stringify(payload, null, 2),
+            extractedText,
+            parsedJudgment,
+          })
+        } else {
+          logInfo('Gemini objection verdict', {
+            model,
+            verdict: parsedJudgment?.verdict ?? null,
+            confidence: parsedJudgment?.confidence ?? null,
+          })
+        }
         geminiResponse = new Response(JSON.stringify(payload), {
           status: response.status,
           headers: { 'Content-Type': 'application/json' },
@@ -110,7 +129,7 @@ export async function POST(request: NextRequest) {
       logWarn('Gemini objection request failed', {
         model,
         status: response.status,
-        body: lastErrorText,
+        body: IS_DEV ? lastErrorText : undefined,
       })
 
       if (response.status !== 404) {
@@ -135,7 +154,14 @@ export async function POST(request: NextRequest) {
     const judgment = text ? normalizeObjectionResponse(text) : null
 
     if (!judgment?.verdict || !judgment.confidence || !judgment.explanation) {
-      logWarn('Gemini objection response was not parseable', payload)
+      logWarn(
+        'Gemini objection response was not parseable',
+        IS_DEV
+          ? payload
+          : {
+              modelCandidates: getGeminiModelCandidates(),
+            }
+      )
       return NextResponse.json(
         { error: 'Judgment service returned an invalid verdict.' },
         { status: 502 }
