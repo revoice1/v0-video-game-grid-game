@@ -103,6 +103,7 @@ export interface CellGuess {
   objectionExplanation?: string | null
   objectionOriginalMatchedRow?: boolean | null
   objectionOriginalMatchedCol?: boolean | null
+  showdownScoreRevealed?: boolean
 }
 
 export interface GameState {

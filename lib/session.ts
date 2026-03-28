@@ -76,6 +76,7 @@ export interface CellGuessRecord {
   objectionExplanation?: string | null
   objectionOriginalMatchedRow?: boolean | null
   objectionOriginalMatchedCol?: boolean | null
+  showdownScoreRevealed?: boolean
 }
 
 export interface SavedGameState {

@@ -38,7 +38,7 @@
 - Search selection is not the same as correctness. Correctness is decided by backend validation.
 - Rejected guesses can trigger a one-time objection review per square.
 - A sustained objection can promote a rejected square to correct and should preserve the judgment explanation on the guess details modal.
-- If a sustained objection only rescues one side of the intersection, only that category should get the gold reviewed-success treatment; already-correct categories stay in the normal correct color.
+- If a sustained objection only rescues one side of the intersection, only that category should get the orange reviewed-success treatment; already-correct categories stay in the normal correct color.
 - An overruled objection keeps the square rejected and still preserves the explanation for later review.
 - Search can hide metadata that would directly overlap with the active puzzle categories.
 - Same-name ports can be hidden from search when they are just duplicate clutter.
@@ -84,6 +84,7 @@ flowchart TD
 - A stealable cell can be challenged by the other player.
 - Custom versus can set steals to `Off`, `Lower score`, or `Higher score`.
 - Steal success is determined by the configured steal rule.
+- Showdown comparisons use the game's `total_rating` when score data is available.
 - Steal resolution is handled by extracted pure logic, not inline component branching.
 
 ### Objections

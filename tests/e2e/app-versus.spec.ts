@@ -147,7 +147,9 @@ test('versus draw restore renders tie state without a winner', async ({ page }) 
   await expect(page.locator('header').getByText('Tie', { exact: true })).toBeVisible()
 })
 
-test('disable draws awards the full-board versus winner by claimed cells', async ({ page }) => {
+test('disable draws gives O a final steal chance before an X 5-4 claims win resolves', async ({
+  page,
+}) => {
   const versusSearchResult = {
     id: 202,
     name: 'Tie Breaker Game',
@@ -240,12 +242,18 @@ test('disable draws awards the full-board versus winner by claimed cells', async
   await expect(page.getByText('Confirm this answer?')).toBeVisible()
   await page.getByRole('button', { name: 'Confirm Tie Breaker Game' }).click()
 
-  await expect(page.getByText('X wins', { exact: true })).toBeVisible()
+  await expect(page.getByText('X wins', { exact: true })).toHaveCount(0)
   await expect(page.getByText('Draw game')).toHaveCount(0)
 
+  await expect(page.getByTestId('grid-cell-8')).toHaveClass(/final-steal-focus/)
+  await expect(page.locator('header').getByText('Turn', { exact: true })).toBeVisible()
+  await expect(page.locator('header').getByText('O', { exact: true })).toBeVisible()
+
   const notifications = page.getByRole('region', { name: 'Notifications (F8)' })
-  await expect(notifications.getByText('X wins on cells!')).toBeVisible()
-  await expect(notifications.getByText('X claimed 5 squares to 4.')).toBeVisible()
+  await expect(notifications.getByText('Last chance steal')).toBeVisible()
+  await expect(
+    notifications.getByText('O gets one chance to answer back on that square.')
+  ).toBeVisible()
 })
 
 test('double alarm cells alternate between steal and game point only', async ({ page }) => {

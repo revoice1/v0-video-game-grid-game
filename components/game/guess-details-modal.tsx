@@ -71,7 +71,7 @@ export function GuessDetailsModal({
   const colCorrectedByObjection =
     isSustainedObjection && guess.objectionOriginalMatchedCol === false && Boolean(guess.matchedCol)
   const matchTextClass = (matched: boolean, correctedByObjection: boolean) =>
-    matched ? (correctedByObjection ? 'text-[#f5b94e]' : 'text-primary') : 'text-destructive'
+    matched ? (correctedByObjection ? 'text-[#fb923c]' : 'text-primary') : 'text-destructive'
   const objectionButtonLabel = objectionPending
     ? 'Awaiting judgment...'
     : objectionVerdict === 'sustained'
@@ -173,7 +173,7 @@ export function GuessDetailsModal({
                   {objectionVerdict && (
                     <p
                       className={`text-[11px] font-semibold uppercase tracking-[0.26em] ${
-                        objectionVerdict === 'sustained' ? 'text-[#f5b94e]' : 'text-destructive'
+                        objectionVerdict === 'sustained' ? 'text-[#fb923c]' : 'text-destructive'
                       }`}
                     >
                       {objectionVerdict === 'sustained' ? 'Sustained' : 'Overruled'}

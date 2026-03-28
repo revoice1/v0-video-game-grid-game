@@ -8,10 +8,14 @@ import {
 } from '@/lib/igdb-validation'
 import {
   buildSearchGameWhereClause,
-  mergePortFamilyGameDetails,
   resolveGenerationCategoryFamilies,
+  mergePortFamilyGameDetails,
   shouldHideSameNamePortResult,
 } from '@/lib/igdb'
+import {
+  CURATED_STANDARD_CATEGORY_FAMILIES,
+  CURATED_VERSUS_CATEGORY_FAMILIES,
+} from '@/lib/versus-category-options'
 import { buildGenerationPlans } from '@/lib/puzzle-generation-plans'
 import type { IGDBGame } from '@/lib/igdb'
 import type { Category, Game } from '@/lib/types'
@@ -104,13 +108,147 @@ describe('resolveGenerationCategoryFamilies', () => {
   it('uses the tighter standard curated families when no custom filters are provided', () => {
     const families = resolveGenerationCategoryFamilies()
     const companyFamily = families.find((family) => family.key === 'company')
+    const gameModeFamily = families.find((family) => family.key === 'game_mode')
 
     expect(companyFamily?.categories.map((category) => category.name)).toContain('Microsoft')
     expect(companyFamily?.categories.map((category) => category.name)).toContain(
       'Activision / Blizzard'
     )
-    expect(companyFamily?.categories.map((category) => category.name)).toContain('THQ / Nordic')
+    expect(companyFamily?.categories.map((category) => category.name)).not.toContain('THQ / Nordic')
     expect(companyFamily?.categories.map((category) => category.name)).not.toContain('Atlus')
+    expect(gameModeFamily?.categories.map((category) => category.name)).not.toContain(
+      'Battle Royale'
+    )
+  })
+})
+
+describe('curated category defaults', () => {
+  it('keeps MMO and Battle Royale as default-off fun modes in versus only', () => {
+    const standardGameModeFamily = CURATED_STANDARD_CATEGORY_FAMILIES.find(
+      (family) => family.key === 'game_mode'
+    )
+    const versusGameModeFamily = CURATED_VERSUS_CATEGORY_FAMILIES.find(
+      (family) => family.key === 'game_mode'
+    )
+
+    expect(standardGameModeFamily?.categories.map((category) => category.name)).not.toContain(
+      'Massively Multiplayer Online (MMO)'
+    )
+    expect(standardGameModeFamily?.categories.map((category) => category.name)).not.toContain(
+      'Battle Royale'
+    )
+    expect(versusGameModeFamily?.categories.slice(-2)).toEqual([
+      expect.objectContaining({
+        id: '5',
+        name: 'Massively Multiplayer Online (MMO)',
+        defaultChecked: false,
+      }),
+      expect.objectContaining({
+        id: '6',
+        name: 'Battle Royale',
+        defaultChecked: false,
+      }),
+    ])
+  })
+
+  it('moves handheld platforms into default-off fun slots at the bottom of the versus list', () => {
+    const standardPlatformFamily = CURATED_STANDARD_CATEGORY_FAMILIES.find(
+      (family) => family.key === 'platform'
+    )
+    const versusPlatformFamily = CURATED_VERSUS_CATEGORY_FAMILIES.find(
+      (family) => family.key === 'platform'
+    )
+
+    expect(standardPlatformFamily?.categories.map((category) => category.name)).not.toContain(
+      'Game Boy'
+    )
+    expect(standardPlatformFamily?.categories.map((category) => category.name)).not.toContain(
+      'Nintendo DS'
+    )
+    expect(standardPlatformFamily?.categories.map((category) => category.name)).not.toContain(
+      'PlayStation Portable'
+    )
+
+    expect(versusPlatformFamily?.categories.slice(-6).map((category) => category.name)).toEqual([
+      'GB',
+      'GBA',
+      'DS',
+      '3DS',
+      'PSP',
+      'VITA',
+    ])
+
+    expect(
+      versusPlatformFamily?.categories
+        .filter((category) => ['33', '24', '20', '37', '38', '46'].includes(category.id))
+        .every((category) => category.defaultChecked === false)
+    ).toBe(true)
+  })
+
+  it('moves Strategy and Tactical into default-off fun genre slots in versus only', () => {
+    const standardGenreFamily = CURATED_STANDARD_CATEGORY_FAMILIES.find(
+      (family) => family.key === 'genre'
+    )
+    const versusGenreFamily = CURATED_VERSUS_CATEGORY_FAMILIES.find(
+      (family) => family.key === 'genre'
+    )
+
+    expect(standardGenreFamily?.categories.map((category) => category.name)).not.toContain(
+      'Strategy'
+    )
+    expect(standardGenreFamily?.categories.map((category) => category.name)).not.toContain(
+      'Tactical'
+    )
+
+    expect(versusGenreFamily?.categories.slice(-2).map((category) => category.name)).toEqual([
+      'Strategy',
+      'Tactical',
+    ])
+    expect(
+      versusGenreFamily?.categories
+        .filter((category) => ['15', '24'].includes(category.id))
+        .every((category) => category.defaultChecked === false)
+    ).toBe(true)
+  })
+
+  it('moves Warfare into a default-off fun theme slot in versus only', () => {
+    const standardThemeFamily = CURATED_STANDARD_CATEGORY_FAMILIES.find(
+      (family) => family.key === 'theme'
+    )
+    const versusThemeFamily = CURATED_VERSUS_CATEGORY_FAMILIES.find(
+      (family) => family.key === 'theme'
+    )
+
+    expect(standardThemeFamily?.categories.map((category) => category.name)).not.toContain(
+      'Warfare'
+    )
+    expect(versusThemeFamily?.categories.at(-1)).toEqual(
+      expect.objectContaining({
+        id: '39',
+        name: 'Warfare',
+        defaultChecked: false,
+      })
+    )
+  })
+
+  it('moves Survival into a default-off fun theme slot in versus only', () => {
+    const standardThemeFamily = CURATED_STANDARD_CATEGORY_FAMILIES.find(
+      (family) => family.key === 'theme'
+    )
+    const versusThemeFamily = CURATED_VERSUS_CATEGORY_FAMILIES.find(
+      (family) => family.key === 'theme'
+    )
+
+    expect(standardThemeFamily?.categories.map((category) => category.name)).not.toContain(
+      'Survival'
+    )
+    expect(versusThemeFamily?.categories.at(-2)).toEqual(
+      expect.objectContaining({
+        id: '21',
+        name: 'Survival',
+        defaultChecked: false,
+      })
+    )
   })
 })
 
@@ -129,6 +267,17 @@ describe('buildIGDBWhereClause', () => {
         platformIds: [18, 99, 51],
       })
     ).toBe('platforms = (18,99,51)')
+  })
+
+  it('builds native where clauses for custom retro platform buckets', () => {
+    expect(
+      buildIGDBWhereClause({
+        type: 'platform',
+        id: 86,
+        name: 'PC-Engine / TG16',
+        platformIds: [86, 150],
+      })
+    ).toBe('platforms = (86,150)')
   })
 
   it('builds native where clauses for merged company buckets', () => {
@@ -196,7 +345,7 @@ describe('buildIGDBWhereClause', () => {
 
 describe('buildSearchGameWhereClause', () => {
   it('requires recognized ratings by default', () => {
-    expect(buildSearchGameWhereClause()).toContain('(rating != null | aggregated_rating != null)')
+    expect(buildSearchGameWhereClause()).toContain('total_rating != null')
     expect(buildSearchGameWhereClause()).toContain('involved_companies != null')
   })
 })
@@ -284,6 +433,40 @@ describe('igdbGameMatchesCategory', () => {
       igdbGameMatchesCategory(baseGame, { type: 'platform', id: 11, name: 'Xbox (Original)' })
     ).toBe(true)
     expect(igdbGameMatchesCategory(baseGame, { type: 'genre', id: 5, name: 'Shooter' })).toBe(true)
+  })
+
+  it('matches merged retro platform buckets by alias group', () => {
+    expect(
+      igdbGameMatchesCategory(
+        {
+          ...baseGame,
+          platforms: [
+            { platform: { id: 150, name: 'TurboGrafx-16/PC Engine CD', slug: 'pce-cd' } },
+          ],
+        },
+        {
+          type: 'platform',
+          id: 86,
+          name: 'PC-Engine / TG16',
+          slug: 'tg16-slash-pce-slash-pce-cd',
+        }
+      )
+    ).toBe(true)
+
+    expect(
+      igdbGameMatchesCategory(
+        {
+          ...baseGame,
+          platforms: [{ platform: { id: 80, name: 'Neo Geo AES', slug: 'neo-geo-aes' } }],
+        },
+        {
+          type: 'platform',
+          id: 79,
+          name: 'Neo Geo / AES / MVS',
+          slug: 'neo-geo-slash-aes-slash-mvs',
+        }
+      )
+    ).toBe(true)
   })
 
   it('matches categories that rely on IGDB arrays', () => {

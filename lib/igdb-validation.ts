@@ -38,6 +38,8 @@ const PLATFORM_RELEASE_YEAR: Record<string, number> = {
   'xbox 360': 2005,
   'xbox one': 2013,
   'xbox series x s': 2020,
+  'pc engine tg16': 1987,
+  'neo geo aes mvs': 1990,
 }
 
 const PLATFORM_VALID_DECADES: Record<string, string[]> = {
@@ -69,6 +71,8 @@ const PLATFORM_VALID_DECADES: Record<string, string[]> = {
   'xbox 360': ['2000', '2010'],
   'xbox one': ['2010', '2020'],
   'xbox series x s': ['2020'],
+  'pc engine tg16': ['1990'],
+  'neo geo aes mvs': ['1990', '2000'],
 }
 
 const TAG_ALIAS_GROUPS: Record<string, string[]> = {
@@ -126,6 +130,17 @@ const PLATFORM_ALIAS_GROUPS: Record<string, string[]> = {
   playstation: ['playstation original', 'playstation'],
   'xbox original': ['xbox original', 'xbox'],
   xbox: ['xbox original', 'xbox'],
+  'pc engine tg16': [
+    'pc engine tg16',
+    'turbografx 16 pc engine',
+    'pc engine',
+    'pce',
+    'turbografx 16',
+    'pc engine cd',
+    'pce cd',
+    'turbografx 16 pc engine cd',
+  ],
+  'neo geo aes mvs': ['neo geo aes mvs', 'neo geo', 'neo geo aes', 'neo geo mvs'],
 }
 
 const COMPANY_ALIAS_GROUPS: Record<string, { aliases?: string[]; prefixes?: string[] }> = {

@@ -44,10 +44,6 @@ const STANDARD_PLATFORM_CATEGORIES: Category[] = [
   { type: 'platform', id: 29, name: 'Sega Mega Drive/Genesis', slug: 'genesis-slash-megadrive' },
   { type: 'platform', id: 32, name: 'Sega Saturn', slug: 'saturn' },
   { type: 'platform', id: 23, name: 'Dreamcast', slug: 'dc' },
-  { type: 'platform', id: 33, name: 'Game Boy', slug: 'gb' },
-  { type: 'platform', id: 24, name: 'Game Boy Advance', slug: 'gba' },
-  { type: 'platform', id: 20, name: 'Nintendo DS', slug: 'nds' },
-  { type: 'platform', id: 37, name: 'Nintendo 3DS', slug: '3ds' },
   { type: 'platform', id: 4, name: 'Nintendo 64', slug: 'n64' },
   { type: 'platform', id: 21, name: 'Nintendo GameCube', slug: 'ngc' },
   { type: 'platform', id: 5, name: 'Wii', slug: 'wii' },
@@ -66,12 +62,38 @@ const STANDARD_PLATFORM_CATEGORIES: Category[] = [
   },
   { type: 'platform', id: 48, name: 'PlayStation 4', slug: 'ps4--1' },
   { type: 'platform', id: 167, name: 'PlayStation 5', slug: 'ps5' },
-  { type: 'platform', id: 38, name: 'PlayStation Portable', slug: 'psp' },
-  { type: 'platform', id: 46, name: 'PlayStation Vita', slug: 'psvita' },
   { type: 'platform', id: 11, name: 'Xbox (Original)', slug: 'xbox' },
   { type: 'platform', id: 12, name: 'Xbox 360', slug: 'xbox360' },
   { type: 'platform', id: 49, name: 'Xbox One', slug: 'xboxone' },
   { type: 'platform', id: 169, name: 'Xbox Series X|S', slug: 'series-x-s' },
+]
+
+const CUSTOM_ONLY_PLATFORM_CATEGORIES: Category[] = [
+  {
+    type: 'platform',
+    id: 86,
+    name: 'PC-Engine / TG16',
+    slug: 'tg16-slash-pce-slash-pce-cd',
+    platformIds: [86, 150],
+  },
+  {
+    type: 'platform',
+    id: 79,
+    name: 'Neo Geo / AES / MVS',
+    slug: 'neo-geo-slash-aes-slash-mvs',
+    platformIds: [79, 80],
+  },
+  { type: 'platform', id: 33, name: 'Game Boy', slug: 'gb' },
+  { type: 'platform', id: 24, name: 'Game Boy Advance', slug: 'gba' },
+  { type: 'platform', id: 20, name: 'Nintendo DS', slug: 'nds' },
+  { type: 'platform', id: 37, name: 'Nintendo 3DS', slug: '3ds' },
+  { type: 'platform', id: 38, name: 'PlayStation Portable', slug: 'psp' },
+  { type: 'platform', id: 46, name: 'PlayStation Vita', slug: 'psvita' },
+]
+
+const VERSUS_PLATFORM_CATEGORIES: Category[] = [
+  ...STANDARD_PLATFORM_CATEGORIES,
+  ...CUSTOM_ONLY_PLATFORM_CATEGORIES,
 ]
 
 const STANDARD_GENRE_CATEGORIES: Category[] = [
@@ -83,9 +105,17 @@ const STANDARD_GENRE_CATEGORIES: Category[] = [
   { type: 'genre', id: 12, name: 'Role-playing (RPG)', slug: 'rpg' },
   { type: 'genre', id: 13, name: 'Simulator', slug: 'simulator' },
   { type: 'genre', id: 14, name: 'Sport', slug: 'sport' },
+  { type: 'genre', id: 31, name: 'Adventure', slug: 'adventure' },
+]
+
+const CUSTOM_ONLY_GENRE_CATEGORIES: Category[] = [
   { type: 'genre', id: 15, name: 'Strategy', slug: 'strategy' },
   { type: 'genre', id: 24, name: 'Tactical', slug: 'tactical' },
-  { type: 'genre', id: 31, name: 'Adventure', slug: 'adventure' },
+]
+
+const VERSUS_GENRE_CATEGORIES: Category[] = [
+  ...STANDARD_GENRE_CATEGORIES,
+  ...CUSTOM_ONLY_GENRE_CATEGORIES,
 ]
 
 const STANDARD_DECADE_CATEGORIES: Category[] = [
@@ -129,7 +159,6 @@ const STANDARD_COMPANY_CATEGORIES: Category[] = [
     slug: 'ubisoft',
     companyNamePatterns: ['Ubisoft'],
   },
-  { type: 'company', id: 'thq', name: 'THQ / Nordic', slug: 'thq', companyIds: [197] },
   {
     type: 'company',
     id: 'microsoft-xbox',
@@ -147,6 +176,7 @@ const STANDARD_COMPANY_CATEGORIES: Category[] = [
 ]
 
 const CUSTOM_ONLY_COMPANY_CATEGORIES: Category[] = [
+  { type: 'company', id: 'thq', name: 'THQ / Nordic', slug: 'thq', companyIds: [197] },
   {
     type: 'company',
     id: 'bandai-namco',
@@ -176,8 +206,16 @@ const STANDARD_GAME_MODE_CATEGORIES: Category[] = [
   { type: 'game_mode', id: 2, name: 'Multiplayer', slug: 'multiplayer' },
   { type: 'game_mode', id: 3, name: 'Co-operative', slug: 'co-operative' },
   { type: 'game_mode', id: 4, name: 'Split screen', slug: 'split-screen' },
+]
+
+const CUSTOM_ONLY_GAME_MODE_CATEGORIES: Category[] = [
   { type: 'game_mode', id: 5, name: 'Massively Multiplayer Online (MMO)', slug: 'mmo' },
   { type: 'game_mode', id: 6, name: 'Battle Royale', slug: 'battle-royale' },
+]
+
+const VERSUS_GAME_MODE_CATEGORIES: Category[] = [
+  ...STANDARD_GAME_MODE_CATEGORIES,
+  ...CUSTOM_ONLY_GAME_MODE_CATEGORIES,
 ]
 
 const STANDARD_THEME_CATEGORIES: Category[] = [
@@ -185,10 +223,18 @@ const STANDARD_THEME_CATEGORIES: Category[] = [
   { type: 'theme', id: 17, name: 'Fantasy', slug: 'fantasy' },
   { type: 'theme', id: 18, name: 'Science fiction', slug: 'science-fiction' },
   { type: 'theme', id: 19, name: 'Horror', slug: 'horror' },
-  { type: 'theme', id: 21, name: 'Survival', slug: 'survival' },
   { type: 'theme', id: 38, name: 'Open world', slug: 'open-world' },
-  { type: 'theme', id: 39, name: 'Warfare', slug: 'warfare' },
   { type: 'theme', id: 43, name: 'Mystery', slug: 'mystery' },
+]
+
+const CUSTOM_ONLY_THEME_CATEGORIES: Category[] = [
+  { type: 'theme', id: 21, name: 'Survival', slug: 'survival' },
+  { type: 'theme', id: 39, name: 'Warfare', slug: 'warfare' },
+]
+
+const VERSUS_THEME_CATEGORIES: Category[] = [
+  ...STANDARD_THEME_CATEGORIES,
+  ...CUSTOM_ONLY_THEME_CATEGORIES,
 ]
 
 const STANDARD_PERSPECTIVE_CATEGORIES: Category[] = [
@@ -204,6 +250,15 @@ const VERSUS_PERSPECTIVE_CATEGORIES: Category[] = [
   { type: 'perspective', id: 6, name: 'Auditory', slug: 'auditory' },
   { type: 'perspective', id: 7, name: 'Virtual Reality', slug: 'virtual-reality' },
 ]
+
+const DEFAULT_OFF_CATEGORY_IDS: Partial<Record<FamilyKey, Set<string>>> = {
+  platform: new Set(['86', '79', '33', '24', '20', '37', '38', '46']),
+  genre: new Set(['15', '24']),
+  game_mode: new Set(['5', '6']),
+  theme: new Set(['21', '39']),
+  perspective: new Set(['5', '6', '7']),
+  company: new Set(['bandai-namco', 'thq', 'atlus', 'taito', 'snk', 'koei-tecmo']),
+}
 
 export const CURATED_STANDARD_CATEGORY_FAMILIES: CuratedCategoryFamily[] = [
   { key: 'platform', source: 'curated', categories: STANDARD_PLATFORM_CATEGORIES },
@@ -223,13 +278,37 @@ export const CURATED_VERSUS_GENERATION_CATEGORY_FAMILIES: CuratedCategoryFamily[
           source: 'curated',
           categories: VERSUS_PERSPECTIVE_CATEGORIES,
         } satisfies CuratedCategoryFamily)
-      : family.key === 'company'
+      : family.key === 'platform'
         ? ({
-            key: 'company',
+            key: 'platform',
             source: 'curated',
-            categories: VERSUS_COMPANY_CATEGORIES,
+            categories: VERSUS_PLATFORM_CATEGORIES,
           } satisfies CuratedCategoryFamily)
-        : family
+        : family.key === 'genre'
+          ? ({
+              key: 'genre',
+              source: 'curated',
+              categories: VERSUS_GENRE_CATEGORIES,
+            } satisfies CuratedCategoryFamily)
+          : family.key === 'theme'
+            ? ({
+                key: 'theme',
+                source: 'curated',
+                categories: VERSUS_THEME_CATEGORIES,
+              } satisfies CuratedCategoryFamily)
+            : family.key === 'company'
+              ? ({
+                  key: 'company',
+                  source: 'curated',
+                  categories: VERSUS_COMPANY_CATEGORIES,
+                } satisfies CuratedCategoryFamily)
+              : family.key === 'game_mode'
+                ? ({
+                    key: 'game_mode',
+                    source: 'curated',
+                    categories: VERSUS_GAME_MODE_CATEGORIES,
+                  } satisfies CuratedCategoryFamily)
+                : family
   ),
 ]
 
@@ -241,19 +320,7 @@ export const CURATED_VERSUS_CATEGORY_FAMILIES: VersusCategoryFamilyOption[] =
       id: String(category.id),
       name: family.key === 'platform' ? getPlatformDisplayLabel(category.name) : category.name,
       type: category.type,
-      defaultChecked: !(
-        (family.key === 'perspective' &&
-          (String(category.id) === '5' ||
-            String(category.id) === '6' ||
-            String(category.id) === '7')) ||
-        (family.key === 'company' &&
-          (String(category.id) === 'bandai-namco' ||
-            String(category.id) === 'thq' ||
-            String(category.id) === 'atlus' ||
-            String(category.id) === 'taito' ||
-            String(category.id) === 'snk' ||
-            String(category.id) === 'koei-tecmo'))
-      ),
+      defaultChecked: !DEFAULT_OFF_CATEGORY_IDS[family.key]?.has(String(category.id)),
     })),
   }))
 

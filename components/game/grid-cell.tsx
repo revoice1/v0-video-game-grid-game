@@ -1,6 +1,7 @@
 'use client'
 
 import { Armchair } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePulse } from '@/hooks/use-pulse'
 import { cn } from '@/lib/utils'
 import type { CellGuess, PuzzleCellMetadata } from '@/lib/types'
@@ -65,6 +66,9 @@ export function GridCell({
 }: GridCellProps) {
   const hasGuess = guess !== null
   const isSustainedObjection = Boolean(guess?.isCorrect && guess?.objectionVerdict === 'sustained')
+  const showRevealedShowdownScore = Boolean(
+    guess?.showdownScoreRevealed && guess?.stealRating !== null && guess?.stealRating !== undefined
+  )
   const isButtonDisabled = isDisabled && !hasGuess
   const cellAlarmState = alarmsEnabled
     ? isGamePoint && isStealable
@@ -86,12 +90,7 @@ export function GridCell({
       : `${metadata.validOptionCount}`
     : null
   const possibleTitle = metadata ? `${metadata.validOptionCount} possible answers` : null
-  const cellTitle =
-    hasGuess && isStealable && possibleTitle
-      ? `Steal active. ${possibleTitle}.`
-      : !hasGuess && possibleTitle
-        ? possibleTitle
-        : undefined
+  const cellTitle = !hasGuess && possibleTitle ? possibleTitle : undefined
   const difficultyMarker = metadata ? difficultyEmoji[metadata.difficulty] : null
   const alarmStyle =
     cellAlarmState === 'steal'
@@ -143,7 +142,7 @@ export function GridCell({
         hasGuess &&
           guess.isCorrect &&
           (isSustainedObjection
-            ? 'correct-sustained border-amber-400/60 shadow-[0_0_0_1px_rgba(245,185,78,0.28),0_0_20px_rgba(245,185,78,0.14)]'
+            ? 'correct-sustained border-[#fb923c]/55 shadow-[0_0_0_1px_rgba(251,146,60,0.26),0_0_20px_rgba(251,146,60,0.12)]'
             : 'correct border-primary/50'),
         hasGuess && !guess.isCorrect && 'incorrect border-destructive/50',
         hasGuess && (animationsEnabled ? 'cursor-pointer hover:brightness-110' : 'cursor-pointer'),
@@ -185,6 +184,11 @@ export function GridCell({
               {guess.gameName}
             </span>
           </div>
+          {showRevealedShowdownScore && (
+            <div className="absolute bottom-1 left-1 z-[2] rounded-md border border-black/35 bg-black/72 px-1.5 py-0.5 text-[10px] font-black tabular-nums text-white/95 shadow-[0_2px_8px_rgba(0,0,0,0.28)]">
+              {guess.stealRating}
+            </div>
+          )}
           {!guess.isCorrect && (
             <div className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive">
               <svg
@@ -202,31 +206,58 @@ export function GridCell({
               </svg>
             </div>
           )}
-          {guess.isCorrect && (
-            <div
-              className={cn(
-                'absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full',
-                isSustainedObjection ? 'bg-[#f5b94e]' : 'bg-primary'
-              )}
-            >
-              <svg
+          {guess.isCorrect &&
+            (isSustainedObjection && guess.objectionExplanation ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    className="absolute right-1 top-1 z-[3] flex h-5 w-5 cursor-help items-center justify-center rounded-full bg-[#fb923c]"
+                    aria-label="Sustained on review"
+                  >
+                    <svg
+                      className="h-3 w-3 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="left" sideOffset={6} className="max-w-[220px]">
+                  {guess.objectionExplanation}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <div
                 className={cn(
-                  'h-3 w-3',
-                  isSustainedObjection ? 'text-[#3f2a06]' : 'text-primary-foreground'
+                  'absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full',
+                  isSustainedObjection ? 'bg-[#fb923c]' : 'bg-primary'
                 )}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-            </div>
-          )}
+                <svg
+                  className={cn(
+                    'h-3 w-3',
+                    isSustainedObjection ? 'text-white' : 'text-primary-foreground'
+                  )}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+            ))}
           {guess.owner && (
             <div
               className={cn(
@@ -252,6 +283,15 @@ export function GridCell({
                   d="M16 11V8a4 4 0 10-8 0v3m-1 0h10a1 1 0 011 1v7a1 1 0 01-1 1H7a1 1 0 01-1-1v-7a1 1 0 011-1z"
                 />
               </svg>
+            </div>
+          )}
+          {isStealable && !isLocked && possibleLabel && (
+            <div
+              className="absolute left-1 top-1 z-[3] rounded-md border border-black/35 bg-black/72 px-1.5 py-0.5 text-[10px] font-black tabular-nums text-white/95 shadow-[0_2px_8px_rgba(0,0,0,0.28)]"
+              title={possibleTitle ?? undefined}
+              aria-label={`Steal active: ${possibleTitle}`}
+            >
+              {possibleLabel}
             </div>
           )}
         </div>
@@ -304,8 +344,8 @@ export function GridCell({
           pointer-events: none;
           background: linear-gradient(
             180deg,
-            rgba(245, 185, 78, 0.1),
-            rgba(245, 185, 78, 0.02) 42%,
+            rgba(251, 146, 60, 0.1),
+            rgba(251, 146, 60, 0.02) 42%,
             rgba(0, 0, 0, 0)
           );
           z-index: 1;

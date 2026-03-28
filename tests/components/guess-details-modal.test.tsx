@@ -44,7 +44,7 @@ describe('GuessDetailsModal', () => {
     expect(screen.queryByText('Objection')).not.toBeInTheDocument()
   })
 
-  it('keeps objection details visible after a sustained review and only highlights the rescued category in gold', () => {
+  it('keeps objection details visible after a sustained review and only highlights the rescued category in orange', () => {
     const guess: CellGuess = {
       gameId: 359,
       gameName: 'Final Fantasy XV',
@@ -82,7 +82,7 @@ describe('GuessDetailsModal', () => {
 
     const matchedLabels = screen.getAllByText('Matched')
     expect(matchedLabels).toHaveLength(2)
-    expect(matchedLabels[0]?.className).toContain('text-[#f5b94e]')
+    expect(matchedLabels[0]?.className).toContain('text-[#fb923c]')
     expect(matchedLabels[1]?.className).toContain('text-primary')
   })
 

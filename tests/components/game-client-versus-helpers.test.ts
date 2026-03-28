@@ -253,4 +253,34 @@ describe('game client versus helpers', () => {
       description: 'Three in a row takes the match.',
     })
   })
+
+  it('resolves an X last-square claims win as a final steal opportunity first', () => {
+    expect(
+      getVersusPlacementResolution({
+        newGuesses: [
+          makeOwnedGuess('x'),
+          makeOwnedGuess('o'),
+          makeOwnedGuess('x'),
+          makeOwnedGuess('o'),
+          makeOwnedGuess('x'),
+          makeOwnedGuess('o'),
+          makeOwnedGuess('x'),
+          makeOwnedGuess('o'),
+          makeOwnedGuess('x'),
+        ],
+        currentPlayer: 'x',
+        selectedCell: 8,
+        isVersusSteal: false,
+        stealsEnabled: true,
+        disableDraws: true,
+      })
+    ).toEqual({
+      kind: 'final-steal',
+      defender: 'x',
+      cellIndex: 8,
+      nextPlayer: 'o',
+      title: 'Last chance steal',
+      description: 'O gets one chance to answer back on that square.',
+    })
+  })
 })

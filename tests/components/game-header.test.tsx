@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { GameHeader } from '@/components/game/game-header'
 
 describe('GameHeader objection tracker', () => {
-  it('shows objection circles for both players when versus objections are enabled', () => {
+  it('shows objection circles for the active player when versus objections are enabled', () => {
     render(
       <GameHeader
         mode="versus"

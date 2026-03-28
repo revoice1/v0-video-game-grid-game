@@ -47,10 +47,10 @@
 - Rejected guesses can surface an `Objection!` action in the details modal.
 - The sequence should feel theatrical:
   - `Objection!`
-  - `Judge Gemini Deliberating`
+  - `Judge Gemini Reviews`
   - `Sustained` or `Overruled`
 - The judgment explanation should remain attached to that square after the verdict, even if the objection is sustained and the square flips to correct.
-- Sustained objections use a gold reviewed-success treatment, but only on the category the review actually rescued.
+- Sustained objections use an orange reviewed-success treatment, but only on the category the review actually rescued.
 - Players only get one objection per square, so the button should lock after use.
 - Versus objections should use a reduced-information review modal so live players do not get the full metadata panel for a disputed guess.
 

@@ -8,6 +8,7 @@ import { ResultsModal } from './results-modal'
 import { HowToPlayModal } from './how-to-play-modal'
 import { GuessDetailsModal } from './guess-details-modal'
 import { VersusObjectionModal } from './versus-objection-modal'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { AchievementsModal } from './achievements-modal'
 import { FallingParticlesOverlay } from './falling-particles-overlay'
 import { PuzzleLoadingScreen } from './puzzle-loading-screen'
@@ -1612,11 +1613,8 @@ export function GameClient() {
   const activeObjectionLimit = getVersusObjectionLimit(versusObjectionRule)
   const showVersusObjectionModal =
     mode === 'versus' &&
-    (pendingVersusObjectionReview !== null ||
-      detailGuess?.objectionUsed === true ||
-      objectionPending ||
-      objectionVerdict !== null ||
-      objectionExplanation !== null)
+    !objectionPending &&
+    (pendingVersusObjectionReview !== null || detailGuess?.objectionUsed === true)
   const objectionDisabled = pendingVersusObjectionReview
     ? versusObjectionsUsed[pendingVersusObjectionReview.player] >= activeObjectionLimit
     : Boolean(detailGuess?.objectionUsed)
@@ -1640,7 +1638,10 @@ export function GameClient() {
   const resolveVersusRejectedGuess = useCallback(
     (
       invalidGuessResolution: ReturnType<typeof getVersusInvalidGuessResolution>,
-      nextVersusObjectionsUsed: VersusObjectionsUsed = versusObjectionsUsed
+      nextVersusObjectionsUsed: VersusObjectionsUsed = versusObjectionsUsed,
+      options?: {
+        fromOverruledObjection?: boolean
+      }
     ) => {
       setPendingVersusObjectionReview(null)
       setDetailCell(null)
@@ -1700,7 +1701,9 @@ export function GameClient() {
 
       toast({
         variant: 'destructive',
-        title: invalidGuessResolution.title,
+        title: options?.fromOverruledObjection
+          ? 'Objection overruled'
+          : invalidGuessResolution.title,
         description: invalidGuessResolution.description,
       })
     },
@@ -1798,7 +1801,7 @@ export function GameClient() {
               [objectionPlayer]: versusObjectionsUsed[objectionPlayer] + 1,
             }
           : versusObjectionsUsed
-      const nextGuess = {
+      let nextGuess = {
         ...detailGuess,
         objectionUsed: true,
         objectionVerdict: payload.verdict,
@@ -1837,17 +1840,232 @@ export function GameClient() {
 
       if (mode === 'versus' && pendingVersusObjectionReview) {
         if (payload.verdict === 'sustained') {
+          const objectionCellIndex = activeDetailCell
+          const objectionPlayer = pendingVersusObjectionReview.player
+
+          if (pendingVersusObjectionReview.isVersusSteal) {
+            const effectiveStealRule = versusStealRule === 'higher' ? 'higher' : 'lower'
+            const defendingGuess = guesses[objectionCellIndex]
+
+            if (defendingGuess) {
+              const stealOutcome = resolveStealOutcome({
+                currentPlayer: objectionPlayer,
+                defendingGuess,
+                attackingGuess: nextGuess,
+                rule: effectiveStealRule,
+                pendingFinalSteal: pendingFinalSteal as PendingVersusSteal | null,
+                selectedCell: objectionCellIndex,
+              })
+              const showdownDuration =
+                animationsEnabled && stealOutcome.hasShowdownScores ? STEAL_SHOWDOWN_DURATION_MS : 0
+
+              if (stealOutcome.hasShowdownScores) {
+                setActiveStealShowdown({
+                  burstId: Date.now(),
+                  durationMs: showdownDuration,
+                  defenderName: defendingGuess.gameName,
+                  defenderScore: defendingGuess.stealRating!,
+                  attackerName: nextGuess.gameName,
+                  attackerScore: nextGuess.stealRating!,
+                  rule: effectiveStealRule,
+                  successful: stealOutcome.successful,
+                })
+              }
+
+              setPendingVersusObjectionReview(null)
+              setDetailCell(null)
+              setObjectionVerdict(null)
+              setObjectionExplanation(null)
+
+              if (!stealOutcome.successful) {
+                const failureDescription = buildStealFailureDescription({
+                  pendingFinalSteal,
+                  selectedCell: objectionCellIndex,
+                  hasShowdownScores: stealOutcome.hasShowdownScores,
+                  gameName: nextGuess.gameName,
+                  attackingScore: nextGuess.stealRating,
+                  defendingGameName: defendingGuess.gameName,
+                  defendingScore: defendingGuess.stealRating,
+                  versusStealRule: effectiveStealRule,
+                  currentPlayer: objectionPlayer,
+                })
+
+                const resolveFailedSustainedSteal = () => {
+                  const revealedGuesses = stealOutcome.hasShowdownScores
+                    ? guesses.map((guess, index) =>
+                        index === objectionCellIndex && guess
+                          ? {
+                              ...guess,
+                              showdownScoreRevealed: true,
+                            }
+                          : guess
+                      )
+                    : guesses
+                  let persistedCurrentPlayer = currentPlayer
+                  let persistedWinner = winner
+                  let persistedPendingFinalSteal = pendingFinalSteal
+
+                  if (stealOutcome.hasShowdownScores) {
+                    setGuesses(revealedGuesses)
+                  }
+
+                  for (const action of stealOutcome.actions) {
+                    if (action.kind === 'setNextPlayer') {
+                      persistedCurrentPlayer = action.player
+                    } else if (action.kind === 'setWinner') {
+                      persistedWinner = action.player
+                    } else if (action.kind === 'clearPendingSteal') {
+                      persistedPendingFinalSteal = null
+                    }
+                  }
+
+                  applyStealActions(stealOutcome.actions)
+                  saveGameState(
+                    {
+                      puzzleId: puzzle.id,
+                      puzzle,
+                      guesses: revealedGuesses,
+                      guessesRemaining,
+                      isComplete,
+                      currentPlayer: persistedCurrentPlayer,
+                      stealableCell: null,
+                      winner: persistedWinner,
+                      pendingFinalSteal: persistedPendingFinalSteal,
+                      versusCategoryFilters,
+                      versusStealRule,
+                      versusTimerOption,
+                      versusDisableDraws,
+                      versusObjectionRule,
+                      versusObjectionsUsed: nextVersusObjectionsUsed,
+                      turnTimeLeft,
+                    },
+                    mode
+                  )
+                  toast({
+                    variant: 'destructive',
+                    title: 'Steal failed',
+                    description: failureDescription,
+                  })
+                }
+
+                if (showdownDuration > 0) {
+                  window.setTimeout(resolveFailedSustainedSteal, showdownDuration)
+                } else {
+                  resolveFailedSustainedSteal()
+                }
+
+                return
+              }
+
+              nextGuess = {
+                ...nextGuess,
+                ...(stealOutcome.hasShowdownScores ? { showdownScoreRevealed: true } : null),
+              }
+              const successfulStealGuesses = guesses.map((guess, index) =>
+                index === objectionCellIndex ? nextGuess : guess
+              )
+
+              setGuesses(successfulStealGuesses)
+              setPendingFinalSteal(null)
+              setLockImpactCell(null)
+              setStealableCell(stealsEnabled ? objectionCellIndex : null)
+
+              const placementResolution = getVersusPlacementResolution({
+                newGuesses: successfulStealGuesses,
+                currentPlayer: objectionPlayer,
+                selectedCell: objectionCellIndex,
+                isVersusSteal: true,
+                stealsEnabled,
+                disableDraws: versusDisableDraws,
+              })
+
+              let persistedCurrentPlayer = currentPlayer
+              let persistedWinner = winner
+              let persistedStealableCell = stealsEnabled ? objectionCellIndex : null
+              let persistedPendingFinalSteal = null
+
+              if (placementResolution.kind === 'final-steal') {
+                setPendingFinalSteal({
+                  defender: placementResolution.defender,
+                  cellIndex: placementResolution.cellIndex,
+                })
+                setCurrentPlayer(placementResolution.nextPlayer)
+                persistedCurrentPlayer = placementResolution.nextPlayer
+                persistedPendingFinalSteal = {
+                  defender: placementResolution.defender,
+                  cellIndex: placementResolution.cellIndex,
+                }
+              } else if (placementResolution.kind === 'winner') {
+                setWinner(placementResolution.winner)
+                setStealableCell(null)
+                persistedWinner = placementResolution.winner
+                persistedStealableCell = null
+              } else if (placementResolution.kind === 'claims-win') {
+                setWinner(placementResolution.winner)
+                setStealableCell(null)
+                persistedWinner = placementResolution.winner
+                persistedStealableCell = null
+              } else if (placementResolution.kind === 'draw') {
+                setActiveDoubleKoSplash({
+                  burstId: Date.now(),
+                  durationMs: 1400,
+                })
+                setWinner('draw')
+                setStealableCell(null)
+                persistedWinner = 'draw'
+                persistedStealableCell = null
+              } else {
+                setCurrentPlayer(placementResolution.nextPlayer)
+                persistedCurrentPlayer = placementResolution.nextPlayer
+              }
+
+              saveGameState(
+                {
+                  puzzleId: puzzle.id,
+                  puzzle,
+                  guesses: successfulStealGuesses,
+                  guessesRemaining,
+                  isComplete,
+                  currentPlayer: persistedCurrentPlayer,
+                  stealableCell: persistedStealableCell,
+                  winner: persistedWinner,
+                  pendingFinalSteal: persistedPendingFinalSteal,
+                  versusCategoryFilters,
+                  versusStealRule,
+                  versusTimerOption,
+                  versusDisableDraws,
+                  versusObjectionRule,
+                  versusObjectionsUsed: nextVersusObjectionsUsed,
+                  turnTimeLeft,
+                },
+                mode
+              )
+
+              return
+            }
+          }
+
           setPendingVersusObjectionReview(null)
-          setDetailCell(activeDetailCell)
+          setDetailCell(null)
+          setObjectionVerdict(null)
+          setObjectionExplanation(null)
+          setPendingFinalSteal(null)
+          setLockImpactCell(null)
+          setStealableCell(stealsEnabled ? objectionCellIndex : null)
 
           const placementResolution = getVersusPlacementResolution({
             newGuesses: nextGuesses,
-            currentPlayer: pendingVersusObjectionReview.player,
-            selectedCell: activeDetailCell,
+            currentPlayer: objectionPlayer,
+            selectedCell: objectionCellIndex,
             isVersusSteal: pendingVersusObjectionReview.isVersusSteal,
             stealsEnabled,
             disableDraws: versusDisableDraws,
           })
+
+          let persistedCurrentPlayer = currentPlayer
+          let persistedWinner = winner
+          let persistedStealableCell = stealsEnabled ? objectionCellIndex : null
+          let persistedPendingFinalSteal = null
 
           if (placementResolution.kind === 'final-steal') {
             setPendingFinalSteal({
@@ -1855,12 +2073,21 @@ export function GameClient() {
               cellIndex: placementResolution.cellIndex,
             })
             setCurrentPlayer(placementResolution.nextPlayer)
+            persistedCurrentPlayer = placementResolution.nextPlayer
+            persistedPendingFinalSteal = {
+              defender: placementResolution.defender,
+              cellIndex: placementResolution.cellIndex,
+            }
           } else if (placementResolution.kind === 'winner') {
             setWinner(placementResolution.winner)
             setStealableCell(null)
+            persistedWinner = placementResolution.winner
+            persistedStealableCell = null
           } else if (placementResolution.kind === 'claims-win') {
             setWinner(placementResolution.winner)
             setStealableCell(null)
+            persistedWinner = placementResolution.winner
+            persistedStealableCell = null
           } else if (placementResolution.kind === 'draw') {
             setActiveDoubleKoSplash({
               burstId: Date.now(),
@@ -1868,17 +2095,41 @@ export function GameClient() {
             })
             setWinner('draw')
             setStealableCell(null)
+            persistedWinner = 'draw'
+            persistedStealableCell = null
           } else {
             setCurrentPlayer(placementResolution.nextPlayer)
+            persistedCurrentPlayer = placementResolution.nextPlayer
           }
+
+          saveGameState(
+            {
+              puzzleId: puzzle.id,
+              puzzle,
+              guesses: nextGuesses,
+              guessesRemaining,
+              isComplete,
+              currentPlayer: persistedCurrentPlayer,
+              stealableCell: persistedStealableCell,
+              winner: persistedWinner,
+              pendingFinalSteal: persistedPendingFinalSteal,
+              versusCategoryFilters,
+              versusStealRule,
+              versusTimerOption,
+              versusDisableDraws,
+              versusObjectionRule,
+              versusObjectionsUsed: nextVersusObjectionsUsed,
+              turnTimeLeft,
+            },
+            mode
+          )
         } else {
-          setPendingVersusObjectionReview((current) =>
-            current
-              ? {
-                  ...current,
-                  guess: nextGuess,
-                }
-              : current
+          setObjectionVerdict(null)
+          setObjectionExplanation(null)
+          resolveVersusRejectedGuess(
+            pendingVersusObjectionReview.invalidGuessResolution,
+            nextVersusObjectionsUsed,
+            { fromOverruledObjection: true }
           )
         }
 
@@ -2590,7 +2841,7 @@ export function GameClient() {
         return
       }
 
-      const newGuess = buildGuessFromSelection({
+      let newGuess = buildGuessFromSelection({
         game,
         result,
         mode,
@@ -2620,6 +2871,14 @@ export function GameClient() {
           selectedCell,
           missReason,
         })
+
+        const availableObjectionCount =
+          getVersusObjectionLimit(versusObjectionRule) - versusObjectionsUsed[currentPlayer]
+
+        if (availableObjectionCount <= 0) {
+          resolveVersusRejectedGuess(invalidGuessResolution)
+          return
+        }
 
         setPendingVersusObjectionReview({
           cellIndex: selectedCell,
@@ -2675,6 +2934,18 @@ export function GameClient() {
           })
 
           const resolveFailedSteal = () => {
+            if (outcome.hasShowdownScores) {
+              setGuesses((current) =>
+                current.map((guess, index) =>
+                  index === selectedCell && guess
+                    ? {
+                        ...guess,
+                        showdownScoreRevealed: true,
+                      }
+                    : guess
+                )
+              )
+            }
             applyStealActions(outcome.actions)
             toast({
               variant: 'destructive',
@@ -2689,6 +2960,13 @@ export function GameClient() {
             resolveFailedSteal()
           }
           return
+        }
+
+        if (outcome.hasShowdownScores) {
+          newGuess = {
+            ...newGuess,
+            showdownScoreRevealed: true,
+          }
         }
       }
 
@@ -3049,39 +3327,54 @@ export function GameClient() {
           isGameOver={isComplete}
           onCellClick={handleCellClick}
         />
-
-        {isVersusMode && winner && showVersusWinnerBanner && (
-          <div className="pointer-events-none absolute inset-x-4 top-24 z-20 sm:inset-x-6 sm:top-28">
-            <div className="pointer-events-auto rounded-2xl border border-border bg-card/92 p-5 text-center shadow-xl backdrop-blur-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-                Match Over
-              </p>
-              <p className="mt-2 text-2xl font-bold text-foreground">
-                {winner === 'draw' ? 'Draw game' : `${getPlayerLabel(winner)} wins`}
-              </p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {winner === 'draw'
-                  ? 'No line was completed before the board filled up.'
-                  : 'Hide this panel to review the finished board, or start a new match.'}
-              </p>
-              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                <button
-                  onClick={() => setShowVersusWinnerBanner(false)}
-                  className="rounded-lg border border-border bg-secondary/40 px-4 py-2.5 font-medium text-foreground transition-colors hover:bg-secondary/65"
-                >
-                  Hide
-                </button>
-                <button
-                  onClick={handleNewGame}
-                  className="rounded-lg bg-primary px-5 py-2.5 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                >
-                  New Match
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
+
+      <Dialog
+        open={isVersusMode && winner !== null && showVersusWinnerBanner}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowVersusWinnerBanner(false)
+          }
+        }}
+      >
+        <DialogContent className="max-w-md border-border bg-card/95 p-5 text-center shadow-xl backdrop-blur-sm">
+          <DialogTitle className="sr-only">
+            {winner === 'draw'
+              ? 'Versus match ended in a draw'
+              : `${getPlayerLabel(winner ?? 'x')} wins the match`}
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            {winner === 'draw'
+              ? 'The versus match ended in a draw. Close this dialog to review the finished board or start a new match.'
+              : 'The versus match is over. Close this dialog to review the finished board or start a new match.'}
+          </DialogDescription>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+            Match Over
+          </p>
+          <p className="mt-2 text-2xl font-bold text-foreground">
+            {winner === 'draw' ? 'Draw game' : `${getPlayerLabel(winner ?? 'x')} wins`}
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {winner === 'draw'
+              ? 'No line was completed before the board filled up.'
+              : 'Click outside to review the finished board, or start a new match.'}
+          </p>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <button
+              onClick={() => setShowVersusWinnerBanner(false)}
+              className="rounded-lg border border-border bg-secondary/40 px-4 py-2.5 font-medium text-foreground transition-colors hover:bg-secondary/65"
+            >
+              Hide
+            </button>
+            <button
+              onClick={handleNewGame}
+              className="rounded-lg bg-primary px-5 py-2.5 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              New Match
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Show results button when complete */}
       {!isVersusMode && isComplete && !showResults && (
@@ -3101,6 +3394,8 @@ export function GameClient() {
         hideScores={mode === 'versus'}
         confirmBeforeSelect={confirmBeforeSelect}
         lowEffects={animationQuality === 'low'}
+        turnTimerLabel={isVersusMode ? turnTimerLabel : null}
+        turnTimerSeconds={isVersusMode ? turnTimeLeft : null}
         activeCategoryTypes={activeCategoryTypes}
         rowCategory={selectedRowCategory}
         colCategory={selectedColCategory}

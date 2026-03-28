@@ -701,17 +701,7 @@ function mapIGDBGameToGame(game: IGDBGame): Game {
     ].filter((date): date is string => Boolean(date)),
     (date) => date
   )
-  const averagedSplitRating = [game.rating, game.aggregated_rating].filter(
-    (value): value is number => typeof value === 'number'
-  )
-  const stealRating =
-    typeof game.total_rating === 'number'
-      ? Math.round(game.total_rating)
-      : averagedSplitRating.length > 0
-        ? Math.round(
-            averagedSplitRating.reduce((sum, value) => sum + value, 0) / averagedSplitRating.length
-          )
-        : null
+  const stealRating = typeof game.total_rating === 'number' ? Math.round(game.total_rating) : null
 
   return {
     id: game.id,
@@ -769,7 +759,7 @@ function hasDisqualifyingKeywords(game: IGDBGame): boolean {
 }
 
 function hasRecognizedRating(game: IGDBGame): boolean {
-  return game.rating != null || game.aggregated_rating != null
+  return game.total_rating != null
 }
 
 function isOfficialCatalogGame(game: IGDBGame): boolean {
@@ -825,7 +815,7 @@ function buildOfficialGameWhereClause(): string {
     'version_parent = null',
     'first_release_date != null',
     'involved_companies != null',
-    '(rating != null | aggregated_rating != null)',
+    'total_rating != null',
     `game_type = (${ALLOWED_GAME_TYPES.join(',')})`,
   ].join(' & ')
 }
@@ -835,7 +825,7 @@ export function buildSearchGameWhereClause(): string {
     'version_parent = null',
     'first_release_date != null',
     'involved_companies != null',
-    '(rating != null | aggregated_rating != null)',
+    'total_rating != null',
   ].join(' & ')
 }
 

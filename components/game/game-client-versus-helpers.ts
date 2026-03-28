@@ -240,6 +240,17 @@ export function getVersusPlacementResolution(options: {
 
   const fullBoardResolution = getVersusFullBoardResolution(newGuesses, disableDraws)
   if (fullBoardResolution.kind === 'claims-win') {
+    if (stealsEnabled && currentPlayer === 'x' && fullBoardResolution.winner === 'x') {
+      return {
+        kind: 'final-steal',
+        defender: 'x',
+        cellIndex: selectedCell,
+        nextPlayer,
+        title: 'Last chance steal',
+        description: 'O gets one chance to answer back on that square.',
+      }
+    }
+
     return fullBoardResolution
   }
 

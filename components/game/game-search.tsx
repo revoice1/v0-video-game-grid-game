@@ -95,6 +95,8 @@ interface GameSearchProps {
   hideScores?: boolean
   confirmBeforeSelect?: boolean
   lowEffects?: boolean
+  turnTimerLabel?: string | null
+  turnTimerSeconds?: number | null
   activeCategoryTypes?: Category['type'][]
   rowCategory: Category | null
   colCategory: Category | null
@@ -108,6 +110,8 @@ export function GameSearch({
   hideScores = false,
   confirmBeforeSelect = false,
   lowEffects = false,
+  turnTimerLabel = null,
+  turnTimerSeconds = null,
   activeCategoryTypes = [],
   rowCategory,
   colCategory,
@@ -383,10 +387,31 @@ export function GameSearch({
       <div className="relative w-full max-w-md bg-card border border-border rounded-xl shadow-2xl overflow-hidden">
         {/* Header with category info */}
         <div className="px-4 py-3 border-b border-border bg-secondary/30">
+          {turnTimerLabel && turnTimerSeconds !== null && (
+            <div className="mb-2 flex justify-center">
+              <span
+                className={cn(
+                  'inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em]',
+                  turnTimerSeconds <= 5
+                    ? 'border-destructive/40 bg-destructive/10 text-destructive'
+                    : turnTimerSeconds <= 10
+                      ? 'border-amber-400/40 bg-amber-400/10 text-amber-200'
+                      : 'border-primary/30 bg-primary/10 text-primary'
+                )}
+              >
+                {turnTimerLabel}
+              </span>
+            </div>
+          )}
           <p className="text-sm text-muted-foreground text-center">
             Find a game that is both{' '}
-            <span className="font-semibold text-foreground">{rowCategory?.name}</span> and{' '}
-            <span className="font-semibold text-foreground">{colCategory?.name}</span>
+            <span className="font-semibold text-foreground whitespace-nowrap">
+              {rowCategory?.name}
+            </span>{' '}
+            <span className="whitespace-nowrap">and</span>{' '}
+            <span className="font-semibold text-foreground whitespace-nowrap">
+              {colCategory?.name}
+            </span>
           </p>
         </div>
 

@@ -38,6 +38,8 @@ const PLATFORM_SHORT_LABELS: Record<string, string> = {
   'Xbox 360': 'X360',
   'Xbox One': 'XONE',
   'Xbox Series X|S': 'XSX',
+  'PC-Engine / TG16': 'PCE/TG16',
+  'Neo Geo / AES / MVS': 'NeoGeo',
   DOS: 'DOS',
   'PC (Windows/DOS)': 'PC/DOS',
   'PC (Microsoft Windows)': 'PC',

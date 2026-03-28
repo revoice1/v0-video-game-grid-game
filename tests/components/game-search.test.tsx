@@ -183,6 +183,22 @@ describe('GameSearch', () => {
     await screen.findByText('Family')
   })
 
+  it('shows the active turn timer in the search header when provided', () => {
+    render(
+      <GameSearch
+        isOpen
+        turnTimerLabel="Turn: 0:09"
+        turnTimerSeconds={9}
+        rowCategory={rowCategory}
+        colCategory={colCategory}
+        onSelect={() => {}}
+        onClose={() => {}}
+      />
+    )
+
+    expect(screen.getByText('Turn: 0:09')).toBeInTheDocument()
+  })
+
   it('ignores stale search responses when a newer query finishes later', async () => {
     vi.useFakeTimers()
     try {
