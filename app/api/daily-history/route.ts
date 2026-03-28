@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { logError } from '@/lib/logging'
-import { sanitizeCategories } from '@/lib/puzzle-api'
 import {
   applyAnonymousSessionCookie,
   getLegacySessionIdFromRequest,
@@ -18,7 +17,7 @@ export async function GET(request: NextRequest) {
   try {
     const { data, error } = await supabase
       .from('puzzles')
-      .select('id,date,row_categories,col_categories')
+      .select('id,date')
       .eq('is_daily', true)
       .not('date', 'is', null)
       .order('date', { ascending: false })
@@ -58,8 +57,6 @@ export async function GET(request: NextRequest) {
         entries: (data ?? []).map((entry) => ({
           id: entry.id,
           date: entry.date,
-          row_categories: sanitizeCategories(entry.row_categories ?? []),
-          col_categories: sanitizeCategories(entry.col_categories ?? []),
           is_completed: completedPuzzleIds.has(entry.id),
           guess_count: guessCountByPuzzleId.get(entry.id) ?? 0,
         })),

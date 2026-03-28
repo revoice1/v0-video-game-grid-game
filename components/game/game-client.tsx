@@ -191,8 +191,6 @@ interface DailyArchiveResponse {
   entries?: Array<{
     id: string
     date: string
-    row_categories: Category[]
-    col_categories: Category[]
     is_completed?: boolean
     guess_count?: number
   }>
