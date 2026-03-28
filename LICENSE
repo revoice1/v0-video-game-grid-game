@@ -1,21 +1,33 @@
-MIT License
+GameGrid Licensing
+==================
 
-Copyright (c) 2026 revoice1
+Unless otherwise noted, the source code in this repository is licensed under:
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+GNU Affero General Public License v3.0 or later
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+You may obtain a copy of the license at:
+https://www.gnu.org/licenses/agpl-3.0.html
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+SPDX identifier:
+AGPL-3.0-or-later
+
+Additional notice for non-code materials
+---------------------------------------
+
+The GameGrid name, logo, branding, and any original visual assets, audio,
+copywriting, or other game content in this repository are not automatically
+licensed for trademark use or commercial brand reuse unless explicitly stated
+otherwise in a separate file or notice.
+
+In plain English:
+- You can study, modify, and self-host the code under AGPL terms.
+- If you run a modified networked version, you must offer the corresponding
+  source code to users of that version.
+- You do not receive trademark rights to present your fork as official
+  GameGrid.
+- You should assume original art, branding, and other game-specific content
+  are reserved unless a file says otherwise.
+
+This notice is intended to make the repository's licensing intent clear. If a
+future commit adds the full verbatim AGPL text, that text will control the
+license terms for the code.
