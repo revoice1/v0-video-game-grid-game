@@ -210,6 +210,8 @@ interface PuzzleStreamMessage {
 export function GameClient() {
   const skipNextVersusAutoLoadRef = useRef(false)
   const skipNextPracticeAutoLoadRef = useRef(false)
+  const skipNextVersusSavedStateRestoreRef = useRef(false)
+  const suppressVersusStatePersistenceRef = useRef(false)
   const activeTurnTimerKeyRef = useRef<string | null>(null)
   const activePuzzleLoadControllerRef = useRef<AbortController | null>(null)
   const isPuzzleLoadInFlightRef = useRef(false)
@@ -414,6 +416,8 @@ export function GameClient() {
     lastAppliedOnlineSnapshotRef.current = null
     replayedOnlineStealShowdownIdsRef.current = new Set()
     attemptedInviteJoinCodeRef.current = null
+    skipNextVersusSavedStateRestoreRef.current = false
+    suppressVersusStatePersistenceRef.current = false
 
     if (typeof window === 'undefined') {
       return
@@ -2147,6 +2151,8 @@ export function GameClient() {
       const resolvedDailyDate =
         gameMode === 'daily' ? (requestedDailyDate ?? activeDailyDate) : undefined
       const savedState = loadGameState(gameMode, resolvedDailyDate)
+      const shouldIgnoreSavedVersusState =
+        gameMode === 'versus' && skipNextVersusSavedStateRestoreRef.current
       const effectiveFilters =
         gameMode === 'versus'
           ? (customFilters ?? versusCategoryFilters)
@@ -2154,7 +2160,12 @@ export function GameClient() {
             ? (customFilters ?? practiceCategoryFilters)
             : undefined
 
-      if (savedState?.puzzle) {
+      if (shouldIgnoreSavedVersusState) {
+        clearGameState('versus')
+        skipNextVersusSavedStateRestoreRef.current = false
+      }
+
+      if (!shouldIgnoreSavedVersusState && savedState?.puzzle) {
         recordedVersusWinnerKeyRef.current =
           gameMode === 'versus' && savedState.winner
             ? `${savedState.puzzle.id}:${savedState.winner}`
@@ -2193,6 +2204,7 @@ export function GameClient() {
         setDetailCell(null)
         setIsLoading(false)
         isPuzzleLoadInFlightRef.current = false
+        suppressVersusStatePersistenceRef.current = false
         return
       }
 
@@ -2403,6 +2415,9 @@ export function GameClient() {
         setLoadingStage('Board ready.')
         setLoadedPuzzleMode(gameMode)
         setPuzzle(puzzleData)
+        if (gameMode === 'versus') {
+          suppressVersusStatePersistenceRef.current = false
+        }
         if (gameMode === 'daily' && puzzleData.date) {
           setActiveDailyDate(puzzleData.date)
         }
@@ -2448,6 +2463,10 @@ export function GameClient() {
           if (savedState.isComplete) setShowResults(true)
         }
       } catch (error) {
+        if (gameMode === 'versus') {
+          suppressVersusStatePersistenceRef.current = false
+          skipNextVersusSavedStateRestoreRef.current = false
+        }
         if (error instanceof Error && error.name === 'AbortError') {
           return
         }
@@ -2504,6 +2523,10 @@ export function GameClient() {
 
   useEffect(() => {
     if (mode !== 'versus' || !puzzle || loadedPuzzleMode !== 'versus') {
+      return
+    }
+
+    if (suppressVersusStatePersistenceRef.current) {
       return
     }
 
@@ -3220,10 +3243,14 @@ export function GameClient() {
 
   const handleContinueOnlineRoom = useCallback(() => {
     activePuzzleLoadControllerRef.current?.abort()
+    skipNextVersusSavedStateRestoreRef.current = true
+    suppressVersusStatePersistenceRef.current = true
 
     void (async () => {
       const result = await onlineVersus.continueRoom()
       if (!result.ok) {
+        skipNextVersusSavedStateRestoreRef.current = false
+        suppressVersusStatePersistenceRef.current = false
         toast({
           title: 'Failed to continue in this room',
           description: result.error ?? undefined,
