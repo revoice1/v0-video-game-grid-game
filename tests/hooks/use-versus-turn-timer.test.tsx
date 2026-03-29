@@ -323,4 +323,47 @@ describe('useVersusTurnTimer', () => {
       vi.useRealTimers()
     }
   })
+
+  it('keeps polling an online deadline even before the displayed second changes', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-03-29T20:00:00.000Z'))
+
+    try {
+      const activeTurnTimerKeyRef = { current: 'versus-puzzle:x' as string | null }
+      const setTurnTimeLeft = vi.fn()
+      const setTurnDeadlineAt = vi.fn()
+
+      renderHook(() =>
+        useVersusTurnTimer({
+          isVersusMode: true,
+          isOnlineMatch: true,
+          isLoading: false,
+          loadedPuzzleMode: 'versus',
+          puzzleId: 'versus-puzzle',
+          currentPlayer: 'x',
+          winner: null,
+          versusTimerOption: 20,
+          turnTimeLeft: 12,
+          turnDeadlineAt: '2026-03-29T20:00:12.000Z',
+          pendingFinalSteal: null,
+          animationsEnabled: true,
+          audioEnabled: true,
+          activeTurnTimerKeyRef,
+          setTurnTimeLeft,
+          setTurnDeadlineAt,
+          onTurnExpired: vi.fn(),
+        })
+      )
+
+      setTurnTimeLeft.mockClear()
+
+      act(() => {
+        vi.advanceTimersByTime(1200)
+      })
+
+      expect(setTurnTimeLeft.mock.calls.length).toBeGreaterThan(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

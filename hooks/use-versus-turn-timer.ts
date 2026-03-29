@@ -154,11 +154,11 @@ export function useVersusTurnTimer({
         return
       }
 
-      const timer = window.setTimeout(() => {
+      const timer = window.setInterval(() => {
         setTurnTimeLeft(Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000)))
       }, 250)
 
-      return () => window.clearTimeout(timer)
+      return () => window.clearInterval(timer)
     }
 
     if (turnTimeLeft === null) {
