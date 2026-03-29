@@ -214,8 +214,6 @@ export function GameClient() {
   const activePuzzleLoadControllerRef = useRef<AbortController | null>(null)
   const isPuzzleLoadInFlightRef = useRef(false)
   const recordedVersusWinnerKeyRef = useRef<string | null>(null)
-  // Loser-becomes-O: null = randomize (first game), otherwise the player who starts as X
-  const nextVersusStartingPlayerRef = useRef<'x' | 'o' | null>(null)
   const finishedOnlineRoomIdRef = useRef<string | null>(null)
   const preparedOnlineRoomIdRef = useRef<string | null>(null)
   const lastSavedOnlineSnapshotRef = useRef<string | null>(null)
@@ -1233,19 +1231,12 @@ export function GameClient() {
       return
     }
 
-    if (winner === 'draw') {
-      nextVersusStartingPlayerRef.current = null
-      return
-    }
-
     const winnerKey = `${puzzle.id}:${winner}`
     if (recordedVersusWinnerKeyRef.current === winnerKey) {
       return
     }
 
     recordedVersusWinnerKeyRef.current = winnerKey
-    // Loser becomes O next game (winner stays X)
-    nextVersusStartingPlayerRef.current = winner
     setVersusRecord((current) => {
       const nextRecord =
         winner === 'x'
@@ -2198,10 +2189,7 @@ export function GameClient() {
       setGuessesRemaining(gameMode === 'versus' ? MAX_GUESSES : MAX_GUESSES)
       setTurnDeadlineAt(null)
       if (gameMode === 'versus') {
-        const startingPlayer =
-          nextVersusStartingPlayerRef.current ?? (Math.random() < 0.5 ? 'x' : 'o')
-        nextVersusStartingPlayerRef.current = null
-        setCurrentPlayer(startingPlayer)
+        setCurrentPlayer('x')
       } else {
         setCurrentPlayer('x')
       }
