@@ -17,6 +17,7 @@ Online versus currently uses:
 - backend routes for room creation, join, finish, puzzle publish, event append, and snapshot saves
 - Supabase Realtime subscriptions for live room and event updates
 - a room snapshot (`versus_rooms.state_data`) for faster resume after refresh
+- a fresh-room lifecycle after game end rather than a same-room rematch flow
 
 The intended authority chain today is:
 
@@ -93,7 +94,8 @@ The online loop is real enough to play, but these caveats still matter:
 
 - the server event route still does not fully enforce authoritative move legality
 - reload/rejoin is much better than before, but still not as seamless as purely local versus
-- online rematch currently means creating a fresh room, not replaying in the same room
+- post-game `New Online Room` creates and hosts a fresh room; it does not carry the existing room
+  forward as a same-room rematch
 - some remote-side spectacle paths are still more fragile than the underlying board sync
 
 So the current feature should be treated as:

@@ -126,6 +126,8 @@ for live room/event updates, so the tables must be published for clients to stay
 - Local versus matches are restored from local storage.
 - Online versus rooms use backend routes for writes, Supabase Realtime for live updates, and room
   snapshots for faster resume after refresh.
+- Online post-game flow currently creates a fresh room (`New Online Room`) rather than reusing the
+  same room for a rematch.
 - Finished versus matches can expand into a post-game summary with the rules used, picks, and key
   match stats.
 - Standard puzzle generation uses curated category families and prevalidated banned pairs to avoid

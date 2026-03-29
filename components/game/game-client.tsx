@@ -106,7 +106,13 @@ import { useTimedOverlayDismiss } from '@/hooks/use-timed-overlay-dismiss'
 import { useVersusMatchState } from '@/hooks/use-versus-match-state'
 import { useVersusSetupState } from '@/hooks/use-versus-setup-state'
 import { useVersusTurnTimer } from '@/hooks/use-versus-turn-timer'
-import type { OnlineVersusSnapshot } from '@/lib/versus-room'
+import type {
+  OnlineVersusClaimPayload,
+  OnlineVersusMissPayload,
+  OnlineVersusObjectionPayload,
+  OnlineVersusSnapshot,
+  OnlineVersusStealPayload,
+} from '@/lib/versus-room'
 import {
   resolveStealOutcome,
   type PendingVersusSteal,
@@ -395,6 +401,13 @@ export function GameClient() {
 
   const resetOnlineVersusSession = useCallback(() => {
     onlineVersus.reset()
+    setShowOnlineLobby(false)
+    setActiveStealShowdown(null)
+    setActiveStealMissSplash(null)
+    setActiveDoubleKoSplash(null)
+    setActiveObjectionSplash(null)
+    setActiveJudgmentPending(null)
+    setActiveJudgmentVerdict(null)
     publishedPuzzleRoomIdRef.current = null
     appliedOnlineEventIdsRef.current = new Set()
     finishedOnlineRoomIdRef.current = null
@@ -714,7 +727,8 @@ export function GameClient() {
       }
 
       if (event.type === 'claim') {
-        const guess = { ...(payload.guess as CellGuess), owner: event.player }
+        const claimPayload = payload as unknown as OnlineVersusClaimPayload
+        const guess = { ...claimPayload.guess, owner: event.player }
         const next = guessesRef.current.map((g, i) => (i === cellIndex ? guess : g))
         guessesRef.current = next
         setGuesses(next)
@@ -728,8 +742,9 @@ export function GameClient() {
         })
         applyResolution(resolution, steals ? cellIndex : null)
       } else if (event.type === 'steal') {
-        const attackingGuess = { ...(payload.attackingGuess as CellGuess), owner: event.player }
-        const successful = payload.successful as boolean
+        const stealPayload = payload as unknown as OnlineVersusStealPayload
+        const attackingGuess = { ...stealPayload.attackingGuess, owner: event.player }
+        const successful = stealPayload.successful
         const defendingGuess = guessesRef.current[cellIndex]
         const hasShowdownScores =
           typeof defendingGuess?.stealRating === 'number' &&
@@ -786,31 +801,33 @@ export function GameClient() {
           }
         }
       } else if (event.type === 'miss') {
+        const missPayload = payload as unknown as OnlineVersusMissPayload
         const nextGuessesRemaining =
-          typeof payload.guessesRemaining === 'number'
-            ? payload.guessesRemaining
+          typeof missPayload.guessesRemaining === 'number'
+            ? missPayload.guessesRemaining
             : Math.max(0, guessesRemaining - 1)
         setGuessesRemaining(nextGuessesRemaining)
         setPendingFinalSteal(null)
         setStealableCell(null)
         setLockImpactCell(null)
 
-        if (payload.resolutionKind === 'defender-wins') {
-          const defender = payload.defender as TicTacToePlayer
+        if (missPayload.resolutionKind === 'defender-wins') {
+          const defender = missPayload.defender as TicTacToePlayer
           if (defender === 'x' || defender === 'o') {
             setWinner(defender)
           }
         } else {
-          const nextPlayer = payload.nextPlayer as TicTacToePlayer
+          const nextPlayer = missPayload.nextPlayer as TicTacToePlayer
           if (nextPlayer === 'x' || nextPlayer === 'o') {
             setCurrentPlayer(nextPlayer)
           }
         }
       } else if (event.type === 'objection') {
-        const verdict = payload.verdict as 'sustained' | 'overruled'
+        const objectionPayload = payload as unknown as OnlineVersusObjectionPayload
+        const verdict = objectionPayload.verdict
         const updatedGuess =
           verdict === 'sustained'
-            ? ({ ...(payload.updatedGuess as CellGuess), owner: event.player } as CellGuess)
+            ? ({ ...objectionPayload.updatedGuess, owner: event.player } as CellGuess)
             : null
         setVersusObjectionsUsed((current) => ({
           ...current,
@@ -831,8 +848,26 @@ export function GameClient() {
           })
           applyResolution(resolution, steals ? cellIndex : null)
         } else {
-          // Overruled: turn returns to me
-          setCurrentPlayer(myRole)
+          const nextGuessesRemaining =
+            typeof objectionPayload.guessesRemaining === 'number'
+              ? objectionPayload.guessesRemaining
+              : Math.max(0, guessesRemaining - 1)
+          setGuessesRemaining(nextGuessesRemaining)
+          setPendingFinalSteal(null)
+          setStealableCell(null)
+          setLockImpactCell(null)
+
+          if (objectionPayload.resolutionKind === 'defender-wins') {
+            const defender = objectionPayload.defender as TicTacToePlayer
+            if (defender === 'x' || defender === 'o') {
+              setWinner(defender)
+            }
+          } else {
+            const nextPlayer = objectionPayload.nextPlayer as TicTacToePlayer
+            if (nextPlayer === 'x' || nextPlayer === 'o') {
+              setCurrentPlayer(nextPlayer)
+            }
+          }
         }
       }
     }
@@ -1649,11 +1684,28 @@ export function GameClient() {
         })
 
         if (isCurrentOnlineMatch) {
+          const overruledResolution =
+            payload.verdict === 'overruled'
+              ? pendingVersusObjectionReview.invalidGuessResolution
+              : null
+          const overruledGuessesRemaining =
+            payload.verdict === 'overruled' ? Math.max(0, guessesRemaining - 1) : undefined
+
           void onlineVersus.sendEvent('objection', {
             cellIndex: activeDetailCell,
             verdict: payload.verdict,
             updatedGuess: nextGuess,
             isSteal: pendingVersusObjectionReview.isVersusSteal,
+            guessesRemaining: overruledGuessesRemaining,
+            resolutionKind: overruledResolution?.kind,
+            nextPlayer:
+              overruledResolution?.kind === 'next-player'
+                ? overruledResolution.nextPlayer
+                : undefined,
+            defender:
+              overruledResolution?.kind === 'defender-wins'
+                ? overruledResolution.defender
+                : undefined,
           })
         }
 
@@ -2557,6 +2609,10 @@ export function GameClient() {
   const handleModeChange = (newMode: GameMode) => {
     if (newMode !== mode) {
       activePuzzleLoadControllerRef.current?.abort()
+
+      if (onlineVersus.room && newMode !== 'versus') {
+        resetOnlineVersusSession()
+      }
 
       if (newMode === 'practice') {
         const hasSavedPracticeState = Boolean(loadGameState('practice')?.puzzle)

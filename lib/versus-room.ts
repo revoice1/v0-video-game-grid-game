@@ -62,6 +62,41 @@ export interface VersusRoom {
  */
 export type OnlineVersusEventType = 'claim' | 'miss' | 'objection' | 'steal' | 'ready' | 'rematch'
 
+export interface OnlineVersusClaimPayload {
+  cellIndex: number
+  guess: CellGuess
+}
+
+export interface OnlineVersusMissPayload {
+  cellIndex: number
+  guessesRemaining: number
+  resolutionKind: 'next-player' | 'defender-wins'
+  nextPlayer?: RoomPlayer
+  defender?: RoomPlayer
+}
+
+export interface OnlineVersusObjectionPayload {
+  cellIndex: number
+  verdict: 'sustained' | 'overruled'
+  updatedGuess: CellGuess
+  isSteal: boolean
+  guessesRemaining?: number
+  resolutionKind?: 'next-player' | 'defender-wins'
+  nextPlayer?: RoomPlayer
+  defender?: RoomPlayer
+}
+
+export interface OnlineVersusStealPayload {
+  cellIndex: number
+  attackingGuess: CellGuess
+  successful: boolean
+  hadShowdownScores?: boolean
+  attackingGameName?: string | null
+  attackingScore?: number | null
+  defendingGameName?: string | null
+  defendingScore?: number | null
+}
+
 export interface OnlineVersusEvent {
   id: number
   room_id: string
