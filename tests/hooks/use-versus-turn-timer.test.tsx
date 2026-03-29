@@ -33,6 +33,45 @@ describe('useVersusTurnTimer', () => {
     expect(setTurnTimeLeft).toHaveBeenCalledWith(20)
   })
 
+  it('starts a visible online timer immediately when a board becomes ready', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-03-29T20:00:00.000Z'))
+
+    try {
+      const activeTurnTimerKeyRef = { current: null as string | null }
+      const setTurnTimeLeft = vi.fn()
+      const setTurnDeadlineAt = vi.fn()
+
+      renderHook(() =>
+        useVersusTurnTimer({
+          isVersusMode: true,
+          isOnlineMatch: true,
+          isLoading: false,
+          loadedPuzzleMode: 'versus',
+          puzzleId: 'versus-puzzle',
+          currentPlayer: 'x',
+          winner: null,
+          versusTimerOption: 20,
+          turnTimeLeft: null,
+          turnDeadlineAt: null,
+          pendingFinalSteal: null,
+          animationsEnabled: true,
+          audioEnabled: true,
+          activeTurnTimerKeyRef,
+          setTurnTimeLeft,
+          setTurnDeadlineAt,
+          onTurnExpired: vi.fn(),
+        })
+      )
+
+      expect(activeTurnTimerKeyRef.current).toBe('versus-puzzle:x')
+      expect(setTurnDeadlineAt).toHaveBeenCalledWith('2026-03-29T20:00:20.000Z')
+      expect(setTurnTimeLeft).toHaveBeenCalledWith(20)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('notifies when the turn timer has already expired', () => {
     const activeTurnTimerKeyRef = { current: 'versus-puzzle:x' as string | null }
     const onTurnExpired = vi.fn()
@@ -181,6 +220,44 @@ describe('useVersusTurnTimer', () => {
       })
 
       expect(setTurnTimeLeft).toHaveBeenCalledWith(expect.any(Function))
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('derives remaining time from an online deadline', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-03-29T20:00:00.000Z'))
+
+    try {
+      const activeTurnTimerKeyRef = { current: 'versus-puzzle:x' as string | null }
+      const setTurnTimeLeft = vi.fn()
+      const setTurnDeadlineAt = vi.fn()
+
+      renderHook(() =>
+        useVersusTurnTimer({
+          isVersusMode: true,
+          isOnlineMatch: true,
+          isLoading: false,
+          loadedPuzzleMode: 'versus',
+          puzzleId: 'versus-puzzle',
+          currentPlayer: 'x',
+          winner: null,
+          versusTimerOption: 20,
+          turnTimeLeft: null,
+          turnDeadlineAt: '2026-03-29T20:00:12.000Z',
+          pendingFinalSteal: null,
+          animationsEnabled: true,
+          audioEnabled: true,
+          activeTurnTimerKeyRef,
+          setTurnTimeLeft,
+          setTurnDeadlineAt,
+          onTurnExpired: vi.fn(),
+        })
+      )
+
+      expect(setTurnTimeLeft).toHaveBeenCalledWith(12)
+      expect(setTurnDeadlineAt).not.toHaveBeenCalled()
     } finally {
       vi.useRealTimers()
     }

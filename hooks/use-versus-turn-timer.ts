@@ -91,6 +91,7 @@ export function useVersusTurnTimer({
       if (isOnlineMatch && turnDeadlineAt === null) {
         const nextDeadline = new Date(Date.now() + versusTimerOption * 1000).toISOString()
         setTurnDeadlineAt(nextDeadline)
+        setTurnTimeLeft(versusTimerOption)
       } else if (!isOnlineMatch && turnTimeLeft === null) {
         setTurnTimeLeft(versusTimerOption)
       }
@@ -101,6 +102,7 @@ export function useVersusTurnTimer({
     if (isOnlineMatch) {
       const nextDeadline = new Date(Date.now() + versusTimerOption * 1000).toISOString()
       setTurnDeadlineAt(nextDeadline)
+      setTurnTimeLeft(versusTimerOption)
     } else {
       setTurnTimeLeft(versusTimerOption)
       setTurnDeadlineAt(null)
