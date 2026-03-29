@@ -83,10 +83,20 @@ Good target shape:
 
 ### 3. Celebration And Achievement Orchestration
 
-Current hot spots:
+Status:
 
-- `EASTER_EGG_DEFINITIONS`
-- `triggerEasterEggCelebration`
+- `EASTER_EGG_DEFINITIONS`, all particle helpers, and the `EasterEggCelebration` /
+  `PerfectGridCelebration` components now live in
+  `components/game/easter-egg-celebrations.tsx`.
+- `game-client.tsx` imports these and retains only the trigger functions
+  (`triggerEasterEggCelebration`, `triggerPerfectCelebration`, `triggerRealStinkerCelebration`)
+  which need state access.
+- `docs/adding-achievements.md` documents the full authoring workflow.
+
+Remaining work:
+
+- `triggerEasterEggCelebration` and friends still inline in `game-client.tsx` —
+  candidate for `useCelebrationController` once the versus extraction is done.
 - perfect/steal miss/showdown/double-KO overlay lifecycles
 - achievement toast unlock plumbing
 

@@ -29,3 +29,4 @@ Start here:
 - [UX And Feedback](./ux-and-feedback.md)
 - [Open Questions](./open-questions.md)
 - [Refactor And Test Audit](./refactor-and-test-audit.md)
+- [Adding Achievements](./adding-achievements.md)

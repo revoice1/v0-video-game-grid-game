@@ -14,7 +14,6 @@ export type EasterEggPieceKind =
   | 'brain'
   | 'ball'
   | 'bow'
-  | 'smash'
   | 'die'
   | 'party'
   | 'bomb'
@@ -115,7 +114,7 @@ export const EASTER_EGGS: EasterEggConfig[] = [
     triggerGameIds: [3692],
     durationMs: 5000,
     density: 36,
-    pieceKinds: ['bow', 'smash'],
+    pieceKinds: ['bow', 'burst'],
   },
   {
     achievementId: 'rub-rabbit-fever',
