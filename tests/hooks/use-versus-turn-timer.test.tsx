@@ -324,6 +324,65 @@ describe('useVersusTurnTimer', () => {
     }
   })
 
+  it('resets the online deadline when the turn changes instead of carrying the old turn clock forward', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-03-29T20:00:00.000Z'))
+
+    try {
+      const activeTurnTimerKeyRef = { current: 'versus-puzzle:x' as string | null }
+      const setTurnTimeLeft = vi.fn()
+      const setTurnDeadlineAt = vi.fn()
+
+      const { rerender } = renderHook(
+        ({
+          currentPlayer,
+          turnDeadlineAt,
+        }: {
+          currentPlayer: 'x' | 'o'
+          turnDeadlineAt: string | null
+        }) =>
+          useVersusTurnTimer({
+            isVersusMode: true,
+            isOnlineMatch: true,
+            isLoading: false,
+            loadedPuzzleMode: 'versus',
+            puzzleId: 'versus-puzzle',
+            currentPlayer,
+            winner: null,
+            versusTimerOption: 20,
+            turnTimeLeft: 12,
+            turnDeadlineAt,
+            pendingFinalSteal: null,
+            animationsEnabled: true,
+            audioEnabled: true,
+            activeTurnTimerKeyRef,
+            setTurnTimeLeft,
+            setTurnDeadlineAt,
+            onTurnExpired: vi.fn(),
+          }),
+        {
+          initialProps: {
+            currentPlayer: 'x' as 'x' | 'o',
+            turnDeadlineAt: '2026-03-29T20:00:12.000Z' as string | null,
+          },
+        }
+      )
+
+      setTurnDeadlineAt.mockClear()
+      setTurnTimeLeft.mockClear()
+
+      rerender({
+        currentPlayer: 'o' as 'x' | 'o',
+        turnDeadlineAt: '2026-03-29T20:00:12.000Z' as string | null,
+      })
+
+      expect(setTurnDeadlineAt).toHaveBeenCalledWith('2026-03-29T20:00:20.000Z')
+      expect(setTurnTimeLeft).toHaveBeenCalledWith(20)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('keeps polling an online deadline even before the displayed second changes', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-03-29T20:00:00.000Z'))

@@ -13,7 +13,10 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:3000',
-    reuseExistingServer: true,
+    // Default to a dedicated dev server so dev-only globals like window.__gameGridDev
+    // are available consistently during Playwright runs. Opt back into reusing an
+    // existing localhost server explicitly when desired.
+    reuseExistingServer: process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER === '1',
     timeout: 120_000,
     env: {
       ...process.env,

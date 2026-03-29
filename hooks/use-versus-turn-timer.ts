@@ -89,9 +89,13 @@ export function useVersusTurnTimer({
     }
 
     const turnTimerKey = `${puzzleId}:${currentPlayer}`
+    const parsedDeadlineMs = turnDeadlineAt ? Date.parse(turnDeadlineAt) : Number.NaN
+    const hasUsableOnlineDeadline =
+      Number.isFinite(parsedDeadlineMs) && parsedDeadlineMs > Date.now()
+
     if (initializedTurnTimerKeyRef.current === turnTimerKey) {
       activeTurnTimerKeyRef.current = turnTimerKey
-      if (isOnlineMatch && turnDeadlineAt === null) {
+      if (isOnlineMatch && !hasUsableOnlineDeadline) {
         const nextDeadline = new Date(Date.now() + versusTimerOption * 1000).toISOString()
         setTurnDeadlineAt(nextDeadline)
         setTurnTimeLeft(versusTimerOption)
@@ -102,14 +106,18 @@ export function useVersusTurnTimer({
     }
 
     initializedTurnTimerKeyRef.current = turnTimerKey
-    activeTurnTimerKeyRef.current = turnTimerKey
     if (isOnlineMatch) {
-      if (turnDeadlineAt === null) {
+      const hasHydratedCurrentTurnDeadline =
+        activeTurnTimerKeyRef.current === turnTimerKey && hasUsableOnlineDeadline
+
+      if (!hasHydratedCurrentTurnDeadline) {
         const nextDeadline = new Date(Date.now() + versusTimerOption * 1000).toISOString()
         setTurnDeadlineAt(nextDeadline)
         setTurnTimeLeft(versusTimerOption)
       }
+      activeTurnTimerKeyRef.current = turnTimerKey
     } else {
+      activeTurnTimerKeyRef.current = turnTimerKey
       setTurnTimeLeft(versusTimerOption)
       setTurnDeadlineAt(null)
     }
