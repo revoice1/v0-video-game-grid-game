@@ -3396,24 +3396,8 @@ export function GameClient() {
     setPendingVersusObjectionReview(null)
     setVersusObjectionsUsed({ x: 0, o: 0 })
     commitVersusEventLog([])
-    onlineVersus.createRoom({
-      categoryFilters: versusCategoryFilters,
-      stealRule: versusStealRule,
-      timerOption: versusTimerOption,
-      disableDraws: versusDisableDraws,
-      objectionRule: versusObjectionRule,
-    })
     setShowOnlineLobby(true)
-  }, [
-    commitVersusEventLog,
-    onlineVersus,
-    resetOnlineVersusSession,
-    versusCategoryFilters,
-    versusDisableDraws,
-    versusObjectionRule,
-    versusStealRule,
-    versusTimerOption,
-  ])
+  }, [commitVersusEventLog, resetOnlineVersusSession])
 
   // Get categories for selected cell
   const { row: selectedRowCategory, col: selectedColCategory } = getCategoriesForCell(
