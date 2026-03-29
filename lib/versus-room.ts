@@ -90,6 +90,9 @@ export interface OnlineVersusStealPayload {
   cellIndex: number
   attackingGuess: CellGuess
   successful: boolean
+  resolutionKind?: 'next-player' | 'defender-wins'
+  nextPlayer?: RoomPlayer
+  defender?: RoomPlayer
   hadShowdownScores?: boolean
   attackingGameName?: string | null
   attackingScore?: number | null

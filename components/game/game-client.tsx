@@ -53,6 +53,7 @@ import {
 } from './game-client-submission'
 import {
   buildStealFailureDescription,
+  getNextPlayer,
   getPlayerLabel,
   getVersusInvalidGuessResolution,
   getVersusPlacementResolution,
@@ -805,6 +806,21 @@ export function GameClient() {
           const applyFailedSteal = () => {
             setPendingFinalSteal(null)
             setStealableCell(null)
+            setLockImpactCell(null)
+            if (stealPayload.resolutionKind === 'defender-wins') {
+              const defender = stealPayload.defender as TicTacToePlayer
+              if (defender === 'x' || defender === 'o') {
+                setWinner(defender)
+              }
+              return
+            }
+
+            const nextPlayer = stealPayload.nextPlayer as TicTacToePlayer
+            if (nextPlayer === 'x' || nextPlayer === 'o') {
+              setCurrentPlayer(nextPlayer)
+              return
+            }
+
             setCurrentPlayer(myRole)
           }
 
@@ -2971,10 +2987,22 @@ export function GameClient() {
         })
 
         if (isCurrentOnlineMatch) {
+          const failedStealResolution =
+            !outcome.successful && pendingFinalSteal?.cellIndex === selectedCell
+              ? { resolutionKind: 'defender-wins' as const, defender: pendingFinalSteal.defender }
+              : !outcome.successful
+                ? {
+                    resolutionKind: 'next-player' as const,
+                    nextPlayer: getNextPlayer(currentPlayer),
+                  }
+                : null
           void onlineVersus.sendEvent('steal', {
             cellIndex: selectedCell,
             attackingGuess: newGuess,
             successful: outcome.successful,
+            resolutionKind: failedStealResolution?.resolutionKind,
+            nextPlayer: failedStealResolution?.nextPlayer,
+            defender: failedStealResolution?.defender,
             hadShowdownScores: outcome.hasShowdownScores,
             attackingGameName: newGuess.gameName,
             attackingScore: newGuess.stealRating ?? null,
