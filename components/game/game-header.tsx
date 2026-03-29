@@ -326,14 +326,14 @@ export function GameHeader({
                   {hasActiveCustomSetup ? 'Edit Setup' : 'Customize'}
                 </Button>
               )}
-              {onNewGame && (
+              {onNewGame && !myOnlineRole && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={onNewGame}
                   className="h-8 min-w-[9rem] px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm"
                 >
-                  {mode === 'versus' ? (myOnlineRole ? 'New Match' : 'New Match') : 'New Game'}
+                  {mode === 'versus' ? 'New Match' : 'New Game'}
                 </Button>
               )}
             </div>
