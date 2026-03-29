@@ -494,6 +494,7 @@ export function GameClient() {
       setSelectedCell(null)
       setDetailCell(null)
       setPendingVersusObjectionReview(null)
+      publishedPuzzleRoomIdRef.current = null
       appliedOnlineEventIdsRef.current = new Set()
       lastSavedOnlineSnapshotRef.current = roomSnapshotSignature
       lastAppliedOnlineSnapshotRef.current = null
@@ -516,6 +517,13 @@ export function GameClient() {
       setVersusObjectionsUsed({ x: 0, o: 0 })
       commitVersusEventLog([])
       setIsLoading(true)
+      setLoadingProgress(8)
+      setLoadingAttempts([])
+      setLoadingStage(
+        myRole === 'x'
+          ? 'Preparing the shared board...'
+          : 'Waiting for the host to finish preparing the board...'
+      )
     }
 
     preparedOnlineRoomKeyRef.current = roomPrepKey
