@@ -3262,6 +3262,39 @@ export function GameClient() {
       setShowVersusWinnerBanner(false)
       setShowVersusSummaryDetails(false)
       setShowOnlineLobby(false)
+      clearGameState('versus')
+      setLoadedPuzzleMode(null)
+      setPuzzle(null)
+      setGuesses(Array(9).fill(null))
+      setGuessesRemaining(MAX_GUESSES)
+      setCurrentPlayer('x')
+      setStealableCell(null)
+      setWinner(null)
+      setPendingFinalSteal(null)
+      setLockImpactCell(null)
+      setSelectedCell(null)
+      setSearchQueryDraft('')
+      setDetailCell(null)
+      setShowResults(false)
+      setTurnTimeLeft(null)
+      setTurnDeadlineAt(null)
+      setVersusObjectionsUsed({ x: 0, o: 0 })
+      commitVersusEventLog([])
+      publishedPuzzleRoomIdRef.current = null
+      appliedOnlineEventIdsRef.current = new Set()
+      finishedOnlineRoomIdRef.current = null
+      preparedOnlineRoomKeyRef.current = null
+      lastSavedOnlineSnapshotRef.current = null
+      lastAppliedOnlineSnapshotRef.current = null
+      replayedOnlineStealShowdownIdsRef.current = new Set()
+      setIsLoading(true)
+      setLoadingProgress(8)
+      setLoadingAttempts([])
+      setLoadingStage(
+        onlineVersus.myRole === 'x'
+          ? 'Preparing the shared board...'
+          : 'Waiting for the host to finish preparing the board...'
+      )
       setPendingVersusObjectionReview(null)
       setActiveStealShowdown(null)
       setActiveStealMissSplash(null)
@@ -3273,7 +3306,7 @@ export function GameClient() {
       setObjectionVerdict(null)
       setObjectionExplanation(null)
     })()
-  }, [onlineVersus, toast])
+  }, [commitVersusEventLog, onlineVersus, toast])
 
   const handleStartFreshOnlineMatch = useCallback(() => {
     activePuzzleLoadControllerRef.current?.abort()
