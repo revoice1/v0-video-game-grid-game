@@ -201,7 +201,7 @@ export function GameHeader({
         </div>
 
         <div className="relative mb-3 flex flex-col items-center gap-2 sm:flex sm:justify-center">
-          <div className="grid w-full max-w-[22rem] grid-cols-3 rounded-lg bg-secondary/50 p-1 sm:inline-flex sm:w-auto sm:max-w-none">
+          <div className="grid w-full max-w-[32rem] grid-cols-3 rounded-lg bg-secondary/50 p-1 sm:inline-flex sm:w-auto sm:max-w-none">
             <button
               onClick={() => onModeChange('daily')}
               className={cn(
@@ -252,7 +252,7 @@ export function GameHeader({
 
         {(mode === 'practice' || mode === 'versus') && (
           <div className="mb-2 text-center">
-            <div className="grid w-full max-w-[22rem] grid-cols-2 gap-1.5 px-1 sm:inline-flex sm:w-auto sm:max-w-full sm:flex-wrap sm:items-center sm:justify-center sm:gap-2">
+            <div className="flex w-full max-w-[40rem] flex-wrap items-center justify-center gap-1.5 px-1 sm:gap-2">
               {mode === 'versus' && (
                 <div className="flex items-center justify-center gap-1.5 sm:gap-2">
                   <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border bg-secondary/35 px-2.5 text-[10px] font-medium uppercase text-muted-foreground sm:h-9 sm:gap-2 sm:px-3 sm:text-[11px]">
@@ -321,7 +321,7 @@ export function GameHeader({
                   variant="outline"
                   size="sm"
                   onClick={onCustomizeGame}
-                  className="h-8 w-full px-2.5 text-xs sm:h-9 sm:w-auto sm:px-3 sm:text-sm"
+                  className="h-8 min-w-[9rem] px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm"
                 >
                   {hasActiveCustomSetup ? 'Edit Setup' : 'Customize'}
                 </Button>
@@ -331,7 +331,7 @@ export function GameHeader({
                   variant="outline"
                   size="sm"
                   onClick={onNewGame}
-                  className="h-8 w-full px-2.5 text-xs sm:h-9 sm:w-auto sm:px-3 sm:text-sm"
+                  className="h-8 min-w-[9rem] px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm"
                 >
                   {mode === 'versus'
                     ? myOnlineRole
@@ -345,7 +345,7 @@ export function GameHeader({
             </div>
 
             {mode === 'versus' && (myOnlineRole || onStartOnlineMatch || onEndOnlineMatch) && (
-              <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 px-1 sm:gap-2">
+              <div className="mt-2 flex w-full max-w-[40rem] flex-wrap items-center justify-center gap-1.5 px-1 sm:gap-2">
                 {myOnlineRole && (
                   <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-sky-500/25 bg-sky-500/8 px-2.5 text-[10px] font-medium uppercase text-muted-foreground sm:h-9 sm:gap-2 sm:px-3 sm:text-[11px]">
                     <span className="tracking-[0.12em]">You</span>
@@ -364,7 +364,7 @@ export function GameHeader({
                     variant="outline"
                     size="sm"
                     onClick={onStartOnlineMatch}
-                    className="h-8 border-sky-500/35 px-2.5 text-xs text-sky-300 hover:bg-sky-500/10 hover:text-sky-200 sm:h-9 sm:px-3 sm:text-sm"
+                    className="h-8 min-w-[9rem] border-sky-500/35 px-2.5 text-xs text-sky-300 hover:bg-sky-500/10 hover:text-sky-200 sm:h-9 sm:px-3 sm:text-sm"
                   >
                     Play Online
                   </Button>
@@ -374,7 +374,7 @@ export function GameHeader({
                     variant="outline"
                     size="sm"
                     onClick={onEndOnlineMatch}
-                    className="h-8 border-destructive/35 px-2.5 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive sm:h-9 sm:px-3 sm:text-sm"
+                    className="h-8 min-w-[9rem] border-destructive/35 px-2.5 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive sm:h-9 sm:px-3 sm:text-sm"
                   >
                     End Online Match
                   </Button>
