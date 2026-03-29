@@ -262,4 +262,65 @@ describe('useVersusTurnTimer', () => {
       vi.useRealTimers()
     }
   })
+
+  it('starts a new online deadline even if the shared timer ref was pre-set during hydration', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-03-29T20:00:00.000Z'))
+
+    try {
+      const activeTurnTimerKeyRef = { current: 'versus-puzzle:x' as string | null }
+      const setTurnTimeLeft = vi.fn()
+      const setTurnDeadlineAt = vi.fn()
+
+      const { rerender } = renderHook(
+        ({
+          currentPlayer,
+          turnDeadlineAt,
+        }: {
+          currentPlayer: 'x' | 'o'
+          turnDeadlineAt: string | null
+        }) =>
+          useVersusTurnTimer({
+            isVersusMode: true,
+            isOnlineMatch: true,
+            isLoading: false,
+            loadedPuzzleMode: 'versus',
+            puzzleId: 'versus-puzzle',
+            currentPlayer,
+            winner: null,
+            versusTimerOption: 20,
+            turnTimeLeft: null,
+            turnDeadlineAt,
+            pendingFinalSteal: null,
+            animationsEnabled: true,
+            audioEnabled: true,
+            activeTurnTimerKeyRef,
+            setTurnTimeLeft,
+            setTurnDeadlineAt,
+            onTurnExpired: vi.fn(),
+          }),
+        {
+          initialProps: {
+            currentPlayer: 'x' as 'x' | 'o',
+            turnDeadlineAt: '2026-03-29T20:00:20.000Z' as string | null,
+          },
+        }
+      )
+
+      setTurnDeadlineAt.mockClear()
+      setTurnTimeLeft.mockClear()
+
+      activeTurnTimerKeyRef.current = 'versus-puzzle:o'
+
+      rerender({
+        currentPlayer: 'o' as 'x' | 'o',
+        turnDeadlineAt: null as string | null,
+      })
+
+      expect(setTurnDeadlineAt).toHaveBeenCalledWith('2026-03-29T20:00:20.000Z')
+      expect(setTurnTimeLeft).toHaveBeenCalledWith(20)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

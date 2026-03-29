@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, type MutableRefObject } from 'react'
+import { useEffect, useEffectEvent, useRef, type MutableRefObject } from 'react'
 import { getNextPlayer, type TicTacToePlayer } from '@/components/game/game-client-versus-helpers'
 import {
   startFinalStealHeartbeatLoop,
@@ -50,6 +50,7 @@ export function useVersusTurnTimer({
   onTurnExpired,
 }: UseVersusTurnTimerOptions) {
   const onTurnExpiredEvent = useEffectEvent(onTurnExpired)
+  const initializedTurnTimerKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
     const cueKey = pendingFinalSteal
@@ -81,13 +82,15 @@ export function useVersusTurnTimer({
 
     if (!isVersusBoardReady || winner || versusTimerOption === 'none') {
       activeTurnTimerKeyRef.current = null
+      initializedTurnTimerKeyRef.current = null
       setTurnTimeLeft(null)
       setTurnDeadlineAt(null)
       return
     }
 
     const turnTimerKey = `${puzzleId}:${currentPlayer}`
-    if (activeTurnTimerKeyRef.current === turnTimerKey) {
+    if (initializedTurnTimerKeyRef.current === turnTimerKey) {
+      activeTurnTimerKeyRef.current = turnTimerKey
       if (isOnlineMatch && turnDeadlineAt === null) {
         const nextDeadline = new Date(Date.now() + versusTimerOption * 1000).toISOString()
         setTurnDeadlineAt(nextDeadline)
@@ -98,11 +101,14 @@ export function useVersusTurnTimer({
       return
     }
 
+    initializedTurnTimerKeyRef.current = turnTimerKey
     activeTurnTimerKeyRef.current = turnTimerKey
     if (isOnlineMatch) {
-      const nextDeadline = new Date(Date.now() + versusTimerOption * 1000).toISOString()
-      setTurnDeadlineAt(nextDeadline)
-      setTurnTimeLeft(versusTimerOption)
+      if (turnDeadlineAt === null) {
+        const nextDeadline = new Date(Date.now() + versusTimerOption * 1000).toISOString()
+        setTurnDeadlineAt(nextDeadline)
+        setTurnTimeLeft(versusTimerOption)
+      }
     } else {
       setTurnTimeLeft(versusTimerOption)
       setTurnDeadlineAt(null)
