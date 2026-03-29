@@ -1487,6 +1487,8 @@ export function GameClient() {
 
       const nextGuessesRemaining = Math.max(0, guessesRemaining - 1)
       setGuessesRemaining(nextGuessesRemaining)
+      setStealableCell(null)
+      setLockImpactCell(null)
 
       if (invalidGuessResolution.kind === 'defender-wins') {
         setWinner(invalidGuessResolution.defender)
