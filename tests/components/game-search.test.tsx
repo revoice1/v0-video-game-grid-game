@@ -259,6 +259,57 @@ describe('GameSearch', () => {
     expect(screen.getByText('Turn: 0:09')).toBeInTheDocument()
   })
 
+  it('restores the initial query when reopened', async () => {
+    const { rerender } = render(
+      <GameSearch
+        isOpen={false}
+        initialQuery="mass"
+        rowCategory={rowCategory}
+        colCategory={colCategory}
+        onSelect={() => {}}
+        onClose={() => {}}
+      />
+    )
+
+    rerender(
+      <GameSearch
+        isOpen
+        initialQuery="mass"
+        rowCategory={rowCategory}
+        colCategory={colCategory}
+        onSelect={() => {}}
+        onClose={() => {}}
+      />
+    )
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Search for a video game...')).toHaveValue('mass')
+    })
+  })
+
+  it('reports query changes to the parent draft state', async () => {
+    const onQueryChange = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <GameSearch
+        isOpen
+        initialQuery="ma"
+        rowCategory={rowCategory}
+        colCategory={colCategory}
+        onSelect={() => {}}
+        onQueryChange={onQueryChange}
+        onClose={() => {}}
+      />
+    )
+
+    const input = await screen.findByPlaceholderText('Search for a video game...')
+    await user.type(input, 'ss')
+
+    expect(onQueryChange).toHaveBeenNthCalledWith(1, 'mas')
+    expect(onQueryChange).toHaveBeenNthCalledWith(2, 'mass')
+  })
+
   it('ignores stale search responses when a newer query finishes later', async () => {
     vi.useFakeTimers()
     try {

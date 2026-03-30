@@ -17,6 +17,7 @@ interface GameGridProps {
   score?: number
   guessesRemaining?: number
   currentPlayer?: 'x' | 'o' | null
+  myOnlineRole?: 'x' | 'o' | null
   winner?: 'x' | 'o' | 'draw' | null
   stealTargetLabel?: string | null
   turnTimerLabel?: string | null
@@ -86,6 +87,7 @@ export function GameGrid({
   score = 0,
   guessesRemaining = 0,
   currentPlayer = null,
+  myOnlineRole = null,
   stealTargetLabel = null,
   turnTimerLabel = null,
   turnTimerSeconds = null,
@@ -103,6 +105,17 @@ export function GameGrid({
   )
   const isStealPossible = alarmsEnabled && !isGameOver && stealableCell !== null
   const hasFinalStealFocus = !isGameOver && finalStealCell !== null
+  const displayToneForPlayer = (player: 'x' | 'o' | null | undefined): 'x' | 'o' | null => {
+    if (!player) {
+      return null
+    }
+
+    if (!myOnlineRole) {
+      return player
+    }
+
+    return player === myOnlineRole ? 'x' : 'o'
+  }
 
   const gamePointCells =
     currentPlayer === null || isGameOver
@@ -318,7 +331,7 @@ export function GameGrid({
                   metadata={cellMetadataByIndex.get(cellIndex)}
                   isSelected={selectedCell === cellIndex}
                   isAvailable={isAvailable}
-                  availableTone={currentPlayer}
+                  availableTone={displayToneForPlayer(currentPlayer)}
                   isGamePoint={gamePointCells.has(cellIndex)}
                   activeAlarmKey={cellAlarmKey}
                   alarmsEnabled={alarmsEnabled}

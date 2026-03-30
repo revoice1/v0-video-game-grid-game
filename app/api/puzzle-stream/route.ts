@@ -291,7 +291,7 @@ export async function GET(request: NextRequest) {
       logError('puzzle-stream error:', err)
       await send({ type: 'error', message: err instanceof Error ? err.message : 'Unknown error' })
     } finally {
-      await writer.close()
+      await writer.close().catch(() => {})
     }
   })()
 
@@ -301,7 +301,7 @@ export async function GET(request: NextRequest) {
     Connection: 'keep-alive',
     'X-Accel-Buffering': 'no',
   })
-  const sessionCookieHeader = getAnonymousSessionCookieHeader(resolvedSession)
+  const sessionCookieHeader = getAnonymousSessionCookieHeader(resolvedSession, request)
   if (sessionCookieHeader) {
     headers.set('Set-Cookie', sessionCookieHeader)
   }

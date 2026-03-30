@@ -30,3 +30,4 @@ Start here:
 - [Open Questions](./open-questions.md)
 - [Refactor And Test Audit](./refactor-and-test-audit.md)
 - [Adding Achievements](./adding-achievements.md)
+- [Online Versus](./online-versus.md)

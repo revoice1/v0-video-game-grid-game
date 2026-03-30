@@ -61,7 +61,8 @@ export async function GET(request: NextRequest) {
           guess_count: guessCountByPuzzleId.get(entry.id) ?? 0,
         })),
       }),
-      resolvedSession
+      resolvedSession,
+      request
     )
   } catch (error) {
     logError('Error loading daily archive:', error)

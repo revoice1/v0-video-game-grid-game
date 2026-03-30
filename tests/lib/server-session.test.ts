@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { NextRequest, NextResponse } from 'next/server'
 import {
   applyAnonymousSessionCookie,
@@ -43,21 +43,51 @@ describe('resolveAnonymousSession', () => {
 
 describe('applyAnonymousSessionCookie', () => {
   it('sets the cookie only when the response needs it', () => {
-    const response = applyAnonymousSessionCookie(NextResponse.json({ ok: true }), {
-      sessionId: 'cookie-session',
-      shouldSetCookie: true,
-    })
+    const request = new NextRequest('http://localhost/api/guess')
+    const response = applyAnonymousSessionCookie(
+      NextResponse.json({ ok: true }),
+      {
+        sessionId: 'cookie-session',
+        shouldSetCookie: true,
+      },
+      request
+    )
 
     expect(response.cookies.get('gg_session')?.value).toBe('cookie-session')
   })
 
   it('leaves the response alone when the cookie already exists', () => {
-    const response = applyAnonymousSessionCookie(NextResponse.json({ ok: true }), {
-      sessionId: 'cookie-session',
-      shouldSetCookie: false,
-    })
+    const request = new NextRequest('http://localhost/api/guess')
+    const response = applyAnonymousSessionCookie(
+      NextResponse.json({ ok: true }),
+      {
+        sessionId: 'cookie-session',
+        shouldSetCookie: false,
+      },
+      request
+    )
 
     expect(response.cookies.get('gg_session')).toBeUndefined()
+  })
+
+  it('does not mark localhost production cookies as secure', () => {
+    vi.stubEnv('NODE_ENV', 'production')
+
+    try {
+      const request = new NextRequest('http://localhost/api/guess')
+      const response = applyAnonymousSessionCookie(
+        NextResponse.json({ ok: true }),
+        {
+          sessionId: 'cookie-session',
+          shouldSetCookie: true,
+        },
+        request
+      )
+
+      expect(response.cookies.get('gg_session')?.secure).toBe(false)
+    } finally {
+      vi.unstubAllEnvs()
+    }
   })
 })
 
@@ -73,18 +103,26 @@ describe('legacy session migration helpers', () => {
   })
 
   it('builds a set-cookie header for streaming responses when needed', () => {
+    const request = new NextRequest('http://localhost/api/puzzle-stream')
+
     expect(
-      getAnonymousSessionCookieHeader({
-        sessionId: 'cookie-session',
-        shouldSetCookie: true,
-      })
+      getAnonymousSessionCookieHeader(
+        {
+          sessionId: 'cookie-session',
+          shouldSetCookie: true,
+        },
+        request
+      )
     ).toContain('gg_session=cookie-session')
 
     expect(
-      getAnonymousSessionCookieHeader({
-        sessionId: 'cookie-session',
-        shouldSetCookie: false,
-      })
+      getAnonymousSessionCookieHeader(
+        {
+          sessionId: 'cookie-session',
+          shouldSetCookie: false,
+        },
+        request
+      )
     ).toBeNull()
   })
 })

@@ -77,7 +77,8 @@ export async function POST(request: NextRequest) {
           matchesCol,
           game: serializeGameDetails(game),
         }),
-        resolvedSession
+        resolvedSession,
+        request
       )
     }
 
@@ -99,7 +100,8 @@ export async function POST(request: NextRequest) {
             matchesCol: false,
             game: null,
           }),
-          resolvedSession
+          resolvedSession,
+          request
         )
       }
     }
@@ -165,7 +167,8 @@ export async function POST(request: NextRequest) {
         matchesCol,
         game: serializeGameDetails(game),
       }),
-      resolvedSession
+      resolvedSession,
+      request
     )
   } catch (error) {
     logError('Guess error:', error)
@@ -271,7 +274,7 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    return applyAnonymousSessionCookie(NextResponse.json({ ok: true }), resolvedSession)
+    return applyAnonymousSessionCookie(NextResponse.json({ ok: true }), resolvedSession, request)
   } catch (error) {
     logError('Guess objection update error:', error)
     return NextResponse.json({ error: 'Failed to persist objection result' }, { status: 500 })

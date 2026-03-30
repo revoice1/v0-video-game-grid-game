@@ -47,10 +47,13 @@ describe('buildObjectionDataset', () => {
       rowCategory: {
         name: 'Square Enix',
         type: 'company',
+        validationQuestion:
+          'Was this game developed or published by Square Enix? Do not count platform ownership, brand association, or vague Sony/Nintendo/Microsoft adjacency.',
       },
       colCategory: {
         name: 'First person',
         type: 'perspective',
+        validationQuestion: "Is First person one of this game's recognized gameplay perspectives?",
       },
       appSignals: {
         matchedRow: false,
@@ -75,6 +78,8 @@ describe('OBJECTION_SYSTEM_PROMPT', () => {
     expect(OBJECTION_SYSTEM_PROMPT).toContain('Return JSON only')
     expect(OBJECTION_SYSTEM_PROMPT).toContain('"verdict":"sustained|overruled"')
     expect(OBJECTION_SYSTEM_PROMPT).toContain('familyNames')
+    expect(OBJECTION_SYSTEM_PROMPT).toContain('loose association')
+    expect(OBJECTION_SYSTEM_PROMPT).toContain('platform ownership')
   })
 })
 

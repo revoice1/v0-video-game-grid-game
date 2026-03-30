@@ -170,7 +170,8 @@ export async function GET(request: NextRequest) {
         totalCompletions: completionCount || 0,
         dailySummary,
       }),
-      resolvedSession
+      resolvedSession,
+      request
     )
   } catch (error) {
     logError('Stats error:', error)
@@ -226,7 +227,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return applyAnonymousSessionCookie(NextResponse.json({ success: true }), resolvedSession)
+    return applyAnonymousSessionCookie(
+      NextResponse.json({ success: true }),
+      resolvedSession,
+      request
+    )
   } catch (error) {
     logError('Stats POST error:', error)
     return NextResponse.json({ error: 'Failed to save completion' }, { status: 500 })

@@ -82,7 +82,20 @@ scripts/004_add_cell_metadata.sql      - adds cell metadata to puzzles
 scripts/005_add_guess_objection_metadata.sql - persists daily objection outcomes on guesses
 scripts/006_add_guess_update_policy.sql - removes the temporary public update policy for guesses after moving objection updates server-side
 scripts/007_drop_public_guess_insert_policy.sql - removes the public guess insert policy after moving daily guess writes server-side
+scripts/008_create_versus_tables.sql - creates online versus rooms/events and Realtime-friendly read policies
+scripts/009_add_online_versus_room_state.sql - adds snapshot state storage for online versus resume/sync
+scripts/010_expand_versus_event_types.sql - updates existing versus event constraints to allow newer event kinds like `miss`
 ```
+
+For online versus, also add these tables to your Supabase Realtime publication:
+
+```text
+versus_rooms
+versus_events
+```
+
+The current online implementation uses backend routes for writes and Supabase Realtime subscriptions
+for live room/event updates, so the tables must be published for clients to stay in sync.
 
 ## API Routes
 
@@ -94,6 +107,14 @@ scripts/007_drop_public_guess_insert_policy.sql - removes the public guess inser
 | `POST /api/guess`                             | Validates a game guess against a cell's row and column categories.                     |
 | `PATCH /api/guess`                            | Persists daily objection verdict metadata through a server-only privileged write path. |
 | `POST /api/stats`                             | Records a completed daily game session.                                                |
+| `POST /api/versus/room`                       | Creates an online versus room as the host.                                             |
+| `POST /api/versus/room/:code/join`            | Joins or rejoins an online versus room by invite code.                                 |
+| `POST /api/versus/room/:code/puzzle`          | Host-only route that publishes the shared versus puzzle into the room.                 |
+| `POST /api/versus/room/:code/state`           | Persists the current authoritative online versus snapshot state.                       |
+| `POST /api/versus/room/:code/finish`          | Marks an online room finished.                                                         |
+| `POST /api/versus/room/:code/continue`        | Host-only route that clears a finished room for another game under the same code.      |
+| `POST /api/versus/event`                      | Appends an online versus event for the active room.                                    |
+| `GET /api/versus/room-events/:roomId`         | Fetches room event history for resume/hydration.                                       |
 
 ## Notes
 
@@ -104,7 +125,11 @@ scripts/007_drop_public_guess_insert_policy.sql - removes the public guess inser
   service-role key, so the database does not need public `INSERT` or `UPDATE` policies on
   `guesses`.
 - Practice puzzles are generated fresh and are not stored in the database.
-- Versus matches are local-only and restored from local storage.
+- Local versus matches are restored from local storage.
+- Online versus rooms use backend routes for writes, Supabase Realtime for live updates, and room
+  snapshots for faster resume after refresh.
+- Online post-game flow now supports a host-side `Continue In Room` reset, but it still is not a
+  fully modeled rematch lifecycle with match-scoped history.
 - Finished versus matches can expand into a post-game summary with the rules used, picks, and key
   match stats.
 - Standard puzzle generation uses curated category families and prevalidated banned pairs to avoid

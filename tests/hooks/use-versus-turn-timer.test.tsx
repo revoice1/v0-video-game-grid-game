@@ -6,6 +6,7 @@ describe('useVersusTurnTimer', () => {
   it('starts a fresh timer when a versus board becomes ready', () => {
     const activeTurnTimerKeyRef = { current: null as string | null }
     const setTurnTimeLeft = vi.fn()
+    const setTurnDeadlineAt = vi.fn()
 
     renderHook(() =>
       useVersusTurnTimer({
@@ -17,11 +18,13 @@ describe('useVersusTurnTimer', () => {
         winner: null,
         versusTimerOption: 20,
         turnTimeLeft: null,
+        turnDeadlineAt: null,
         pendingFinalSteal: null,
         animationsEnabled: true,
         audioEnabled: true,
         activeTurnTimerKeyRef,
         setTurnTimeLeft,
+        setTurnDeadlineAt,
         onTurnExpired: vi.fn(),
       })
     )
@@ -30,9 +33,49 @@ describe('useVersusTurnTimer', () => {
     expect(setTurnTimeLeft).toHaveBeenCalledWith(20)
   })
 
+  it('starts a visible online timer immediately when a board becomes ready', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-03-29T20:00:00.000Z'))
+
+    try {
+      const activeTurnTimerKeyRef = { current: null as string | null }
+      const setTurnTimeLeft = vi.fn()
+      const setTurnDeadlineAt = vi.fn()
+
+      renderHook(() =>
+        useVersusTurnTimer({
+          isVersusMode: true,
+          isOnlineMatch: true,
+          isLoading: false,
+          loadedPuzzleMode: 'versus',
+          puzzleId: 'versus-puzzle',
+          currentPlayer: 'x',
+          winner: null,
+          versusTimerOption: 20,
+          turnTimeLeft: null,
+          turnDeadlineAt: null,
+          pendingFinalSteal: null,
+          animationsEnabled: true,
+          audioEnabled: true,
+          activeTurnTimerKeyRef,
+          setTurnTimeLeft,
+          setTurnDeadlineAt,
+          onTurnExpired: vi.fn(),
+        })
+      )
+
+      expect(activeTurnTimerKeyRef.current).toBe('versus-puzzle:x')
+      expect(setTurnDeadlineAt).toHaveBeenCalledWith('2026-03-29T20:00:20.000Z')
+      expect(setTurnTimeLeft).toHaveBeenCalledWith(20)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('notifies when the turn timer has already expired', () => {
     const activeTurnTimerKeyRef = { current: 'versus-puzzle:x' as string | null }
     const onTurnExpired = vi.fn()
+    const setTurnDeadlineAt = vi.fn()
 
     renderHook(() =>
       useVersusTurnTimer({
@@ -44,11 +87,13 @@ describe('useVersusTurnTimer', () => {
         winner: null,
         versusTimerOption: 20,
         turnTimeLeft: 0,
+        turnDeadlineAt: null,
         pendingFinalSteal: null,
         animationsEnabled: true,
         audioEnabled: true,
         activeTurnTimerKeyRef,
         setTurnTimeLeft: vi.fn(),
+        setTurnDeadlineAt,
         onTurnExpired,
       })
     )
@@ -62,6 +107,7 @@ describe('useVersusTurnTimer', () => {
     try {
       const activeTurnTimerKeyRef = { current: 'versus-puzzle:x' as string | null }
       const setTurnTimeLeft = vi.fn()
+      const setTurnDeadlineAt = vi.fn()
       const firstOnTurnExpired = vi.fn()
       const secondOnTurnExpired = vi.fn()
 
@@ -82,11 +128,13 @@ describe('useVersusTurnTimer', () => {
             winner: null,
             versusTimerOption: 20,
             turnTimeLeft,
+            turnDeadlineAt: null,
             pendingFinalSteal: null,
             animationsEnabled: true,
             audioEnabled: true,
             activeTurnTimerKeyRef,
             setTurnTimeLeft,
+            setTurnDeadlineAt,
             onTurnExpired,
           }),
         {
@@ -110,9 +158,269 @@ describe('useVersusTurnTimer', () => {
         vi.advanceTimersByTime(500)
       })
 
-      expect(setTurnTimeLeft).toHaveBeenCalledWith(expect.any(Function))
       expect(firstOnTurnExpired).not.toHaveBeenCalled()
       expect(secondOnTurnExpired).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('still counts down when parent rerenders with unrelated state changes', () => {
+    vi.useFakeTimers()
+
+    try {
+      const activeTurnTimerKeyRef = { current: 'versus-puzzle:x' as string | null }
+      const setTurnTimeLeft = vi.fn()
+      const setTurnDeadlineAt = vi.fn()
+
+      const { rerender } = renderHook(
+        ({ tick }: { tick: number }) => {
+          void tick
+
+          return useVersusTurnTimer({
+            isVersusMode: true,
+            isLoading: false,
+            loadedPuzzleMode: 'versus',
+            puzzleId: 'versus-puzzle',
+            currentPlayer: 'x',
+            winner: null,
+            versusTimerOption: 20,
+            turnTimeLeft: 20,
+            turnDeadlineAt: null,
+            pendingFinalSteal: null,
+            animationsEnabled: true,
+            audioEnabled: true,
+            activeTurnTimerKeyRef,
+            setTurnTimeLeft,
+            setTurnDeadlineAt,
+            onTurnExpired: vi.fn(),
+          })
+        },
+        {
+          initialProps: {
+            tick: 0,
+          },
+        }
+      )
+
+      act(() => {
+        vi.advanceTimersByTime(400)
+      })
+
+      rerender({ tick: 1 })
+
+      act(() => {
+        vi.advanceTimersByTime(400)
+      })
+
+      rerender({ tick: 2 })
+
+      act(() => {
+        vi.advanceTimersByTime(250)
+      })
+
+      expect(setTurnTimeLeft).toHaveBeenCalledWith(expect.any(Function))
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('derives remaining time from an online deadline', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-03-29T20:00:00.000Z'))
+
+    try {
+      const activeTurnTimerKeyRef = { current: 'versus-puzzle:x' as string | null }
+      const setTurnTimeLeft = vi.fn()
+      const setTurnDeadlineAt = vi.fn()
+
+      renderHook(() =>
+        useVersusTurnTimer({
+          isVersusMode: true,
+          isOnlineMatch: true,
+          isLoading: false,
+          loadedPuzzleMode: 'versus',
+          puzzleId: 'versus-puzzle',
+          currentPlayer: 'x',
+          winner: null,
+          versusTimerOption: 20,
+          turnTimeLeft: null,
+          turnDeadlineAt: '2026-03-29T20:00:12.000Z',
+          pendingFinalSteal: null,
+          animationsEnabled: true,
+          audioEnabled: true,
+          activeTurnTimerKeyRef,
+          setTurnTimeLeft,
+          setTurnDeadlineAt,
+          onTurnExpired: vi.fn(),
+        })
+      )
+
+      expect(setTurnTimeLeft).toHaveBeenCalledWith(12)
+      expect(setTurnDeadlineAt).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('starts a new online deadline even if the shared timer ref was pre-set during hydration', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-03-29T20:00:00.000Z'))
+
+    try {
+      const activeTurnTimerKeyRef = { current: 'versus-puzzle:x' as string | null }
+      const setTurnTimeLeft = vi.fn()
+      const setTurnDeadlineAt = vi.fn()
+
+      const { rerender } = renderHook(
+        ({
+          currentPlayer,
+          turnDeadlineAt,
+        }: {
+          currentPlayer: 'x' | 'o'
+          turnDeadlineAt: string | null
+        }) =>
+          useVersusTurnTimer({
+            isVersusMode: true,
+            isOnlineMatch: true,
+            isLoading: false,
+            loadedPuzzleMode: 'versus',
+            puzzleId: 'versus-puzzle',
+            currentPlayer,
+            winner: null,
+            versusTimerOption: 20,
+            turnTimeLeft: null,
+            turnDeadlineAt,
+            pendingFinalSteal: null,
+            animationsEnabled: true,
+            audioEnabled: true,
+            activeTurnTimerKeyRef,
+            setTurnTimeLeft,
+            setTurnDeadlineAt,
+            onTurnExpired: vi.fn(),
+          }),
+        {
+          initialProps: {
+            currentPlayer: 'x' as 'x' | 'o',
+            turnDeadlineAt: '2026-03-29T20:00:20.000Z' as string | null,
+          },
+        }
+      )
+
+      setTurnDeadlineAt.mockClear()
+      setTurnTimeLeft.mockClear()
+
+      activeTurnTimerKeyRef.current = 'versus-puzzle:o'
+
+      rerender({
+        currentPlayer: 'o' as 'x' | 'o',
+        turnDeadlineAt: null as string | null,
+      })
+
+      expect(setTurnDeadlineAt).toHaveBeenCalledWith('2026-03-29T20:00:20.000Z')
+      expect(setTurnTimeLeft).toHaveBeenCalledWith(20)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('resets the online deadline when the turn changes instead of carrying the old turn clock forward', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-03-29T20:00:00.000Z'))
+
+    try {
+      const activeTurnTimerKeyRef = { current: 'versus-puzzle:x' as string | null }
+      const setTurnTimeLeft = vi.fn()
+      const setTurnDeadlineAt = vi.fn()
+
+      const { rerender } = renderHook(
+        ({
+          currentPlayer,
+          turnDeadlineAt,
+        }: {
+          currentPlayer: 'x' | 'o'
+          turnDeadlineAt: string | null
+        }) =>
+          useVersusTurnTimer({
+            isVersusMode: true,
+            isOnlineMatch: true,
+            isLoading: false,
+            loadedPuzzleMode: 'versus',
+            puzzleId: 'versus-puzzle',
+            currentPlayer,
+            winner: null,
+            versusTimerOption: 20,
+            turnTimeLeft: 12,
+            turnDeadlineAt,
+            pendingFinalSteal: null,
+            animationsEnabled: true,
+            audioEnabled: true,
+            activeTurnTimerKeyRef,
+            setTurnTimeLeft,
+            setTurnDeadlineAt,
+            onTurnExpired: vi.fn(),
+          }),
+        {
+          initialProps: {
+            currentPlayer: 'x' as 'x' | 'o',
+            turnDeadlineAt: '2026-03-29T20:00:12.000Z' as string | null,
+          },
+        }
+      )
+
+      setTurnDeadlineAt.mockClear()
+      setTurnTimeLeft.mockClear()
+
+      rerender({
+        currentPlayer: 'o' as 'x' | 'o',
+        turnDeadlineAt: '2026-03-29T20:00:12.000Z' as string | null,
+      })
+
+      expect(setTurnDeadlineAt).toHaveBeenCalledWith('2026-03-29T20:00:20.000Z')
+      expect(setTurnTimeLeft).toHaveBeenCalledWith(20)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps polling an online deadline even before the displayed second changes', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-03-29T20:00:00.000Z'))
+
+    try {
+      const activeTurnTimerKeyRef = { current: 'versus-puzzle:x' as string | null }
+      const setTurnTimeLeft = vi.fn()
+      const setTurnDeadlineAt = vi.fn()
+
+      renderHook(() =>
+        useVersusTurnTimer({
+          isVersusMode: true,
+          isOnlineMatch: true,
+          isLoading: false,
+          loadedPuzzleMode: 'versus',
+          puzzleId: 'versus-puzzle',
+          currentPlayer: 'x',
+          winner: null,
+          versusTimerOption: 20,
+          turnTimeLeft: 12,
+          turnDeadlineAt: '2026-03-29T20:00:12.000Z',
+          pendingFinalSteal: null,
+          animationsEnabled: true,
+          audioEnabled: true,
+          activeTurnTimerKeyRef,
+          setTurnTimeLeft,
+          setTurnDeadlineAt,
+          onTurnExpired: vi.fn(),
+        })
+      )
+
+      setTurnTimeLeft.mockClear()
+
+      act(() => {
+        vi.advanceTimersByTime(1200)
+      })
+
+      expect(setTurnTimeLeft.mock.calls.length).toBeGreaterThan(1)
     } finally {
       vi.useRealTimers()
     }

@@ -114,6 +114,7 @@ function getDuplicateDisplayTitle(
 
 interface GameSearchProps {
   isOpen: boolean
+  initialQuery?: string | null
   puzzleId?: string
   hideScores?: boolean
   confirmBeforeSelect?: boolean
@@ -124,11 +125,13 @@ interface GameSearchProps {
   rowCategory: Category | null
   colCategory: Category | null
   onSelect: (game: Game) => void
+  onQueryChange?: (query: string) => void
   onClose: () => void
 }
 
 export function GameSearch({
   isOpen,
+  initialQuery = '',
   puzzleId,
   hideScores = false,
   confirmBeforeSelect = false,
@@ -139,6 +142,7 @@ export function GameSearch({
   rowCategory,
   colCategory,
   onSelect,
+  onQueryChange,
   onClose,
 }: GameSearchProps) {
   const [query, setQuery] = useState('')
@@ -193,14 +197,14 @@ export function GameSearch({
   useEffect(() => {
     if (isOpen) {
       searchAbortRef.current?.abort()
-      setQuery('')
+      setQuery(initialQuery ?? '')
       setResults([])
       setSelectedIndex(0)
       setPendingConfirmationId(null)
       setPreviewGame(null)
       setTimeout(() => inputRef.current?.focus(), 100)
     }
-  }, [isOpen])
+  }, [initialQuery, isOpen])
 
   useEffect(() => {
     return () => {
@@ -465,7 +469,10 @@ export function GameSearch({
             type="text"
             placeholder="Search for a video game..."
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              onQueryChange?.(e.target.value)
+            }}
             onKeyDown={handleKeyDown}
             className="bg-secondary border-0 focus-visible:ring-primary"
           />

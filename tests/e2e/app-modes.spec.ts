@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import {
   fakePuzzle,
+  fakeSearchResult,
   resetStorage,
   seedStorageValue,
   mockPuzzleStream,
@@ -31,18 +32,22 @@ test('versus mode shows start options and opens setup controls', async ({ page }
   await page.getByRole('button', { name: 'Versus' }).click()
 
   await expect(page.getByText('Versus Mode')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Standard Match' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Custom Match' })).toBeVisible()
+  await expect(page.locator('button').filter({ hasText: 'Local Match' }).first()).toBeVisible()
+  await expect(
+    page.locator('button').filter({ hasText: 'Custom Local Match' }).first()
+  ).toBeVisible()
 
-  await page.getByRole('button', { name: 'Custom Match' }).click()
+  await page.locator('button').filter({ hasText: 'Custom Local Match' }).first().click()
 
   await expect(page.getByRole('heading', { name: 'Versus Setup' })).toBeVisible()
   await expect(page.getByRole('button', { name: /Rules/i })).toBeVisible()
   await expect(page.getByRole('button', { name: /Categories/i })).toBeVisible()
   await page.getByRole('button', { name: /Rules/i }).click()
   await expect(page.getByRole('heading', { name: 'Steals' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Objections' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Turn Timer' })).toBeVisible()
   await expect(page.getByRole('combobox')).toHaveCount(4)
+  await expect(page.getByRole('combobox').nth(1)).toContainText('1 each')
   await expect(page.getByRole('button', { name: 'Reset to Default' })).toBeVisible()
 })
 
@@ -77,6 +82,58 @@ test('practice standard puzzle generates a board from the setup screen', async (
 
   await expect(page.getByTestId('grid-cell-0')).toBeVisible()
   await expect(page.getByText('RPG')).toBeVisible()
+})
+
+test('local versus refresh restores the versus board instead of booting daily', async ({
+  page,
+}) => {
+  await mockPuzzleStream(page, fakePuzzle)
+  await resetStorage(page)
+  await seedDailyPuzzle(page)
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Versus' }).click()
+  await page.locator('button').filter({ hasText: 'Local Match' }).first().click()
+
+  await expect(page.getByTestId('grid-cell-0')).toBeVisible()
+  await expect(page.getByText(/Turn: \d+:\d{2}/)).toBeVisible()
+
+  await page.reload()
+
+  await expect(page.getByTestId('grid-cell-0')).toBeVisible()
+  await expect(page.getByText(/Turn: \d+:\d{2}/)).toBeVisible()
+  await expect(page.getByText('Versus Mode')).toHaveCount(0)
+})
+
+test('local versus refresh restores an open search with the typed query', async ({ page }) => {
+  await mockPuzzleStream(page, fakePuzzle)
+  await resetStorage(page)
+  await seedDailyPuzzle(page)
+  await page.route('**/api/search?*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ results: [fakeSearchResult] }),
+    })
+  })
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Versus' }).click()
+  await page.locator('button').filter({ hasText: 'Local Match' }).first().click()
+
+  await expect(page.getByTestId('grid-cell-0')).toBeVisible()
+  await page.getByTestId('grid-cell-0').click()
+
+  const searchInput = page.getByPlaceholder('Search for a video game...')
+  await expect(searchInput).toBeVisible()
+  await searchInput.fill('mass')
+  await expect(searchInput).toHaveValue('mass')
+
+  await page.reload()
+
+  await expect(page.getByTestId('grid-cell-0')).toBeVisible()
+  await expect(searchInput).toBeVisible()
+  await expect(searchInput).toHaveValue('mass')
 })
 
 test('how to play modal stays available for daily and versus modes', async ({ page }) => {

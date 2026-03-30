@@ -8,6 +8,10 @@ interface PuzzleLoadingScreenProps {
   loadingStage: string
   loadingProgress: number
   loadingAttempts: LoadingAttempt[]
+  titleOverride?: string
+  descriptionOverride?: string
+  showProgress?: boolean
+  showAttempts?: boolean
 }
 
 function getRejectedIntersections(attempt: LoadingAttempt) {
@@ -39,6 +43,10 @@ export function PuzzleLoadingScreen({
   loadingStage,
   loadingProgress,
   loadingAttempts,
+  titleOverride,
+  descriptionOverride,
+  showProgress = mode !== 'daily',
+  showAttempts = mode !== 'daily',
 }: PuzzleLoadingScreenProps) {
   const activeAttempt = loadingAttempts[loadingAttempts.length - 1] ?? null
   const pastAttempts = loadingAttempts.slice(0, -1).reverse()
@@ -48,19 +56,20 @@ export function PuzzleLoadingScreen({
       <div className="w-full max-w-5xl md:flex md:items-start md:justify-center md:gap-4">
         <div className="w-full max-w-md rounded-2xl border border-border bg-card/70 p-6 shadow-xl backdrop-blur-sm">
           <p className="text-center text-sm font-semibold uppercase tracking-[0.24em] text-primary">
-            {mode === 'daily'
-              ? 'Daily Puzzle'
-              : mode === 'versus'
-                ? 'Setting Up Match'
-                : 'Building Grid'}
+            {titleOverride ??
+              (mode === 'daily'
+                ? 'Daily Puzzle'
+                : mode === 'versus'
+                  ? 'Setting Up Match'
+                  : 'Building Grid')}
           </p>
           <p className="mt-3 whitespace-pre-line text-center text-lg font-semibold text-foreground">
             {loadingStage}
           </p>
           <p className="mt-2 text-center text-sm text-muted-foreground">
-            {getLoadingDescription(mode, loadingProgress)}
+            {descriptionOverride ?? getLoadingDescription(mode, loadingProgress)}
           </p>
-          {mode !== 'daily' && (
+          {showProgress && (
             <div className="mt-6 space-y-2">
               <Progress value={loadingProgress} className="h-3" />
               <p className="text-right text-xs font-medium text-muted-foreground">
@@ -68,7 +77,7 @@ export function PuzzleLoadingScreen({
               </p>
             </div>
           )}
-          {mode !== 'daily' && pastAttempts.length > 0 && (
+          {showAttempts && pastAttempts.length > 0 && (
             <div className="mt-5 border-t border-border/70 pt-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Rejected Intersections
@@ -110,7 +119,7 @@ export function PuzzleLoadingScreen({
           )}
         </div>
 
-        {mode !== 'daily' && (
+        {showAttempts && (
           <aside className="mt-4 w-full rounded-2xl border border-border bg-card/70 p-4 shadow-xl backdrop-blur-sm md:mt-0 md:max-w-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
               Attempt Notes

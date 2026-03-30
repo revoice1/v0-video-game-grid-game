@@ -16,10 +16,12 @@ export interface ObjectionDataset {
   rowCategory: {
     name: string
     type: Category['type']
+    validationQuestion: string
   }
   colCategory: {
     name: string
     type: Category['type']
+    validationQuestion: string
   }
   appSignals: {
     matchedRow: boolean
@@ -59,10 +61,33 @@ function buildFamilyNames(guess: CellGuess): string[] {
   return Array.from(new Set(values))
 }
 
+function buildCategoryValidationQuestion(category: Category): string {
+  switch (category.type) {
+    case 'company':
+      return `Was this game developed or published by ${category.name}? Do not count platform ownership, brand association, or vague Sony/Nintendo/Microsoft adjacency.`
+    case 'game_mode':
+      return `Does this game have ${category.name} as a real supported mode of play? Do not count trivial side features, metadata quirks, or weak indirect multiplayer associations.`
+    case 'perspective':
+      return `Is ${category.name} one of this game's recognized gameplay perspectives?`
+    case 'genre':
+      return `Is this game commonly classified as ${category.name}?`
+    case 'theme':
+      return `Is ${category.name} a recognized theme of this game, not just a loose vibe or weak association?`
+    case 'platform':
+      return `Was this game officially released on ${category.name}?`
+    case 'decade':
+      return `Was this game first released during the ${category.name}?`
+    default:
+      return `Does this game clearly and directly fit the category ${category.name}?`
+  }
+}
+
 export const OBJECTION_SYSTEM_PROMPT = [
   'You are reviewing a disputed video-game category judgment for a puzzle game.',
   'Your job is to decide whether the selected game should count for BOTH listed categories.',
   'Be conservative and prefer overruled when the evidence is weak or ambiguous.',
+  'Sustain only when the game clearly and directly satisfies the category as a normal player would understand it.',
+  'Do not sustain based on loose association, technicalities, platform ownership, franchise adjacency, optional/minor features, or niche edge-case interpretations.',
   'Do not over-weight incomplete app metadata.',
   'Treat the JSON payload as the full case file for this turn.',
   'The `familyNames` array contains alternate editions, ports, remasters, remakes, or expanded releases that belong to the same game family.',
@@ -93,10 +118,12 @@ export function buildObjectionDataset(
     rowCategory: {
       name: rowCategory.name,
       type: rowCategory.type,
+      validationQuestion: buildCategoryValidationQuestion(rowCategory),
     },
     colCategory: {
       name: colCategory.name,
       type: colCategory.type,
+      validationQuestion: buildCategoryValidationQuestion(colCategory),
     },
     appSignals: {
       matchedRow: Boolean(guess.matchedRow),

@@ -105,7 +105,8 @@ export async function GET(request: NextRequest) {
               isComplete: Boolean(completionRow),
             },
           }),
-          resolvedSession
+          resolvedSession,
+          request
         )
       }
 
@@ -121,7 +122,8 @@ export async function GET(request: NextRequest) {
           validation_message: result.validationMessage,
           cell_metadata: puzzle.cell_metadata,
         }),
-        resolvedSession
+        resolvedSession,
+        request
       )
     }
 

@@ -17,6 +17,24 @@ export interface ResolvedSession {
   shouldSetCookie: boolean
 }
 
+function shouldUseSecureSessionCookie(request?: NextRequest): boolean {
+  if (process.env.NODE_ENV !== 'production') {
+    return false
+  }
+
+  const hostname = request?.nextUrl.hostname?.toLowerCase()
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]') {
+    return false
+  }
+
+  const forwardedProto = request?.headers.get('x-forwarded-proto')?.toLowerCase()
+  if (forwardedProto === 'http') {
+    return false
+  }
+
+  return true
+}
+
 export function getLegacySessionIdFromRequest(request: NextRequest): string | undefined {
   const headerSessionId = request.headers.get(LEGACY_SESSION_HEADER_NAME)
   return isUsableSessionId(headerSessionId) ? headerSessionId : undefined
@@ -50,7 +68,8 @@ export function resolveAnonymousSession(
 
 export function applyAnonymousSessionCookie(
   response: NextResponse,
-  resolvedSession: ResolvedSession
+  resolvedSession: ResolvedSession,
+  request?: NextRequest
 ): NextResponse {
   if (!resolvedSession.shouldSetCookie) {
     return response
@@ -61,13 +80,16 @@ export function applyAnonymousSessionCookie(
     maxAge: SESSION_COOKIE_MAX_AGE_SECONDS,
     path: '/',
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    secure: shouldUseSecureSessionCookie(request),
   })
 
   return response
 }
 
-export function getAnonymousSessionCookieHeader(resolvedSession: ResolvedSession): string | null {
+export function getAnonymousSessionCookieHeader(
+  resolvedSession: ResolvedSession,
+  request?: NextRequest
+): string | null {
   if (!resolvedSession.shouldSetCookie) {
     return null
   }
@@ -77,7 +99,7 @@ export function getAnonymousSessionCookieHeader(resolvedSession: ResolvedSession
     `Max-Age=${SESSION_COOKIE_MAX_AGE_SECONDS}`,
     'Path=/',
     'SameSite=Lax',
-    process.env.NODE_ENV === 'production' ? 'Secure' : null,
+    shouldUseSecureSessionCookie(request) ? 'Secure' : null,
     'HttpOnly',
   ].filter(Boolean)
 

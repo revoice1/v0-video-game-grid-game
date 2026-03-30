@@ -33,6 +33,7 @@ interface GameHeaderProps {
   guessesRemaining: number
   score: number
   currentPlayer?: 'x' | 'o' | null
+  myOnlineRole?: 'x' | 'o' | null
   winner?: 'x' | 'o' | 'draw' | null
   versusRecord?: { xWins: number; oWins: number }
   versusObjectionRule?: VersusObjectionRule
@@ -48,6 +49,8 @@ interface GameHeaderProps {
   onDailyHistory?: () => void
   onNewGame?: () => void
   onCustomizeGame?: () => void
+  onStartOnlineMatch?: () => void
+  onEndOnlineMatch?: () => void
 }
 
 export function GameHeader({
@@ -55,6 +58,7 @@ export function GameHeader({
   guessesRemaining,
   score,
   currentPlayer = null,
+  myOnlineRole = null,
   winner = null,
   versusRecord = { xWins: 0, oWins: 0 },
   versusObjectionRule = 'off',
@@ -70,6 +74,8 @@ export function GameHeader({
   onDailyHistory,
   onNewGame,
   onCustomizeGame,
+  onStartOnlineMatch,
+  onEndOnlineMatch,
 }: GameHeaderProps) {
   void guessesRemaining
   void score
@@ -195,7 +201,7 @@ export function GameHeader({
         </div>
 
         <div className="relative mb-3 flex flex-col items-center gap-2 sm:flex sm:justify-center">
-          <div className="grid w-full max-w-[22rem] grid-cols-3 rounded-lg bg-secondary/50 p-1 sm:inline-flex sm:w-auto sm:max-w-none">
+          <div className="grid w-full max-w-[32rem] grid-cols-3 rounded-lg bg-secondary/50 p-1 sm:inline-flex sm:w-auto sm:max-w-none">
             <button
               onClick={() => onModeChange('daily')}
               className={cn(
@@ -246,7 +252,7 @@ export function GameHeader({
 
         {(mode === 'practice' || mode === 'versus') && (
           <div className="mb-2 text-center">
-            <div className="grid w-full max-w-[22rem] grid-cols-2 gap-1.5 px-1 sm:inline-flex sm:w-auto sm:max-w-full sm:flex-wrap sm:items-center sm:justify-center sm:gap-2">
+            <div className="flex w-full flex-wrap items-center justify-center gap-1.5 px-1 sm:gap-2">
               {mode === 'versus' && (
                 <div className="flex items-center justify-center gap-1.5 sm:gap-2">
                   <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border bg-secondary/35 px-2.5 text-[10px] font-medium uppercase text-muted-foreground sm:h-9 sm:gap-2 sm:px-3 sm:text-[11px]">
@@ -309,28 +315,80 @@ export function GameHeader({
                 <span className="tracking-[0.12em]">Pool</span>
                 <span className="tracking-[0.12em] text-foreground">{poolLabel}</span>
               </div>
+            </div>
 
+            <div className="mt-2 grid w-full max-w-[28rem] grid-cols-1 gap-1.5 px-1 min-[520px]:grid-cols-2 sm:flex sm:w-auto sm:max-w-full sm:flex-wrap sm:items-center sm:justify-center sm:gap-2">
               {onCustomizeGame && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={onCustomizeGame}
-                  className="h-8 w-full px-2.5 text-xs sm:h-9 sm:w-auto sm:px-3 sm:text-sm"
+                  className="h-8 w-full min-w-[9rem] px-2.5 text-xs sm:h-9 sm:w-auto sm:px-3 sm:text-sm"
                 >
                   {hasActiveCustomSetup ? 'Edit Setup' : 'Customize'}
                 </Button>
               )}
-              {onNewGame && (
+              {onNewGame && !myOnlineRole && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={onNewGame}
-                  className="h-8 w-full px-2.5 text-xs sm:h-9 sm:w-auto sm:px-3 sm:text-sm"
+                  className="h-8 w-full min-w-[9rem] px-2.5 text-xs sm:h-9 sm:w-auto sm:px-3 sm:text-sm"
                 >
                   {mode === 'versus' ? 'New Match' : 'New Game'}
                 </Button>
               )}
+              {mode === 'versus' && !myOnlineRole && onStartOnlineMatch && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onStartOnlineMatch}
+                  className="h-8 w-full min-w-[9rem] border-sky-500/35 px-2.5 text-xs text-sky-300 hover:bg-sky-500/10 hover:text-sky-200 sm:h-9 sm:w-auto sm:px-3 sm:text-sm"
+                >
+                  Play Online
+                </Button>
+              )}
             </div>
+
+            {mode === 'versus' && (myOnlineRole || onEndOnlineMatch) && (
+              <div className="mt-2 flex w-full max-w-[40rem] flex-wrap items-center justify-center gap-1.5 px-1 sm:gap-2">
+                {myOnlineRole && (
+                  <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-sky-500/25 bg-sky-500/8 px-2.5 text-[10px] font-medium uppercase text-muted-foreground sm:h-9 sm:gap-2 sm:px-3 sm:text-[11px]">
+                    <span className="tracking-[0.12em]">You</span>
+                    <span
+                      className={cn(
+                        'text-base font-black leading-none sm:text-[1.1rem]',
+                        myOnlineRole === 'x' ? 'text-primary' : 'text-sky-400'
+                      )}
+                    >
+                      {myOnlineRole.toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                {myOnlineRole && onNewGame && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onNewGame}
+                    className="h-8 min-w-[9rem] border-sky-500/35 px-2.5 text-xs text-sky-300 hover:bg-sky-500/10 hover:text-sky-200 sm:h-9 sm:px-3 sm:text-sm"
+                  >
+                    {winner !== null && myOnlineRole === 'x'
+                      ? 'Continue In Room'
+                      : 'New Online Room'}
+                  </Button>
+                )}
+                {myOnlineRole && onEndOnlineMatch && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onEndOnlineMatch}
+                    className="h-8 min-w-[9rem] border-destructive/35 px-2.5 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive sm:h-9 sm:px-3 sm:text-sm"
+                  >
+                    End Online Match
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

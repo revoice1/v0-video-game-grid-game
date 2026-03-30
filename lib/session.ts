@@ -86,6 +86,8 @@ export interface SavedGameState {
   guesses: (CellGuess | CellGuessRecord | null)[]
   guessesRemaining: number
   isComplete: boolean
+  selectedCell?: number | null
+  searchQuery?: string | null
   date?: string
   currentPlayer?: 'x' | 'o'
   stealableCell?: number | null
@@ -105,6 +107,7 @@ export interface SavedGameState {
   }
   versusEventLog?: VersusEventRecord[]
   turnTimeLeft?: number | null
+  turnDeadlineAt?: string | null
 }
 
 function getStateKey(mode: PersistedMode, dailyDate?: string): string {
