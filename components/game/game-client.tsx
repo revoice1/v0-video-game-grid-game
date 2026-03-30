@@ -3433,7 +3433,7 @@ export function GameClient() {
     loadPuzzle('versus', versusCategoryFilters)
   }
 
-  const handleStartOnlineMatch = useCallback(() => {
+  const prepareForOnlineMatchStart = useCallback(() => {
     activePuzzleLoadControllerRef.current?.abort()
     clearGameState('versus')
     resetOnlineVersusSession()
@@ -3457,8 +3457,13 @@ export function GameClient() {
     setPendingVersusObjectionReview(null)
     setVersusObjectionsUsed({ x: 0, o: 0 })
     commitVersusEventLog([])
-    setShowOnlineLobby(true)
   }, [commitVersusEventLog, resetOnlineVersusSession])
+
+  const handleStartOnlineMatch = useCallback(() => {
+    setShowVersusSetup(false)
+    setShowVersusStartOptions(false)
+    setShowOnlineLobby(true)
+  }, [])
 
   // Get categories for selected cell
   const { row: selectedRowCategory, col: selectedColCategory } = getCategoriesForCell(
@@ -3496,6 +3501,8 @@ export function GameClient() {
       myRole={onlineVersus.myRole}
       errorMessage={onlineVersus.errorMessage}
       onCreateRoom={() => {
+        prepareForOnlineMatchStart()
+        setShowOnlineLobby(true)
         onlineVersus.createRoom({
           categoryFilters: versusCategoryFilters,
           stealRule: versusStealRule,
@@ -3504,7 +3511,11 @@ export function GameClient() {
           objectionRule: versusObjectionRule,
         })
       }}
-      onJoinRoom={onlineVersus.joinRoom}
+      onJoinRoom={(code) => {
+        prepareForOnlineMatchStart()
+        setShowOnlineLobby(true)
+        onlineVersus.joinRoom(code)
+      }}
       onDismiss={() => {
         setShowOnlineLobby(false)
         if (onlineVersus.phase === 'idle' || onlineVersus.phase === 'error') {
@@ -3640,8 +3651,7 @@ export function GameClient() {
             onHostOnlineMatch={
               mode === 'versus'
                 ? () => {
-                    clearGameState('versus')
-                    resetOnlineVersusSession()
+                    prepareForOnlineMatchStart()
                     onlineVersus.createRoom({
                       categoryFilters: versusCategoryFilters,
                       stealRule: versusStealRule,
@@ -3656,8 +3666,7 @@ export function GameClient() {
             onJoinOnlineMatch={
               mode === 'versus'
                 ? () => {
-                    clearGameState('versus')
-                    resetOnlineVersusSession()
+                    prepareForOnlineMatchStart()
                     setShowOnlineLobby(true)
                   }
                 : undefined

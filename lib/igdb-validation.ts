@@ -146,18 +146,28 @@ const PLATFORM_ALIAS_GROUPS: Record<string, string[]> = {
 const COMPANY_ALIAS_GROUPS: Record<string, { aliases?: string[]; prefixes?: string[] }> = {
   nintendo: { aliases: ['Nintendo'], prefixes: ['nintendo'] },
   sega: { aliases: ['Sega'], prefixes: ['sega'] },
-  'electronic-arts': { aliases: ['Electronic Arts'] },
+  'electronic arts': {
+    aliases: ['Electronic Arts', 'EA Sports'],
+    prefixes: [
+      'ea sports',
+      'ea tiburon',
+      'ea canada',
+      'ea vancouver',
+      'ea redwood shores',
+      'ea los angeles',
+    ],
+  },
   konami: { aliases: ['Konami'], prefixes: ['konami'] },
   activision: {
     aliases: ['Activision', 'Activision Blizzard', 'Blizzard', 'Blizzard Entertainment'],
     prefixes: ['activision', 'blizzard'],
   },
   capcom: { aliases: ['Capcom'], prefixes: ['capcom'] },
-  'square-enix': { aliases: ['Square Enix', 'Square', 'Enix'] },
+  'square enix': { aliases: ['Square Enix', 'Square', 'Enix'] },
   ubisoft: { aliases: ['Ubisoft'], prefixes: ['ubisoft'] },
   thq: { aliases: ['THQ', 'THQ Nordic'] },
-  'bandai-namco': { aliases: ['Bandai Namco', 'Namco'] },
-  'microsoft-xbox': {
+  'bandai namco': { aliases: ['Bandai Namco', 'Namco'] },
+  'microsoft xbox': {
     aliases: ['Microsoft', 'Microsoft Game Studios', 'Microsoft Studios', 'Xbox Game Studios'],
     prefixes: ['xbox'],
   },
@@ -174,7 +184,7 @@ const COMPANY_ALIAS_GROUPS: Record<string, { aliases?: string[]; prefixes?: stri
   },
   taito: { aliases: ['Taito'] },
   snk: { aliases: ['SNK'] },
-  'koei-tecmo': { aliases: ['Koei Tecmo', 'Koei', 'Tecmo'] },
+  'koei tecmo': { aliases: ['Koei Tecmo', 'Koei', 'Tecmo'] },
 }
 
 function normalizeName(value: string): string {

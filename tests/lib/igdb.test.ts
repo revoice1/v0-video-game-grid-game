@@ -494,6 +494,98 @@ describe('igdbGameMatchesCategory', () => {
     ).toBe(true)
   })
 
+  it('matches EA Sports under the Electronic Arts company bucket', () => {
+    expect(
+      igdbGameMatchesCategory(
+        {
+          ...baseGame,
+          developers: [],
+          publishers: [],
+          igdb: {
+            ...baseGame.igdb!,
+            companies: ['EA Sports'],
+            keywords: [],
+          },
+        },
+        {
+          type: 'company',
+          id: 'electronic-arts',
+          name: 'Electronic Arts',
+          slug: 'electronic-arts',
+        }
+      )
+    ).toBe(true)
+  })
+
+  it('matches EA Tiburon under the Electronic Arts company bucket', () => {
+    expect(
+      igdbGameMatchesCategory(
+        {
+          ...baseGame,
+          developers: [],
+          publishers: [],
+          igdb: {
+            ...baseGame.igdb!,
+            companies: ['EA Tiburon'],
+            keywords: [],
+          },
+        },
+        {
+          type: 'company',
+          id: 'electronic-arts',
+          name: 'Electronic Arts',
+          slug: 'electronic-arts',
+        }
+      )
+    ).toBe(true)
+  })
+
+  it('matches Square under the Square Enix company bucket', () => {
+    expect(
+      igdbGameMatchesCategory(
+        {
+          ...baseGame,
+          developers: [],
+          publishers: [],
+          igdb: {
+            ...baseGame.igdb!,
+            companies: ['Square'],
+            keywords: [],
+          },
+        },
+        {
+          type: 'company',
+          id: 'square-enix',
+          name: 'Square Enix',
+          slug: 'square-enix',
+        }
+      )
+    ).toBe(true)
+  })
+
+  it('matches Xbox Game Studios under the Microsoft company bucket', () => {
+    expect(
+      igdbGameMatchesCategory(
+        {
+          ...baseGame,
+          developers: [],
+          publishers: [],
+          igdb: {
+            ...baseGame.igdb!,
+            companies: ['Xbox Game Studios'],
+            keywords: [],
+          },
+        },
+        {
+          type: 'company',
+          id: 'microsoft-xbox',
+          name: 'Microsoft',
+          slug: 'microsoft-xbox',
+        }
+      )
+    ).toBe(true)
+  })
+
   it('rejects categories the game does not satisfy', () => {
     expect(igdbGameMatchesCategory(baseGame, { type: 'theme', id: 1, name: 'Action' })).toBe(false)
   })
