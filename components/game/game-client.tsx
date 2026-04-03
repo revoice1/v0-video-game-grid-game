@@ -57,6 +57,7 @@ import {
   getPlayerLabel,
   getVersusInvalidGuessResolution,
   getVersusPlacementResolution,
+  getVersusTurnExpiredResolution,
   type TicTacToePlayer,
 } from './game-client-versus-helpers'
 import {
@@ -2093,12 +2094,39 @@ export function GameClient() {
     setTurnDeadlineAt,
     onTurnExpired: (nextPlayer) => {
       setSelectedCell(null)
-      setCurrentPlayer(nextPlayer)
       setStealableCell(null)
+
+      const expirationResolution = getVersusTurnExpiredResolution({
+        currentPlayer,
+        pendingFinalSteal,
+      })
+
+      if (expirationResolution.kind === 'defender-wins') {
+        setPendingFinalSteal(null)
+        setWinner(expirationResolution.defender)
+
+        if (isCurrentOnlineMatch && pendingFinalSteal) {
+          void onlineVersus.sendEvent('miss', {
+            cellIndex: pendingFinalSteal.cellIndex,
+            guessesRemaining,
+            resolutionKind: 'defender-wins',
+            defender: pendingFinalSteal.defender,
+          })
+        }
+
+        toast({
+          variant: 'destructive',
+          title: expirationResolution.title,
+          description: expirationResolution.description,
+        })
+        return
+      }
+
+      setCurrentPlayer(nextPlayer)
       toast({
         variant: 'destructive',
-        title: 'Turn expired',
-        description: `${getPlayerLabel(nextPlayer)} is up.`,
+        title: expirationResolution.title,
+        description: expirationResolution.description,
       })
     },
   })
