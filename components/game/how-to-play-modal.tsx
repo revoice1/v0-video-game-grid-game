@@ -107,6 +107,20 @@ function StandardHowToPlay({
             <span className="font-bold text-primary">6</span>
           </div>
           <div>
+            <p className="font-medium">Objections</p>
+            <p className="text-sm text-muted-foreground">
+              If a filled square looks wrong, open its details and challenge it with an objection. A
+              sustained objection removes the answer; an overruled objection leaves it in place with
+              an explanation from the judgment pass.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
+            <span className="font-bold text-primary">7</span>
+          </div>
+          <div>
             <p className="font-medium">Daily Reset</p>
             <p className="text-sm text-muted-foreground">{resetCopy}</p>
           </div>
@@ -114,7 +128,7 @@ function StandardHowToPlay({
 
         <div className="flex gap-3">
           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
-            <span className="font-bold text-primary">7</span>
+            <span className="font-bold text-primary">8</span>
           </div>
           <div>
             <p className="font-medium">Release Tags</p>
@@ -128,7 +142,7 @@ function StandardHowToPlay({
 
         <div className="flex gap-3">
           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
-            <span className="font-bold text-primary">8</span>
+            <span className="font-bold text-primary">9</span>
           </div>
           <div>
             <p className="font-medium">Originals And Ports</p>
@@ -142,7 +156,7 @@ function StandardHowToPlay({
 
         <div className="flex gap-3">
           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
-            <span className="font-bold text-primary">9</span>
+            <span className="font-bold text-primary">10</span>
           </div>
           <div>
             <p className="font-medium">Rarity Score</p>
@@ -230,6 +244,21 @@ function VersusHowToPlay() {
             <span className="font-bold text-primary">6</span>
           </div>
           <div>
+            <p className="font-medium">Objections</p>
+            <p className="text-sm text-muted-foreground">
+              Some versus matches allow a limited number of objections per player. Use one when you
+              think a claimed answer does not really fit the square. If the objection is sustained,
+              that claim is removed. If it is overruled, the claim stands and the objection is
+              spent.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
+            <span className="font-bold text-primary">7</span>
+          </div>
+          <div>
             <p className="font-medium">Optional Turn Timer</p>
             <p className="text-sm text-muted-foreground">
               If your custom match uses a timer, it shows in the versus HUD. When the clock hits
@@ -240,7 +269,7 @@ function VersusHowToPlay() {
 
         <div className="flex gap-3">
           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
-            <span className="font-bold text-primary">7</span>
+            <span className="font-bold text-primary">8</span>
           </div>
           <div>
             <p className="font-medium">Disable Draws</p>
@@ -253,7 +282,7 @@ function VersusHowToPlay() {
 
         <div className="flex gap-3">
           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
-            <span className="font-bold text-primary">8</span>
+            <span className="font-bold text-primary">9</span>
           </div>
           <div>
             <p className="font-medium">Win Condition</p>
