@@ -32,7 +32,14 @@ test('versus mode shows start options and opens setup controls', async ({ page }
   await page.getByRole('button', { name: 'Versus' }).click()
 
   await expect(page.getByText('Versus Mode')).toBeVisible()
-  await expect(page.locator('button').filter({ hasText: 'Local Match' }).first()).toBeVisible()
+  await expect(page.getByRole('button', { name: /^Local\b/i })).toBeVisible()
+  await expect(page.getByRole('button', { name: /^Online\b/i })).toBeVisible()
+
+  await page.getByRole('button', { name: /^Local\b/i }).click()
+
+  await expect(
+    page.locator('button').filter({ hasText: 'Standard Local Match' }).first()
+  ).toBeVisible()
   await expect(
     page.locator('button').filter({ hasText: 'Custom Local Match' }).first()
   ).toBeVisible()
@@ -93,7 +100,8 @@ test('local versus refresh restores the versus board instead of booting daily', 
 
   await page.goto('/')
   await page.getByRole('button', { name: 'Versus' }).click()
-  await page.locator('button').filter({ hasText: 'Local Match' }).first().click()
+  await page.getByRole('button', { name: /^Local\b/i }).click()
+  await page.locator('button').filter({ hasText: 'Standard Local Match' }).first().click()
 
   await expect(page.getByTestId('grid-cell-0')).toBeVisible()
   await expect(page.getByText(/Turn: \d+:\d{2}/)).toBeVisible()
@@ -119,7 +127,8 @@ test('local versus refresh restores an open search with the typed query', async 
 
   await page.goto('/')
   await page.getByRole('button', { name: 'Versus' }).click()
-  await page.locator('button').filter({ hasText: 'Local Match' }).first().click()
+  await page.getByRole('button', { name: /^Local\b/i }).click()
+  await page.locator('button').filter({ hasText: 'Standard Local Match' }).first().click()
 
   await expect(page.getByTestId('grid-cell-0')).toBeVisible()
   await page.getByTestId('grid-cell-0').click()

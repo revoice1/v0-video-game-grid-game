@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { GameHeader } from './game-header'
 import { HowToPlayModal } from './how-to-play-modal'
 import { AchievementsModal } from './achievements-modal'
@@ -13,6 +14,8 @@ import {
 
 type GameMode = 'practice' | 'versus'
 type TicTacToePlayer = 'x' | 'o'
+type VersusStartSurface = 'local' | 'online'
+type OnlineStartAction = 'host' | 'join'
 
 interface ModeStartScreenProps {
   mode: GameMode
@@ -47,7 +50,8 @@ interface ModeStartScreenProps {
   onClosePracticeSetup: () => void
   onCloseVersusSetup: () => void
   onStartStandard: () => void
-  onHostOnlineMatch?: () => void
+  onHostOnlineStandardMatch?: () => void
+  onHostOnlineCustomMatch?: () => void
   onJoinOnlineMatch?: () => void
   onApplyPracticeFilters: (
     filters: VersusCategoryFilters,
@@ -98,12 +102,56 @@ export function ModeStartScreen({
   onClosePracticeSetup,
   onCloseVersusSetup,
   onStartStandard,
-  onHostOnlineMatch,
+  onHostOnlineStandardMatch,
+  onHostOnlineCustomMatch,
   onJoinOnlineMatch,
   onApplyPracticeFilters,
   onApplyVersusFilters,
 }: ModeStartScreenProps) {
   const isPracticeStart = mode === 'practice'
+  const [versusSurface, setVersusSurface] = useState<VersusStartSurface | null>(null)
+  const [onlineAction, setOnlineAction] = useState<OnlineStartAction | null>(null)
+
+  useEffect(() => {
+    if (!isPracticeStart) return
+    setVersusSurface(null)
+    setOnlineAction(null)
+  }, [isPracticeStart])
+
+  const showVersusBranchChooser = !isPracticeStart && versusSurface === null
+  const showLocalVersusChoices = !isPracticeStart && versusSurface === 'local'
+  const showOnlineRoleChoices =
+    !isPracticeStart && versusSurface === 'online' && onlineAction === null
+  const showOnlineHostChoices =
+    !isPracticeStart && versusSurface === 'online' && onlineAction === 'host'
+  const showBackButton = !isPracticeStart && (versusSurface !== null || onlineAction !== null)
+
+  const headerDescription = (() => {
+    if (isPracticeStart) {
+      return 'Launch a standard solo board right away, or customize the category pool first.'
+    }
+    if (showVersusBranchChooser) {
+      return 'Start with local or online, then we will guide you through the rest.'
+    }
+    if (showOnlineRoleChoices) {
+      return 'Choose whether you are creating a room or joining one from a friend.'
+    }
+    if (showOnlineHostChoices) {
+      return 'Pick the default rules or tune a custom setup before hosting your room.'
+    }
+    return 'Pick a standard local match or customize the rules first.'
+  })()
+
+  const handleBack = () => {
+    if (onlineAction !== null) {
+      setOnlineAction(null)
+      return
+    }
+
+    if (versusSurface !== null) {
+      setVersusSurface(null)
+    }
+  }
 
   return (
     <main id="top" className="min-h-screen px-4 py-6">
@@ -133,77 +181,140 @@ export function ModeStartScreen({
           {isPracticeStart ? 'Practice Mode' : 'Versus Mode'}
         </p>
         <h2 className="mt-3 text-2xl font-bold text-foreground">How do you want to play?</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {isPracticeStart
-            ? 'Launch a standard solo board right away, or customize the category pool first.'
-            : 'Play locally on one device, or challenge a friend online.'}
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">{headerDescription}</p>
 
-        {/* Local match options */}
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          <button
-            onClick={onStartStandard}
-            className="rounded-2xl border border-border bg-secondary/40 px-4 py-4 text-left transition-colors hover:bg-secondary/65"
-          >
-            <p className="text-sm font-semibold text-foreground">
-              {isPracticeStart ? 'Standard Puzzle' : 'Local Match'}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {isPracticeStart
-                ? 'Use the default solo category pool and jump right in.'
-                : 'Both players on this device, default rules.'}
-            </p>
-          </button>
-          <button
-            onClick={isPracticeStart ? onOpenPracticeSetup : onOpenVersusSetup}
-            className="rounded-2xl border border-primary/30 bg-primary/10 px-4 py-4 text-left transition-colors hover:bg-primary/15"
-          >
-            <p className="text-sm font-semibold text-foreground">
-              {isPracticeStart ? 'Custom Puzzle' : 'Custom Local Match'}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {isPracticeStart
-                ? 'Pick the families you want in the solo category pool before generating.'
-                : 'Choose category families, steal rules, and turn timer.'}
-            </p>
-          </button>
-        </div>
+        {showBackButton && (
+          <div className="mt-5 flex justify-center">
+            <button
+              onClick={handleBack}
+              className="rounded-full border border-border bg-secondary/30 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:bg-secondary/55 hover:text-foreground"
+            >
+              Back
+            </button>
+          </div>
+        )}
 
-        {/* Online match options — only shown for versus */}
-        {!isPracticeStart && (onHostOnlineMatch || onJoinOnlineMatch) && (
-          <>
-            <div className="relative my-5 flex items-center gap-3">
-              <div className="h-px flex-1 bg-border" />
-              <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                online
-              </span>
-              <div className="h-px flex-1 bg-border" />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {onHostOnlineMatch && (
-                <button
-                  onClick={onHostOnlineMatch}
-                  className="rounded-2xl border border-sky-500/30 bg-sky-500/10 px-4 py-4 text-left transition-colors hover:bg-sky-500/15"
-                >
-                  <p className="text-sm font-semibold text-foreground">Host Online Match</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Create a match and share an invite link with a friend.
-                  </p>
-                </button>
-              )}
-              {onJoinOnlineMatch && (
-                <button
-                  onClick={onJoinOnlineMatch}
-                  className="rounded-2xl border border-sky-500/30 bg-sky-500/10 px-4 py-4 text-left transition-colors hover:bg-sky-500/15"
-                >
-                  <p className="text-sm font-semibold text-foreground">Join Online Match</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Enter a match code from a friend&apos;s invite.
-                  </p>
-                </button>
-              )}
-            </div>
-          </>
+        {isPracticeStart && (
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <button
+              onClick={onStartStandard}
+              className="rounded-2xl border border-border bg-secondary/40 px-4 py-4 text-left transition-colors hover:bg-secondary/65"
+            >
+              <p className="text-sm font-semibold text-foreground">Standard Puzzle</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Use the default solo category pool and jump right in.
+              </p>
+            </button>
+            <button
+              onClick={onOpenPracticeSetup}
+              className="rounded-2xl border border-primary/30 bg-primary/10 px-4 py-4 text-left transition-colors hover:bg-primary/15"
+            >
+              <p className="text-sm font-semibold text-foreground">Custom Puzzle</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Pick the families you want in the solo category pool before generating.
+              </p>
+            </button>
+          </div>
+        )}
+
+        {showVersusBranchChooser && (
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <button
+              onClick={() => setVersusSurface('local')}
+              className="rounded-2xl border border-border bg-secondary/40 px-4 py-4 text-left transition-colors hover:bg-secondary/65"
+            >
+              <p className="text-sm font-semibold text-foreground">Local</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Both players on this device with quick pass-and-play turns.
+              </p>
+            </button>
+            <button
+              onClick={() => setVersusSurface('online')}
+              className="rounded-2xl border border-sky-500/30 bg-sky-500/10 px-4 py-4 text-left transition-colors hover:bg-sky-500/15"
+            >
+              <p className="text-sm font-semibold text-foreground">Online</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Challenge a friend in a shared room and sync the same board live.
+              </p>
+            </button>
+          </div>
+        )}
+
+        {showLocalVersusChoices && (
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <button
+              onClick={onStartStandard}
+              className="rounded-2xl border border-border bg-secondary/40 px-4 py-4 text-left transition-colors hover:bg-secondary/65"
+            >
+              <p className="text-sm font-semibold text-foreground">Standard Local Match</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Default local rules and category pool.
+              </p>
+            </button>
+            <button
+              onClick={onOpenVersusSetup}
+              className="rounded-2xl border border-primary/30 bg-primary/10 px-4 py-4 text-left transition-colors hover:bg-primary/15"
+            >
+              <p className="text-sm font-semibold text-foreground">Custom Local Match</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Choose category families, steal rules, objections, and timer settings.
+              </p>
+            </button>
+          </div>
+        )}
+
+        {showOnlineRoleChoices && (
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            {onHostOnlineStandardMatch && (
+              <button
+                onClick={() => setOnlineAction('host')}
+                className="rounded-2xl border border-sky-500/30 bg-sky-500/10 px-4 py-4 text-left transition-colors hover:bg-sky-500/15"
+              >
+                <p className="text-sm font-semibold text-foreground">Host Match</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Create a room, then decide whether you want standard or custom rules.
+                </p>
+              </button>
+            )}
+            {onJoinOnlineMatch && (
+              <button
+                onClick={onJoinOnlineMatch}
+                className="rounded-2xl border border-sky-500/30 bg-sky-500/10 px-4 py-4 text-left transition-colors hover:bg-sky-500/15"
+              >
+                <p className="text-sm font-semibold text-foreground">Join Match</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Enter a friend&apos;s room code and use the host&apos;s current rules.
+                </p>
+              </button>
+            )}
+          </div>
+        )}
+
+        {showOnlineHostChoices && (
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            {onHostOnlineStandardMatch && (
+              <button
+                onClick={onHostOnlineStandardMatch}
+                className="rounded-2xl border border-border bg-secondary/40 px-4 py-4 text-left transition-colors hover:bg-secondary/65"
+              >
+                <p className="text-sm font-semibold text-foreground">Standard Online Match</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Host a room with the default online rules and start sharing right away.
+                </p>
+              </button>
+            )}
+            {onHostOnlineCustomMatch && (
+              <button
+                onClick={onHostOnlineCustomMatch}
+                className="rounded-2xl border border-primary/30 bg-primary/10 px-4 py-4 text-left transition-colors hover:bg-primary/15"
+              >
+                <p className="text-sm font-semibold text-foreground">Custom Online Match</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Tune the rule set first, then create the room with that setup.
+                </p>
+              </button>
+            )}
+          </div>
         )}
       </div>
 

@@ -57,6 +57,7 @@ import {
   getPlayerLabel,
   getVersusInvalidGuessResolution,
   getVersusPlacementResolution,
+  getVersusTurnExpiredResolution,
   type TicTacToePlayer,
 } from './game-client-versus-helpers'
 import {
@@ -121,6 +122,10 @@ import {
 } from '@/hooks/use-versus-steal'
 
 const MAX_GUESSES = 9
+const DEFAULT_VERSUS_STEAL_RULE: VersusStealRule = 'lower'
+const DEFAULT_VERSUS_TIMER_OPTION: VersusTurnTimerOption = 300
+const DEFAULT_VERSUS_DISABLE_DRAWS = true
+const DEFAULT_VERSUS_OBJECTION_RULE: VersusObjectionRule = 'one'
 type GameMode = 'daily' | 'practice' | 'versus'
 
 interface ActiveStealShowdown {
@@ -209,6 +214,7 @@ interface PuzzleStreamMessage {
 }
 
 export function GameClient() {
+  const pendingVersusSetupIntentRef = useRef<'local' | 'online-host' | null>(null)
   const skipNextVersusAutoLoadRef = useRef(false)
   const skipNextPracticeAutoLoadRef = useRef(false)
   const skipNextVersusSavedStateRestoreRef = useRef(false)
@@ -221,7 +227,6 @@ export function GameClient() {
   const preparedOnlineRoomKeyRef = useRef<string | null>(null)
   const lastSavedOnlineSnapshotRef = useRef<string | null>(null)
   const lastAppliedOnlineSnapshotRef = useRef<string | null>(null)
-  const replayedOnlineStealShowdownIdsRef = useRef(new Set<number>())
   const attemptedInviteJoinCodeRef = useRef<string | null>(null)
   const { mode, setMode, loadedPuzzleMode, setLoadedPuzzleMode } = useGameModeState()
   const {
@@ -415,7 +420,8 @@ export function GameClient() {
     preparedOnlineRoomKeyRef.current = null
     lastSavedOnlineSnapshotRef.current = null
     lastAppliedOnlineSnapshotRef.current = null
-    replayedOnlineStealShowdownIdsRef.current = new Set()
+    snapshotSaveInFlightRef.current = false
+    pendingSnapshotQueueRef.current = null
     attemptedInviteJoinCodeRef.current = null
     skipNextVersusSavedStateRestoreRef.current = false
     suppressVersusStatePersistenceRef.current = false
@@ -503,7 +509,6 @@ export function GameClient() {
       appliedOnlineEventIdsRef.current = new Set()
       lastSavedOnlineSnapshotRef.current = roomSnapshotSignature
       lastAppliedOnlineSnapshotRef.current = null
-      replayedOnlineStealShowdownIdsRef.current = new Set()
     }
 
     if (needsFreshRoomPrep && !roomSnapshot) {
@@ -581,6 +586,57 @@ export function GameClient() {
   const appliedOnlineEventIdsRef = useRef(new Set<number>())
   // Mirror of guesses state for synchronous reads inside the online event effect.
   const guessesRef = useRef(guesses)
+  // True while a saveSnapshot() call is in-flight; prevents concurrent saves racing.
+  const snapshotSaveInFlightRef = useRef(false)
+  // Holds the next snapshot to save once the current in-flight save completes.
+  const pendingSnapshotQueueRef = useRef<OnlineVersusSnapshot | null>(null)
+
+  // Shared queued snapshot saver. Serialises saves so concurrent state changes
+  // never race on the server. Key behaviours:
+  //   - Skips the write if signature already matches the last confirmed save.
+  //   - While a save is in-flight, queues the newest snapshot (newest-wins);
+  //     earlier snapshots and their onConfirmed callbacks are dropped.
+  //   - onConfirmed fires only after a confirmed successful write. Callers that
+  //     need a semantic transition after the save (e.g. markFinished) pass it here.
+  const enqueueSaveSnapshot = useCallback(
+    (snapshot: OnlineVersusSnapshot, onConfirmed?: () => void) => {
+      const sig = JSON.stringify(snapshot)
+      if (sig === lastSavedOnlineSnapshotRef.current) {
+        onConfirmed?.()
+        return
+      }
+
+      if (snapshotSaveInFlightRef.current) {
+        pendingSnapshotQueueRef.current = snapshot
+        return
+      }
+
+      const doSave = (toSave: OnlineVersusSnapshot, afterSave?: () => void) => {
+        const saveSig = JSON.stringify(toSave)
+        snapshotSaveInFlightRef.current = true
+        void onlineVersus.saveSnapshot(toSave).then((result) => {
+          snapshotSaveInFlightRef.current = false
+          if (result.ok) {
+            lastSavedOnlineSnapshotRef.current = saveSig
+            lastAppliedOnlineSnapshotRef.current = saveSig
+            afterSave?.()
+          } else {
+            console.error('Failed to save online versus snapshot:', result.error)
+          }
+          const queued = pendingSnapshotQueueRef.current
+          if (queued !== null) {
+            pendingSnapshotQueueRef.current = null
+            if (JSON.stringify(queued) !== lastSavedOnlineSnapshotRef.current) {
+              doSave(queued)
+            }
+          }
+        })
+      }
+
+      doSave(snapshot, onConfirmed)
+    },
+    [onlineVersus.saveSnapshot]
+  )
 
   // Host-only: once the puzzle is generated and loaded locally, publish it to the room once.
   // Guards:
@@ -652,31 +708,17 @@ export function GameClient() {
       return
     }
 
-    const signature = JSON.stringify(snapshot)
-    if (signature === lastSavedOnlineSnapshotRef.current) {
-      return
-    }
-
-    lastSavedOnlineSnapshotRef.current = signature
-    lastAppliedOnlineSnapshotRef.current = signature
-
-    void onlineVersus.saveSnapshot(snapshot).then((result) => {
-      if (!result.ok) {
-        lastSavedOnlineSnapshotRef.current = null
-        lastAppliedOnlineSnapshotRef.current = null
-        console.error('Failed to save online versus snapshot:', result.error)
-      }
-    })
+    enqueueSaveSnapshot(snapshot)
   }, [
     currentPlayer,
+    enqueueSaveSnapshot,
     guesses,
     guessesRemaining,
+    isCurrentOnlineMatch,
     loadedPuzzleMode,
     mode,
-    isCurrentOnlineMatch,
     onlineVersus.myRole,
     onlineVersus.room,
-    onlineVersus.saveSnapshot,
     pendingFinalSteal,
     puzzle,
     stealableCell,
@@ -696,12 +738,6 @@ export function GameClient() {
     if (!isCurrentOnlineMatch || !onlineVersus.myRole) return
 
     const myRole = onlineVersus.myRole
-    const shouldProcessOnlineEvents =
-      myRole === 'x' || onlineVersus.isHydratingHistory || !onlineVersus.room?.state_data
-
-    if (!shouldProcessOnlineEvents) {
-      return
-    }
 
     for (const event of onlineVersus.events) {
       // Live events from this client are already applied locally. We only
@@ -717,6 +753,14 @@ export function GameClient() {
 
       const payload = event.payload as Record<string, unknown>
       const cellIndex = payload.cellIndex as number
+      if (typeof cellIndex !== 'number' || cellIndex < 0 || cellIndex > 8) {
+        console.error('[online-versus] received event with invalid cellIndex', {
+          eventId: event.id,
+          type: event.type,
+          cellIndex,
+        })
+        continue
+      }
       const steals = versusStealRuleRef.current !== 'off'
       const noDraws = versusDisableDrawsRef.current
 
@@ -905,77 +949,7 @@ export function GameClient() {
     onlineVersus.events,
     onlineVersus.isHydratingHistory,
     onlineVersus.myRole,
-    onlineVersus.room?.state_data,
     isCurrentOnlineMatch,
-  ])
-
-  useEffect(() => {
-    if (
-      !isCurrentOnlineMatch ||
-      !onlineVersus.myRole ||
-      onlineVersus.myRole !== 'o' ||
-      onlineVersus.isHydratingHistory ||
-      !onlineVersus.room?.state_data
-    ) {
-      return
-    }
-
-    for (const event of onlineVersus.events) {
-      if (event.type !== 'steal') {
-        continue
-      }
-
-      if (event.player === onlineVersus.myRole) {
-        continue
-      }
-
-      if (replayedOnlineStealShowdownIdsRef.current.has(event.id)) {
-        continue
-      }
-
-      replayedOnlineStealShowdownIdsRef.current.add(event.id)
-
-      const payload = event.payload as Record<string, unknown>
-      if (!payload.hadShowdownScores || !animationsEnabled) {
-        continue
-      }
-
-      const defenderName =
-        typeof payload.defendingGameName === 'string' ? payload.defendingGameName : null
-      const defenderScore =
-        typeof payload.defendingScore === 'number' ? payload.defendingScore : null
-      const attackerName =
-        typeof payload.attackingGameName === 'string' ? payload.attackingGameName : null
-      const attackerScore =
-        typeof payload.attackingScore === 'number' ? payload.attackingScore : null
-
-      if (
-        defenderName === null ||
-        defenderScore === null ||
-        attackerName === null ||
-        attackerScore === null
-      ) {
-        continue
-      }
-
-      setActiveStealShowdown({
-        burstId: event.id,
-        durationMs: STEAL_SHOWDOWN_DURATION_MS,
-        defenderName,
-        defenderScore,
-        attackerName,
-        attackerScore,
-        rule: versusStealRuleRef.current === 'higher' ? 'higher' : 'lower',
-        successful: Boolean(payload.successful),
-      })
-    }
-  }, [
-    animationsEnabled,
-    isCurrentOnlineMatch,
-    onlineVersus.events,
-    onlineVersus.isHydratingHistory,
-    onlineVersus.myRole,
-    onlineVersus.room?.state_data,
   ])
 
   const commitVersusEventLog = useCallback((nextEventLog: VersusEventRecord[]) => {
@@ -1362,23 +1336,7 @@ export function GameClient() {
       turnDurationSeconds: typeof versusTimerOption === 'number' ? versusTimerOption : null,
     }
 
-    const finalSignature = JSON.stringify(finalSnapshot)
-    lastSavedOnlineSnapshotRef.current = finalSignature
-    lastAppliedOnlineSnapshotRef.current = finalSignature
-
-    void onlineVersus.saveSnapshot(finalSnapshot).then((snapshotResult) => {
-      if (!snapshotResult.ok) {
-        finishedOnlineRoomIdRef.current = null
-        lastSavedOnlineSnapshotRef.current = null
-        lastAppliedOnlineSnapshotRef.current = null
-        toast({
-          title: 'Failed to save final match state',
-          description: snapshotResult.error ?? undefined,
-          variant: 'destructive',
-        })
-        return
-      }
-
+    enqueueSaveSnapshot(finalSnapshot, () => {
       void onlineVersus.markFinished().then((result) => {
         if (!result.ok) {
           finishedOnlineRoomIdRef.current = null
@@ -1392,6 +1350,7 @@ export function GameClient() {
     })
   }, [
     currentPlayer,
+    enqueueSaveSnapshot,
     guesses,
     guessesRemaining,
     isCurrentOnlineMatch,
@@ -2140,12 +2099,39 @@ export function GameClient() {
     setTurnDeadlineAt,
     onTurnExpired: (nextPlayer) => {
       setSelectedCell(null)
-      setCurrentPlayer(nextPlayer)
       setStealableCell(null)
+
+      const expirationResolution = getVersusTurnExpiredResolution({
+        currentPlayer,
+        pendingFinalSteal,
+      })
+
+      if (expirationResolution.kind === 'defender-wins') {
+        setPendingFinalSteal(null)
+        setWinner(expirationResolution.defender)
+
+        if (isCurrentOnlineMatch && pendingFinalSteal) {
+          void onlineVersus.sendEvent('miss', {
+            cellIndex: pendingFinalSteal.cellIndex,
+            guessesRemaining,
+            resolutionKind: 'defender-wins',
+            defender: pendingFinalSteal.defender,
+          })
+        }
+
+        toast({
+          variant: 'destructive',
+          title: expirationResolution.title,
+          description: expirationResolution.description,
+        })
+        return
+      }
+
+      setCurrentPlayer(nextPlayer)
       toast({
         variant: 'destructive',
-        title: 'Turn expired',
-        description: `${getPlayerLabel(nextPlayer)} is up.`,
+        title: expirationResolution.title,
+        description: expirationResolution.description,
       })
     },
   })
@@ -2744,7 +2730,6 @@ export function GameClient() {
     disableDraws: boolean,
     objectionRule: VersusObjectionRule
   ) => {
-    resetOnlineVersusSession()
     setVersusCategoryFilters(filters)
     setVersusSetupError(null)
     versusStealRuleRef.current = stealRule
@@ -2756,6 +2741,44 @@ export function GameClient() {
     setVersusDisableDraws(disableDraws)
     setVersusObjectionRule(objectionRule)
     setShowVersusSetup(false)
+    const setupIntent = pendingVersusSetupIntentRef.current
+    pendingVersusSetupIntentRef.current = null
+
+    if (setupIntent === 'online-host') {
+      activePuzzleLoadControllerRef.current?.abort()
+      clearGameState('versus')
+      resetOnlineVersusSession()
+      setLoadedPuzzleMode(null)
+      setPuzzle(null)
+      setGuesses(Array(9).fill(null))
+      setGuessesRemaining(MAX_GUESSES)
+      setCurrentPlayer('x')
+      setStealableCell(null)
+      setWinner(null)
+      setPendingFinalSteal(null)
+      setLockImpactCell(null)
+      setSelectedCell(null)
+      setSearchQueryDraft('')
+      setDetailCell(null)
+      setShowResults(false)
+      setShowVersusStartOptions(false)
+      setTurnTimeLeft(null)
+      setTurnDeadlineAt(null)
+      setPendingVersusObjectionReview(null)
+      setVersusObjectionsUsed({ x: 0, o: 0 })
+      commitVersusEventLog([])
+      setShowOnlineLobby(true)
+      onlineVersus.createRoom({
+        categoryFilters: filters,
+        stealRule,
+        timerOption,
+        disableDraws,
+        objectionRule,
+      })
+      return
+    }
+
+    resetOnlineVersusSession()
     setShowVersusStartOptions(false)
     skipNextVersusAutoLoadRef.current = true
     clearGameState('versus')
@@ -3314,7 +3337,8 @@ export function GameClient() {
       preparedOnlineRoomKeyRef.current = null
       lastSavedOnlineSnapshotRef.current = null
       lastAppliedOnlineSnapshotRef.current = null
-      replayedOnlineStealShowdownIdsRef.current = new Set()
+      snapshotSaveInFlightRef.current = false
+      pendingSnapshotQueueRef.current = null
       setIsLoading(true)
       setLoadingProgress(8)
       setLoadingAttempts([])
@@ -3459,7 +3483,55 @@ export function GameClient() {
     commitVersusEventLog([])
   }, [commitVersusEventLog, resetOnlineVersusSession])
 
+  const hostOnlineMatchWithSettings = useCallback(
+    (
+      categoryFilters: VersusCategoryFilters,
+      stealRule: VersusStealRule,
+      timerOption: VersusTurnTimerOption,
+      disableDraws: boolean,
+      objectionRule: VersusObjectionRule
+    ) => {
+      setVersusCategoryFilters(categoryFilters)
+      setVersusSetupError(null)
+      versusStealRuleRef.current = stealRule
+      versusTimerOptionRef.current = timerOption
+      versusDisableDrawsRef.current = disableDraws
+      versusObjectionRuleRef.current = objectionRule
+      setVersusStealRule(stealRule)
+      setVersusTimerOption(timerOption)
+      setVersusDisableDraws(disableDraws)
+      setVersusObjectionRule(objectionRule)
+      prepareForOnlineMatchStart()
+      setShowOnlineLobby(true)
+      onlineVersus.createRoom({
+        categoryFilters,
+        stealRule,
+        timerOption,
+        disableDraws,
+        objectionRule,
+      })
+    },
+    [onlineVersus, prepareForOnlineMatchStart]
+  )
+
+  const handleHostStandardOnlineMatch = useCallback(() => {
+    pendingVersusSetupIntentRef.current = null
+    hostOnlineMatchWithSettings(
+      {},
+      DEFAULT_VERSUS_STEAL_RULE,
+      DEFAULT_VERSUS_TIMER_OPTION,
+      DEFAULT_VERSUS_DISABLE_DRAWS,
+      DEFAULT_VERSUS_OBJECTION_RULE
+    )
+  }, [hostOnlineMatchWithSettings])
+
+  const handleHostCustomOnlineMatch = useCallback(() => {
+    pendingVersusSetupIntentRef.current = 'online-host'
+    setShowVersusSetup(true)
+  }, [])
+
   const handleStartOnlineMatch = useCallback(() => {
+    pendingVersusSetupIntentRef.current = null
     setShowVersusSetup(false)
     setShowVersusStartOptions(false)
     setShowOnlineLobby(true)
@@ -3645,32 +3717,20 @@ export function GameClient() {
             onHowToPlayOpen={() => setShowHowToPlay(true)}
             onHowToPlayClose={() => setShowHowToPlay(false)}
             onOpenPracticeSetup={() => setShowPracticeSetup(true)}
-            onOpenVersusSetup={() => setShowVersusSetup(true)}
+            onOpenVersusSetup={() => {
+              pendingVersusSetupIntentRef.current = 'local'
+              setShowVersusSetup(true)
+            }}
             onClosePracticeSetup={() => setShowPracticeSetup(false)}
-            onCloseVersusSetup={() => setShowVersusSetup(false)}
-            onHostOnlineMatch={
-              mode === 'versus'
-                ? () => {
-                    prepareForOnlineMatchStart()
-                    onlineVersus.createRoom({
-                      categoryFilters: versusCategoryFilters,
-                      stealRule: versusStealRule,
-                      timerOption: versusTimerOption,
-                      disableDraws: versusDisableDraws,
-                      objectionRule: versusObjectionRule,
-                    })
-                    setShowOnlineLobby(true)
-                  }
-                : undefined
+            onCloseVersusSetup={() => {
+              pendingVersusSetupIntentRef.current = null
+              setShowVersusSetup(false)
+            }}
+            onHostOnlineStandardMatch={
+              mode === 'versus' ? handleHostStandardOnlineMatch : undefined
             }
-            onJoinOnlineMatch={
-              mode === 'versus'
-                ? () => {
-                    prepareForOnlineMatchStart()
-                    setShowOnlineLobby(true)
-                  }
-                : undefined
-            }
+            onHostOnlineCustomMatch={mode === 'versus' ? handleHostCustomOnlineMatch : undefined}
+            onJoinOnlineMatch={mode === 'versus' ? handleStartOnlineMatch : undefined}
             onStartStandard={() => {
               if (mode === 'practice') {
                 setPracticeCategoryFilters({})
@@ -3685,14 +3745,14 @@ export function GameClient() {
               resetOnlineVersusSession()
               setVersusCategoryFilters({})
               setVersusSetupError(null)
-              versusStealRuleRef.current = 'lower'
-              versusTimerOptionRef.current = 300
-              versusDisableDrawsRef.current = true
-              versusObjectionRuleRef.current = 'one'
-              setVersusStealRule('lower')
-              setVersusTimerOption(300)
-              setVersusDisableDraws(true)
-              setVersusObjectionRule('one')
+              versusStealRuleRef.current = DEFAULT_VERSUS_STEAL_RULE
+              versusTimerOptionRef.current = DEFAULT_VERSUS_TIMER_OPTION
+              versusDisableDrawsRef.current = DEFAULT_VERSUS_DISABLE_DRAWS
+              versusObjectionRuleRef.current = DEFAULT_VERSUS_OBJECTION_RULE
+              setVersusStealRule(DEFAULT_VERSUS_STEAL_RULE)
+              setVersusTimerOption(DEFAULT_VERSUS_TIMER_OPTION)
+              setVersusDisableDraws(DEFAULT_VERSUS_DISABLE_DRAWS)
+              setVersusObjectionRule(DEFAULT_VERSUS_OBJECTION_RULE)
               setShowVersusStartOptions(false)
               skipNextVersusAutoLoadRef.current = true
               clearGameState('versus')
@@ -3765,7 +3825,10 @@ export function GameClient() {
             mode === 'practice'
               ? () => setShowPracticeSetup(true)
               : mode === 'versus'
-                ? () => setShowVersusSetup(true)
+                ? () => {
+                    pendingVersusSetupIntentRef.current = 'local'
+                    setShowVersusSetup(true)
+                  }
                 : undefined
           }
         />
@@ -3989,7 +4052,10 @@ export function GameClient() {
 
       <VersusSetupModal
         isOpen={showVersusSetup}
-        onClose={() => setShowVersusSetup(false)}
+        onClose={() => {
+          pendingVersusSetupIntentRef.current = null
+          setShowVersusSetup(false)
+        }}
         mode="versus"
         errorMessage={versusSetupError}
         filters={versusCategoryFilters}

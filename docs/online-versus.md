@@ -8,6 +8,7 @@ to keep in mind while the feature is still being hardened.
 - [Current Shape](#current-shape)
 - [Supabase Setup](#supabase-setup)
 - [How Sync Works](#how-sync-works)
+- [Snapshot Save Discipline](#snapshot-save-discipline)
 - [Current Limits](#current-limits)
 - [Future Same-Room Rematch](#future-same-room-rematch)
 
@@ -17,16 +18,18 @@ Online versus currently uses:
 
 - backend routes for room creation, join, finish, puzzle publish, event append, and snapshot saves
 - Supabase Realtime subscriptions for live room and event updates
-- a room snapshot (`versus_rooms.state_data`) for faster resume after refresh
+- a room snapshot (`versus_rooms.state_data`) for rejoin/reload after a page refresh
 - a host-driven in-room continue flow after game end that clears the prior match and reuses the
   invite code for the next board
 
 The intended authority chain today is:
 
-1. host drives gameplay forward locally
-2. host writes the canonical snapshot
-3. guest follows the room snapshot for state
-4. events remain useful for history, replay, and some overlay/spectacle cues
+1. both host and guest drive local state forward by processing events as they arrive via Realtime
+2. the host additionally writes a canonical snapshot after each state change
+3. on rejoin or page reload, clients hydrate from the snapshot if one exists — otherwise from event
+   history
+4. events are the live sync primitive during active play; snapshots are the persistence primitive
+   for reload/rejoin
 
 That is safer than fully client-public writes, but it is not yet the final authoritative model.
 
@@ -74,9 +77,17 @@ mutation.
 - `ready`
 - `rematch`
 
+Both host and guest subscribe to `versus_events` inserts via Realtime. Each client processes
+incoming events from the opponent to advance their local board state. The event processing loop
+deduplicates by event ID (`appliedOnlineEventIdsRef`) so Realtime re-delivery and history-fetch
+overlap are both safe.
+
+During `isHydratingHistory` (while event history is being fetched over HTTP on join/rejoin),
+animations and overlay cues are suppressed so fetched history replays silently.
+
 ### Snapshots
 
-`state_data` is the main resume/sync payload. It currently tracks:
+`state_data` is the rejoin/reload payload. It currently tracks:
 
 - puzzle id
 - guesses
@@ -87,19 +98,47 @@ mutation.
 - objections used
 - turn deadline / duration
 
-Reload and rejoin should prefer snapshot hydration over full event replay when the room already has
-`state_data`.
+Snapshots are **not** used for live sync during active play. They are written by the host after
+each state change so a page reload or network drop can resume without replaying the full event log.
+When a client rejoins and `state_data` is present, it hydrates from the snapshot directly.
+
+## Snapshot Save Discipline
+
+`game-client.tsx` serialises all snapshot saves through `enqueueSaveSnapshot(snapshot, onConfirmed?)`:
+
+- **In-flight guard**: if a save is already in flight, the newest snapshot is queued (at most one
+  pending). Earlier queued snapshots are dropped (newest-wins).
+- **Deduplication**: saves whose JSON signature matches `lastSavedOnlineSnapshotRef` are skipped;
+  `onConfirmed` is called immediately in that case.
+- **Queue drain**: after each save completes, the pending snapshot is saved if its signature
+  differs from what was just confirmed. The callback from a dropped earlier snapshot is not
+  called — only the callback attached to the snapshot that actually lands is called.
+- **Confirmed-only ref updates**: `lastSavedOnlineSnapshotRef` and `lastAppliedOnlineSnapshotRef`
+  are updated only inside the `.then()` success branch, never before the request resolves.
+- **Finish path**: the final snapshot before calling `markFinished` is saved via
+  `enqueueSaveSnapshot(finalSnapshot, () => { void markFinished() })` so the finish request only
+  fires after the snapshot write is confirmed.
+
+Both `saveSnapshot` and `markFinished` in `use-online-versus-room.ts` carry an 8-second
+`AbortController` timeout and return `{ ok: false, error: 'Request timed out.' }` on abort.
 
 ## Current Limits
 
 The online loop is real enough to play, but these caveats still matter:
 
-- the server event route still does not fully enforce authoritative move legality
-- reload/rejoin is much better than before, but still not as seamless as purely local versus
-- post-game host-side `Continue In Room` resets the room in place, but it still clears old events
-  and does not yet use a true match boundary or ready-check handshake
-- `New Online Room` still exists as the clean escape hatch when you want a fresh invite code
-- some remote-side spectacle paths are still more fragile than the underlying board sync
+- **Server-side gameplay validation** — the event route (`POST /api/versus/event`) currently only
+  checks room membership. Turn order, move legality, steal timing, and objection limits are not yet
+  enforced server-side. This is the main production blocker.
+- **No automatic guest finish trigger** — if the host disconnects before calling `markFinished`,
+  the guest's board stays in the active phase. The guest can call `markFinished` manually but
+  nothing triggers it automatically.
+- **Failed non-final snapshot has no auto-retry** — if `saveSnapshot` fails and no subsequent
+  state change queues another save, that state version is never retried. The next move will produce
+  a new save attempt. This is acceptable for now but is not "reliable eventual delivery."
+- **In-room continue still clears events** — the post-game host-side `Continue In Room` reset does
+  not use a true match boundary or ready-check handshake; it clears old events and reuses the same
+  invite code for the next board.
+- **`New Online Room`** remains the clean escape hatch when you want a fresh invite code.
 
 So the current feature should be treated as:
 

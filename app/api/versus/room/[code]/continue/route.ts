@@ -13,7 +13,7 @@ export async function POST(
 
   const { data: room, error: fetchError } = await supabase
     .from('versus_rooms')
-    .select('id, code, host_session_id, guest_session_id, status, settings')
+    .select('id, code, host_session_id, guest_session_id, status, settings, state_data')
     .eq('code', upperCode)
     .single()
 
@@ -35,7 +35,19 @@ export async function POST(
     return NextResponse.json({ error: 'Only the host can continue the room.' }, { status: 403 })
   }
 
-  if (room.status !== 'finished') {
+  const snapshotWinner =
+    room.state_data &&
+    typeof room.state_data === 'object' &&
+    'winner' in room.state_data &&
+    (room.state_data.winner === 'x' ||
+      room.state_data.winner === 'o' ||
+      room.state_data.winner === 'draw')
+      ? room.state_data.winner
+      : null
+
+  const isReadyForContinue = room.status === 'finished' || snapshotWinner !== null
+
+  if (!isReadyForContinue) {
     return NextResponse.json({ error: 'The room is not ready for another match.' }, { status: 409 })
   }
 
@@ -64,7 +76,6 @@ export async function POST(
       expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
     })
     .eq('id', room.id)
-    .eq('status', 'finished')
     .select(
       'id, code, status, settings, puzzle_id, puzzle_data, state_data, expires_at, created_at'
     )

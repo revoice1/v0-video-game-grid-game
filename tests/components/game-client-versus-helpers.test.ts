@@ -7,6 +7,7 @@ import {
   getVersusFullBoardResolution,
   getVersusInvalidGuessResolution,
   getVersusPlacementResolution,
+  getVersusTurnExpiredResolution,
   getWinningPlayer,
 } from '@/components/game/game-client-versus-helpers'
 import type { CellGuess } from '@/lib/types'
@@ -141,6 +142,34 @@ describe('game client versus helpers', () => {
       nextPlayer: 'o',
       title: 'Missed claim',
       description: "didn't match RPG. O is up.",
+    })
+  })
+
+  it('resolves a final steal timeout as a defender win', () => {
+    expect(
+      getVersusTurnExpiredResolution({
+        currentPlayer: 'o',
+        pendingFinalSteal: { defender: 'x', cellIndex: 2 },
+      })
+    ).toEqual({
+      kind: 'defender-wins',
+      defender: 'x',
+      title: 'Final steal chance expired',
+      description: 'X keeps the win.',
+    })
+  })
+
+  it('resolves a normal turn timeout by handing the turn over', () => {
+    expect(
+      getVersusTurnExpiredResolution({
+        currentPlayer: 'x',
+        pendingFinalSteal: null,
+      })
+    ).toEqual({
+      kind: 'next-player',
+      nextPlayer: 'o',
+      title: 'Turn expired',
+      description: 'O is up.',
     })
   })
 

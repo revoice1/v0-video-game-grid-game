@@ -102,6 +102,15 @@ export function useOnlineVersusRoom(): UseOnlineVersusRoomReturn {
   // Set synchronously on mount (before any async fetch) if localStorage has an
   // in-progress room. The ?join= effect reads this to avoid a double-join race.
   const isResumingRef = useRef(loadRoomEntry() !== null)
+  // Tracks whether we've ever successfully subscribed on the current channel.
+  // Used to distinguish first-connect from reconnect in the subscribe callback.
+  const hasConnectedOnceRef = useRef(false)
+  // Stable refs to catch-up helpers so subscribeToRoom can call them without a
+  // forward-declaration ordering problem (both are useCallback, the helpers are
+  // declared after subscribeToRoom in the file).
+  const fetchEventHistoryRef = useRef<(roomId: string) => Promise<void>>(async () => {})
+  const fetchRoomStateRef = useRef<(code: string) => Promise<VersusRoom | null>>(async () => null)
+  const catchUpRoomRef = useRef<(roomId: string, code: string) => Promise<void>>(async () => {})
 
   useEffect(() => {
     roomRef.current = room
@@ -119,6 +128,8 @@ export function useOnlineVersusRoom(): UseOnlineVersusRoomReturn {
       supabase.removeChannel(channelRef.current)
       channelRef.current = null
     }
+
+    hasConnectedOnceRef.current = false
 
     const channel = supabase
       .channel(`versus_room:${targetRoom.id}`)
@@ -166,7 +177,18 @@ export function useOnlineVersusRoom(): UseOnlineVersusRoomReturn {
           })
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') return
+        if (!hasConnectedOnceRef.current) {
+          // First successful connection — normal path, no catch-up needed.
+          hasConnectedOnceRef.current = true
+          return
+        }
+        // Reconnected after a drop (phone sleep, network blip, etc.).
+        // Refresh the room row first. If the host has a fresh snapshot, prefer
+        // that authoritative state over replaying old events on top of it.
+        void catchUpRoomRef.current(targetRoom.id, targetRoom.code)
+      })
 
     channelRef.current = channel
   }, [])
@@ -205,6 +227,48 @@ export function useOnlineVersusRoom(): UseOnlineVersusRoomReturn {
     }
   }, [])
 
+  // Keep the ref in sync so subscribeToRoom's subscribe callback can call it
+  // without a forward-declaration ordering problem.
+  fetchEventHistoryRef.current = fetchEventHistory
+
+  // ── Fetch latest room state ───────────────────────────────────────────────
+  // Refreshes the room row (including state_data / turnDeadlineAt) from the
+  // server. Called alongside fetchEventHistory on reconnect / visibility-change
+  // so snapshot-only fields stay in sync even if no new events arrived.
+
+  const fetchRoomState = useCallback(async (code: string) => {
+    try {
+      const res = await fetch(`/api/versus/room/${code}`)
+      if (!res.ok) return null
+      const json = await res.json()
+      if (json.room) {
+        const nextRoom = json.room as VersusRoom
+        setRoom(nextRoom)
+        return nextRoom
+      }
+    } catch {
+      /* non-fatal */
+    }
+
+    return null
+  }, [])
+
+  fetchRoomStateRef.current = fetchRoomState
+
+  const catchUpRoom = useCallback(async (roomId: string, code: string) => {
+    const refreshedRoom = await fetchRoomStateRef.current(code)
+
+    // If the room already has a canonical snapshot, prefer hydrating from it
+    // rather than replaying missed history over the top of newer state.
+    if (refreshedRoom?.state_data) {
+      return
+    }
+
+    await fetchEventHistoryRef.current(roomId)
+  }, [])
+
+  catchUpRoomRef.current = catchUpRoom
+
   // ── Reload resume ─────────────────────────────────────────────────────────
   // On mount, check localStorage for an in-progress room and rejoin it.
 
@@ -238,6 +302,25 @@ export function useOnlineVersusRoom(): UseOnlineVersusRoomReturn {
         clearRoomEntry()
         setPhase('idle')
       })
+  }, [])
+
+  // ── Visibility-based catch-up ─────────────────────────────────────────────
+  // When the tab/app becomes visible again (phone waking from sleep, user
+  // switching back to the tab), fetch event history to fill any gap that
+  // occurred while the Realtime socket was suspended.
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') return
+      const room = roomRef.current
+      if (!room || room.status !== 'active') return
+      void catchUpRoomRef.current(room.id, room.code)
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [])
 
   // ── Cleanup on unmount ────────────────────────────────────────────────────
@@ -382,15 +465,26 @@ export function useOnlineVersusRoom(): UseOnlineVersusRoomReturn {
     const currentRoom = roomRef.current
     if (!currentRoom) return { ok: false, error: 'Not in a match.' }
 
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 8000)
+
     try {
-      const res = await fetch(`/api/versus/room/${currentRoom.code}/finish`, { method: 'POST' })
+      const res = await fetch(`/api/versus/room/${currentRoom.code}/finish`, {
+        method: 'POST',
+        signal: controller.signal,
+      })
       const json = await res.json()
       if (!res.ok || json.error) return { ok: false, error: json.error ?? 'Failed to end match.' }
       setPhase('finished')
       clearRoomEntry()
       return { ok: true, error: null }
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        return { ok: false, error: 'Request timed out.' }
+      }
       return { ok: false, error: 'Network error.' }
+    } finally {
+      window.clearTimeout(timeout)
     }
   }, [])
 
@@ -399,19 +493,28 @@ export function useOnlineVersusRoom(): UseOnlineVersusRoomReturn {
       const currentRoom = roomRef.current
       if (!currentRoom) return { ok: false, error: 'Not in a match.' }
 
+      const controller = new AbortController()
+      const timeout = window.setTimeout(() => controller.abort(), 8000)
+
       try {
         const res = await fetch(`/api/versus/room/${currentRoom.code}/state`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ snapshot }),
+          signal: controller.signal,
         })
         const json = await res.json()
         if (!res.ok || json.error) {
           return { ok: false, error: json.error ?? 'Failed to save match state.' }
         }
         return { ok: true, error: null }
-      } catch {
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') {
+          return { ok: false, error: 'Request timed out.' }
+        }
         return { ok: false, error: 'Network error.' }
+      } finally {
+        window.clearTimeout(timeout)
       }
     },
     []

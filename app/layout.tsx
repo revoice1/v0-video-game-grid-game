@@ -18,23 +18,28 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.gamegrid.games'),
   title: {
-    default: 'GameGrid | Daily Video Game Grid Puzzle',
+    default: 'GameGrid | Video Game Immaculate Grid',
     template: '%s | GameGrid',
   },
   description:
-    'Play a daily video game trivia grid inspired by immaculate grid-style puzzles. Match games to genres, platforms, decades, themes, perspectives, and modes.',
+    'Play a daily video game immaculate grid-style puzzle. Match games to genres, platforms, decades, themes, perspectives, and modes in a 3x3 trivia grid.',
   applicationName: 'GameGrid',
   referrer: 'origin-when-cross-origin',
   keywords: [
     'video game grid',
+    'video game immaculate grid style',
     'video game trivia',
     'daily video game puzzle',
     'gaming immaculate grid',
     'immaculate grid video games',
     'video game immaculate grid',
+    'video game immaculate grid style puzzle',
+    'daily immaculate grid video game puzzle',
     'gaming grid game',
     'video game trivia grid',
     'video game immaculate grid game',
+    'video game cross category puzzle',
+    'video game category grid',
     'video game guessing game',
     'game grid puzzle',
     'video game categories',
@@ -52,9 +57,9 @@ export const metadata: Metadata = {
     type: 'website',
     url: 'https://www.gamegrid.games/',
     siteName: 'GameGrid',
-    title: 'GameGrid | Daily Video Game Grid Puzzle',
+    title: 'GameGrid | Video Game Immaculate Grid',
     description:
-      'Fill the 3x3 grid with games that match both categories. Daily and practice video game trivia for genre, platform, decade, theme, and perspective nerds.',
+      'Fill the 3x3 grid with games that match both categories. A daily video game immaculate grid-style puzzle for genre, platform, decade, theme, and perspective nerds.',
     images: [
       {
         url: '/og-homepage.png',
@@ -66,9 +71,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'GameGrid | Daily Video Game Grid Puzzle',
+    title: 'GameGrid | Video Game Immaculate Grid',
     description:
-      'A daily video game trivia grid for people who know their JRPGs, boomer shooters, consoles, decades, and deep-cut metadata.',
+      'A daily video game immaculate grid-style puzzle for people who know their JRPGs, boomer shooters, consoles, decades, and deep-cut metadata.',
     images: ['/og-homepage.png'],
   },
   category: 'games',

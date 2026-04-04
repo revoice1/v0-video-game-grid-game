@@ -172,6 +172,45 @@ export function getVersusInvalidGuessResolution(options: {
   }
 }
 
+export function getVersusTurnExpiredResolution(options: {
+  currentPlayer: TicTacToePlayer
+  pendingFinalSteal: {
+    defender: TicTacToePlayer
+    cellIndex: number
+  } | null
+}):
+  | {
+      kind: 'defender-wins'
+      defender: TicTacToePlayer
+      title: string
+      description: string
+    }
+  | {
+      kind: 'next-player'
+      nextPlayer: TicTacToePlayer
+      title: string
+      description: string
+    } {
+  const { currentPlayer, pendingFinalSteal } = options
+
+  if (pendingFinalSteal) {
+    return {
+      kind: 'defender-wins',
+      defender: pendingFinalSteal.defender,
+      title: 'Final steal chance expired',
+      description: `${getPlayerLabel(pendingFinalSteal.defender)} keeps the win.`,
+    }
+  }
+
+  const nextPlayer = getNextPlayer(currentPlayer)
+  return {
+    kind: 'next-player',
+    nextPlayer,
+    title: 'Turn expired',
+    description: `${getPlayerLabel(nextPlayer)} is up.`,
+  }
+}
+
 export function getVersusPlacementResolution(options: {
   newGuesses: Array<CellGuess | null>
   currentPlayer: TicTacToePlayer
