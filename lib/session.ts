@@ -157,6 +157,21 @@ function sanitizeCategoryFilters(value: unknown): Record<string, string[]> | und
   return Object.fromEntries(sanitizedEntries)
 }
 
+function isPuzzleSnapshotCompatible(value: unknown): value is Puzzle {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false
+  }
+
+  const puzzle = value as Record<string, unknown>
+  return (
+    typeof puzzle.id === 'string' &&
+    Array.isArray(puzzle.row_categories) &&
+    puzzle.row_categories.length === 3 &&
+    Array.isArray(puzzle.col_categories) &&
+    puzzle.col_categories.length === 3
+  )
+}
+
 function sanitizeSavedGameState(rawState: unknown): SavedGameState | null {
   if (!rawState || typeof rawState !== 'object' || Array.isArray(rawState)) {
     return null
@@ -170,26 +185,24 @@ function sanitizeSavedGameState(rawState: unknown): SavedGameState | null {
   const sanitized: SavedGameState = {
     version: CURRENT_SAVE_STATE_VERSION,
     puzzleId: state.puzzleId,
-    guesses: Array(9).fill(null),
-    guessesRemaining: 9,
-    isComplete: false,
+    guesses: state.guesses
+      .slice(0, 9)
+      .map((guess) => (guess && typeof guess === 'object' ? guess : null)),
+    guessesRemaining:
+      typeof state.guessesRemaining === 'number' && Number.isFinite(state.guessesRemaining)
+        ? state.guessesRemaining
+        : 9,
+    isComplete: Boolean(state.isComplete),
   }
   const isLegacyState =
     typeof state.version !== 'number' || state.version < CURRENT_SAVE_STATE_VERSION
 
-  if (!isLegacyState) {
-    sanitized.guesses = state.guesses
-      .slice(0, 9)
-      .map((guess) => (guess && typeof guess === 'object' ? guess : null))
-    sanitized.guessesRemaining =
-      typeof state.guessesRemaining === 'number' && Number.isFinite(state.guessesRemaining)
-        ? state.guessesRemaining
-        : 9
-    sanitized.isComplete = Boolean(state.isComplete)
-  }
-
-  if (!isLegacyState && state.puzzle && typeof state.puzzle === 'object') {
-    sanitized.puzzle = state.puzzle as Puzzle
+  if (isPuzzleSnapshotCompatible(state.puzzle)) {
+    sanitized.puzzle = state.puzzle
+  } else if (isLegacyState && state.puzzle !== undefined) {
+    sanitized.guesses = Array(9).fill(null)
+    sanitized.guessesRemaining = 9
+    sanitized.isComplete = false
   }
 
   if (typeof state.date === 'string') sanitized.date = state.date

@@ -96,12 +96,32 @@ describe('session game-state persistence', () => {
     expect(restored).not.toBeNull()
     expect(restored?.version).toBe(2)
     expect(restored?.guesses).toHaveLength(9)
-    expect(restored?.guessesRemaining).toBe(9)
+    expect(restored?.guessesRemaining).toBe(7)
     expect(restored?.isComplete).toBe(false)
     expect(restored?.versusStealRule).toBeUndefined()
     expect(restored?.versusTimerOption).toBeUndefined()
     expect(restored?.versusObjectionRule).toBeUndefined()
     expect(restored?.practiceMinimumValidOptions).toBeNull()
     expect(restored?.versusMinimumValidOptions).toBeNull()
+  })
+
+  it('drops legacy puzzle snapshots that are structurally incompatible', () => {
+    localStorage.setItem(
+      'gamegrid_versus_state',
+      JSON.stringify({
+        puzzleId: 'versus-puzzle',
+        guesses: Array(9).fill({ gameId: 1 }),
+        guessesRemaining: 4,
+        isComplete: true,
+        puzzle: { id: 'bad', row_categories: [], col_categories: [] },
+      })
+    )
+
+    const restored = loadGameState('versus')
+
+    expect(restored).not.toBeNull()
+    expect(restored?.puzzle).toBeUndefined()
+    expect(restored?.guessesRemaining).toBe(9)
+    expect(restored?.isComplete).toBe(false)
   })
 })
