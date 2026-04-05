@@ -100,6 +100,7 @@ export function useVersusTurnTimer({
     }
 
     const turnTimerKey = `${puzzleId}:${currentPlayer}`
+    const previousTurnTimerKey = activeTurnTimerKeyRef.current
     if (expiredTurnTimerKeyRef.current && expiredTurnTimerKeyRef.current !== turnTimerKey) {
       expiredTurnTimerKeyRef.current = null
     }
@@ -132,7 +133,8 @@ export function useVersusTurnTimer({
       activeTurnTimerKeyRef.current = turnTimerKey
     } else {
       activeTurnTimerKeyRef.current = turnTimerKey
-      if (turnTimeLeft === null || turnTimeLeft <= 0) {
+      const didTurnAdvance = previousTurnTimerKey !== null && previousTurnTimerKey !== turnTimerKey
+      if (didTurnAdvance || turnTimeLeft === null || turnTimeLeft <= 0) {
         setTurnTimeLeft(versusTimerOption)
       }
       setTurnDeadlineAt(null)

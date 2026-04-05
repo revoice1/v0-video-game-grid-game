@@ -507,6 +507,56 @@ describe('useVersusTurnTimer', () => {
     }
   })
 
+  it('resets the local turn timer when a guess submission ends the turn', () => {
+    const activeTurnTimerKeyRef = { current: 'versus-puzzle:x' as string | null }
+    const setTurnTimeLeft = vi.fn()
+    const setTurnDeadlineAt = vi.fn()
+
+    const { rerender } = renderHook(
+      ({
+        currentPlayer,
+        turnTimeLeft,
+      }: {
+        currentPlayer: 'x' | 'o'
+        turnTimeLeft: number | null
+      }) =>
+        useVersusTurnTimer({
+          isVersusMode: true,
+          isLoading: false,
+          loadedPuzzleMode: 'versus',
+          puzzleId: 'versus-puzzle',
+          currentPlayer,
+          winner: null,
+          versusTimerOption: 20,
+          turnTimeLeft,
+          turnDeadlineAt: null,
+          pendingFinalSteal: null,
+          animationsEnabled: true,
+          audioEnabled: true,
+          activeTurnTimerKeyRef,
+          setTurnTimeLeft,
+          setTurnDeadlineAt,
+          onTurnExpired: vi.fn(),
+        }),
+      {
+        initialProps: {
+          currentPlayer: 'x' as 'x' | 'o',
+          turnTimeLeft: 11 as number | null,
+        },
+      }
+    )
+
+    setTurnTimeLeft.mockClear()
+
+    rerender({
+      currentPlayer: 'o' as 'x' | 'o',
+      turnTimeLeft: 11 as number | null,
+    })
+
+    expect(setTurnTimeLeft).toHaveBeenCalledWith(20)
+    expect(setTurnDeadlineAt).toHaveBeenCalledWith(null)
+  })
+
   it('keeps polling an online deadline even before the displayed second changes', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-03-29T20:00:00.000Z'))
