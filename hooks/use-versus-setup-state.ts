@@ -8,6 +8,7 @@ import type {
 
 export function useVersusSetupState() {
   const [versusCategoryFilters, setVersusCategoryFilters] = useState<VersusCategoryFilters>({})
+  const [versusMinimumValidOptions, setVersusMinimumValidOptions] = useState<number | null>(null)
   const [versusStealRule, setVersusStealRule] = useState<VersusStealRule>('fewer_reviews')
   const [versusTimerOption, setVersusTimerOption] = useState<VersusTurnTimerOption>(300)
   const [versusDisableDraws, setVersusDisableDraws] = useState(true)
@@ -19,6 +20,8 @@ export function useVersusSetupState() {
   return {
     versusCategoryFilters,
     setVersusCategoryFilters,
+    versusMinimumValidOptions,
+    setVersusMinimumValidOptions,
     versusStealRule,
     setVersusStealRule,
     versusTimerOption,

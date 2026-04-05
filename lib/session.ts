@@ -98,6 +98,8 @@ export interface SavedGameState {
     cellIndex: number
   } | null
   versusCategoryFilters?: Record<string, string[]>
+  practiceMinimumValidOptions?: number | null
+  versusMinimumValidOptions?: number | null
   versusStealRule?: 'off' | 'lower' | 'higher' | 'fewer_reviews' | 'more_reviews'
   versusTimerOption?: 'none' | 20 | 60 | 120 | 300
   versusDisableDraws?: boolean

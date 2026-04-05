@@ -31,6 +31,7 @@ function renderModal(options?: {
       timerOption={options?.timerOption ?? 300}
       disableDraws={options?.disableDraws ?? true}
       objectionRule={options?.objectionRule ?? 'one'}
+      minimumValidOptionsOverride={null}
       onApply={() => {}}
     />
   )
@@ -44,10 +45,11 @@ describe('VersusSetupModal', () => {
     await user.click(screen.getByRole('button', { name: /Rules/i }))
 
     const selects = screen.getAllByRole('combobox')
-    expect(selects[0]).toHaveTextContent('Fewer reviews')
-    expect(selects[1]).toHaveTextContent('1 each')
-    expect(selects[2]).toHaveTextContent('Disabled')
-    expect(selects[3]).toHaveTextContent('5 min')
+    expect(selects[0]).toHaveTextContent('Default (3)')
+    expect(selects[1]).toHaveTextContent('Fewer reviews')
+    expect(selects[2]).toHaveTextContent('1 each')
+    expect(selects[3]).toHaveTextContent('Disabled')
+    expect(selects[4]).toHaveTextContent('5 min')
     expect(screen.queryAllByText('Custom')).toHaveLength(0)
   })
 

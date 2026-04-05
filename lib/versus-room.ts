@@ -18,6 +18,7 @@ export interface RoomSettings {
   timerOption: VersusTurnTimerOption
   disableDraws: boolean
   objectionRule: VersusObjectionRule
+  minimumValidOptionsOverride?: number | null
 }
 
 export interface OnlineVersusSnapshot {

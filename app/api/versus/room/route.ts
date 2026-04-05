@@ -7,7 +7,7 @@ const CategoryFiltersSchema = z.record(z.string(), z.array(z.string()))
 
 const RoomSettingsSchema = z.object({
   categoryFilters: CategoryFiltersSchema,
-  stealRule: z.enum(['off', 'lower', 'higher']),
+  stealRule: z.enum(['off', 'lower', 'higher', 'fewer_reviews', 'more_reviews']),
   timerOption: z.union([
     z.literal('none'),
     z.literal(20),
@@ -17,6 +17,7 @@ const RoomSettingsSchema = z.object({
   ]),
   disableDraws: z.boolean(),
   objectionRule: z.enum(['off', 'one', 'three']),
+  minimumValidOptionsOverride: z.number().int().min(1).max(30).nullable().optional(),
 })
 
 export async function POST(request: NextRequest) {
