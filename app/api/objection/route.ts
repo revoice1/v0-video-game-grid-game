@@ -12,38 +12,8 @@ import type { Category, CellGuess } from '@/lib/types'
 const GEMINI_KEY = process.env.GEMINI_KEY
 const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'models/gemini-3.1-flash-lite-preview'
 const ENABLE_SEARCH_GROUNDING = process.env.GEMINI_OBJECTION_ENABLE_SEARCH_GROUNDING !== '0'
-const THINKING_LEVEL = (process.env.GEMINI_OBJECTION_THINKING_LEVEL ?? '').trim().toLowerCase()
-const THINKING_BUDGET_OVERRIDE = Number.parseInt(
-  process.env.GEMINI_OBJECTION_THINKING_BUDGET ?? '',
-  10
-)
 const IS_DEV = process.env.NODE_ENV !== 'production'
-
-function getThinkingBudgetFromLevel(level: string): number | null {
-  switch (level) {
-    case 'low':
-      return 256
-    case 'medium':
-      return 1024
-    case 'high':
-      return 2048
-    default:
-      return null
-  }
-}
-
-function getThinkingLevelEnum(level: string): 'LOW' | 'MEDIUM' | 'HIGH' | null {
-  switch (level) {
-    case 'low':
-      return 'LOW'
-    case 'medium':
-      return 'MEDIUM'
-    case 'high':
-      return 'HIGH'
-    default:
-      return null
-  }
-}
+const PINNED_THINKING_LEVEL = 'HIGH' as const
 
 function normalizeGeminiModelName(model: string): string {
   return model.replace(/^models\//, '').trim()
@@ -115,18 +85,8 @@ export async function POST(request: NextRequest) {
       },
       promptBytes: datasetForPrompt.length,
       groundingEnabled: ENABLE_SEARCH_GROUNDING,
-      thinkingLevel: THINKING_LEVEL || null,
-      thinkingBudget:
-        Number.isFinite(THINKING_BUDGET_OVERRIDE) && THINKING_BUDGET_OVERRIDE > 0
-          ? THINKING_BUDGET_OVERRIDE
-          : getThinkingBudgetFromLevel(THINKING_LEVEL),
+      thinkingLevel: PINNED_THINKING_LEVEL,
     })
-
-    const effectiveThinkingBudget =
-      Number.isFinite(THINKING_BUDGET_OVERRIDE) && THINKING_BUDGET_OVERRIDE > 0
-        ? THINKING_BUDGET_OVERRIDE
-        : getThinkingBudgetFromLevel(THINKING_LEVEL)
-    const effectiveThinkingLevel = getThinkingLevelEnum(THINKING_LEVEL)
 
     let geminiResponse: Response | null = null
     let lastErrorText = ''
@@ -134,7 +94,6 @@ export async function POST(request: NextRequest) {
       temperature: number
       responseMimeType: string
       thinkingConfig?: {
-        thinkingBudget?: number
         thinkingLevel?: 'LOW' | 'MEDIUM' | 'HIGH'
       }
     } = {
@@ -142,11 +101,7 @@ export async function POST(request: NextRequest) {
       responseMimeType: 'application/json',
     }
 
-    if (effectiveThinkingBudget !== null) {
-      generationConfig.thinkingConfig = { thinkingBudget: effectiveThinkingBudget }
-    } else if (effectiveThinkingLevel !== null) {
-      generationConfig.thinkingConfig = { thinkingLevel: effectiveThinkingLevel }
-    }
+    generationConfig.thinkingConfig = { thinkingLevel: PINNED_THINKING_LEVEL }
 
     const requestBodyBase = {
       systemInstruction: {
@@ -198,9 +153,7 @@ export async function POST(request: NextRequest) {
             familyNamesPreview,
             familyNamesRemainder,
             promptBytes: datasetForPrompt.length,
-            thinkingLevel: THINKING_LEVEL || null,
-            thinkingBudget: effectiveThinkingBudget,
-            thinkingLevelEnum: effectiveThinkingLevel,
+            thinkingLevel: PINNED_THINKING_LEVEL,
           })
         }
         const requestUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`
