@@ -85,6 +85,9 @@ describe('buildObjectionDataset', () => {
 
 describe('OBJECTION_SYSTEM_PROMPT', () => {
   it('describes the required structured response', () => {
+    expect(OBJECTION_SYSTEM_PROMPT).toContain('<role>')
+    expect(OBJECTION_SYSTEM_PROMPT).toContain('<logic_rules>')
+    expect(OBJECTION_SYSTEM_PROMPT).toContain('<output_format>')
     expect(OBJECTION_SYSTEM_PROMPT).toContain('Return JSON only')
     expect(OBJECTION_SYSTEM_PROMPT).toContain('"verdict":"sustained|overruled"')
     expect(OBJECTION_SYSTEM_PROMPT).toContain('familyNames')
@@ -95,7 +98,7 @@ describe('OBJECTION_SYSTEM_PROMPT', () => {
       'Use the category validation questions as the main standard'
     )
     expect(OBJECTION_SYSTEM_PROMPT).toContain(
-      'metadata is useful, but it is known to be incomplete, imperfect, or mismapped'
+      'appMetadata block is useful but known to be incomplete, imperfect, or mismapped'
     )
     expect(OBJECTION_SYSTEM_PROMPT).toContain(
       'If model grounding/search evidence is available, prefer that evidence'
