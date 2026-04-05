@@ -73,6 +73,7 @@ import {
   type VersusTurnTimerOption,
 } from './versus-setup-modal'
 import { clearGameState, loadGameState, saveGameState, type SavedGameState } from '@/lib/session'
+import { sanitizeMinValidOptionsOverride } from '@/lib/min-valid-options'
 import {
   useAnimationPreference,
   useSearchConfirmPreference,
@@ -221,7 +222,7 @@ interface PuzzleStreamMessage {
   passed?: boolean
 }
 
-export function GameClient() {
+export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptionsDefault: number }) {
   const pendingVersusSetupIntentRef = useRef<'local' | 'online-host' | null>(null)
   const skipNextVersusAutoLoadRef = useRef(false)
   const skipNextPracticeAutoLoadRef = useRef(false)
@@ -2200,6 +2201,10 @@ export function GameClient() {
           : gameMode === 'practice'
             ? (customMinimumValidOptions ?? practiceMinimumValidOptions)
             : null
+      const sanitizedEffectiveMinimumValidOptions = sanitizeMinValidOptionsOverride(
+        effectiveMinimumValidOptions,
+        minimumValidOptionsDefault
+      )
 
       if (shouldIgnoreSavedVersusState) {
         clearGameState('versus')
@@ -2229,8 +2234,18 @@ export function GameClient() {
         setWinner(savedState.winner ?? null)
         setPendingFinalSteal(savedState.pendingFinalSteal ?? null)
         setVersusCategoryFilters((savedState.versusCategoryFilters as VersusCategoryFilters) ?? {})
-        setPracticeMinimumValidOptions(savedState.practiceMinimumValidOptions ?? null)
-        setVersusMinimumValidOptions(savedState.versusMinimumValidOptions ?? null)
+        setPracticeMinimumValidOptions(
+          sanitizeMinValidOptionsOverride(
+            savedState.practiceMinimumValidOptions ?? null,
+            minimumValidOptionsDefault
+          )
+        )
+        setVersusMinimumValidOptions(
+          sanitizeMinValidOptionsOverride(
+            savedState.versusMinimumValidOptions ?? null,
+            minimumValidOptionsDefault
+          )
+        )
         setVersusStealRule(savedState.versusStealRule ?? DEFAULT_VERSUS_STEAL_RULE)
         setVersusTimerOption(savedState.versusTimerOption ?? 300)
         setVersusDisableDraws(savedState.versusDisableDraws ?? true)
@@ -2330,8 +2345,8 @@ export function GameClient() {
             if (effectiveFilters && Object.keys(effectiveFilters).length > 0) {
               params.set('filters', JSON.stringify(effectiveFilters))
             }
-            if (typeof effectiveMinimumValidOptions === 'number') {
-              params.set('minValidOptions', String(effectiveMinimumValidOptions))
+            if (typeof sanitizedEffectiveMinimumValidOptions === 'number') {
+              params.set('minValidOptions', String(sanitizedEffectiveMinimumValidOptions))
             }
           }
 
@@ -2483,7 +2498,7 @@ export function GameClient() {
                     winner: null,
                     pendingFinalSteal: null,
                     versusCategoryFilters: effectiveFilters ?? {},
-                    versusMinimumValidOptions: effectiveMinimumValidOptions ?? null,
+                    versusMinimumValidOptions: sanitizedEffectiveMinimumValidOptions ?? null,
                     versusStealRule: versusStealRuleRef.current,
                     versusTimerOption: versusTimerOptionRef.current,
                     versusDisableDraws: versusDisableDrawsRef.current,
@@ -2552,6 +2567,7 @@ export function GameClient() {
     },
     [
       activeDailyDate,
+      minimumValidOptionsDefault,
       practiceCategoryFilters,
       practiceMinimumValidOptions,
       toast,
@@ -2770,14 +2786,18 @@ export function GameClient() {
     void timerOption
     void disableDraws
     void objectionRule
+    const sanitizedMinimumValidOptionsOverride = sanitizeMinValidOptionsOverride(
+      minimumValidOptionsOverride,
+      minimumValidOptionsDefault
+    )
     setPracticeCategoryFilters(filters)
-    setPracticeMinimumValidOptions(minimumValidOptionsOverride)
+    setPracticeMinimumValidOptions(sanitizedMinimumValidOptionsOverride)
     setPracticeSetupError(null)
     setShowPracticeSetup(false)
     setShowPracticeStartOptions(false)
     skipNextPracticeAutoLoadRef.current = true
     clearGameState('practice')
-    loadPuzzle('practice', filters, undefined, minimumValidOptionsOverride)
+    loadPuzzle('practice', filters, undefined, sanitizedMinimumValidOptionsOverride)
   }
 
   const handleApplyVersusFilters = (
@@ -2788,8 +2808,12 @@ export function GameClient() {
     objectionRule: VersusObjectionRule,
     minimumValidOptionsOverride: number | null
   ) => {
+    const sanitizedMinimumValidOptionsOverride = sanitizeMinValidOptionsOverride(
+      minimumValidOptionsOverride,
+      minimumValidOptionsDefault
+    )
     setVersusCategoryFilters(filters)
-    setVersusMinimumValidOptions(minimumValidOptionsOverride)
+    setVersusMinimumValidOptions(sanitizedMinimumValidOptionsOverride)
     setVersusSetupError(null)
     versusStealRuleRef.current = stealRule
     versusTimerOptionRef.current = timerOption
@@ -2833,7 +2857,7 @@ export function GameClient() {
         timerOption,
         disableDraws,
         objectionRule,
-        minimumValidOptionsOverride,
+        minimumValidOptionsOverride: sanitizedMinimumValidOptionsOverride,
       })
       return
     }
@@ -2842,7 +2866,7 @@ export function GameClient() {
     setShowVersusStartOptions(false)
     skipNextVersusAutoLoadRef.current = true
     clearGameState('versus')
-    loadPuzzle('versus', filters, undefined, minimumValidOptionsOverride)
+    loadPuzzle('versus', filters, undefined, sanitizedMinimumValidOptionsOverride)
   }
 
   const hydrateGuessDetails = useCallback(
@@ -3555,8 +3579,12 @@ export function GameClient() {
       objectionRule: VersusObjectionRule,
       minimumValidOptionsOverride: number | null
     ) => {
+      const sanitizedMinimumValidOptionsOverride = sanitizeMinValidOptionsOverride(
+        minimumValidOptionsOverride,
+        minimumValidOptionsDefault
+      )
       setVersusCategoryFilters(categoryFilters)
-      setVersusMinimumValidOptions(minimumValidOptionsOverride)
+      setVersusMinimumValidOptions(sanitizedMinimumValidOptionsOverride)
       setVersusSetupError(null)
       versusStealRuleRef.current = stealRule
       versusTimerOptionRef.current = timerOption
@@ -3574,10 +3602,10 @@ export function GameClient() {
         timerOption,
         disableDraws,
         objectionRule,
-        minimumValidOptionsOverride,
+        minimumValidOptionsOverride: sanitizedMinimumValidOptionsOverride,
       })
     },
-    [onlineVersus, prepareForOnlineMatchStart]
+    [minimumValidOptionsDefault, onlineVersus, prepareForOnlineMatchStart]
   )
 
   const handleHostStandardOnlineMatch = useCallback(() => {
@@ -3777,6 +3805,7 @@ export function GameClient() {
             practiceMinimumValidOptions={practiceMinimumValidOptions}
             versusCategoryFilters={versusCategoryFilters}
             versusMinimumValidOptions={versusMinimumValidOptions}
+            minimumValidOptionsDefault={minimumValidOptionsDefault}
             versusStealRule={versusStealRule}
             versusTimerOption={versusTimerOption}
             versusDisableDraws={versusDisableDraws}
@@ -4120,6 +4149,7 @@ export function GameClient() {
         timerOption="none"
         disableDraws={false}
         objectionRule="off"
+        minimumValidOptionsDefault={minimumValidOptionsDefault}
         minimumValidOptionsOverride={practiceMinimumValidOptions}
         onApply={handleApplyPracticeFilters}
       />
@@ -4137,6 +4167,7 @@ export function GameClient() {
         timerOption={versusTimerOption}
         disableDraws={versusDisableDraws}
         objectionRule={versusObjectionRule}
+        minimumValidOptionsDefault={minimumValidOptionsDefault}
         minimumValidOptionsOverride={versusMinimumValidOptions}
         onApply={handleApplyVersusFilters}
       />

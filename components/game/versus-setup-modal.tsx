@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -25,6 +26,7 @@ import {
 } from '@/components/ui/select'
 import { IndexBadge } from '@/components/index-badge'
 import { getFamilyDisplayLabel } from '@/lib/category-display'
+import { sanitizeMinValidOptionsOverride } from '@/lib/min-valid-options'
 import type { CategoryType } from '@/lib/types'
 import {
   CURATED_VERSUS_CATEGORY_FAMILIES,
@@ -52,6 +54,7 @@ interface VersusSetupModalProps {
   timerOption: VersusTurnTimerOption
   disableDraws: boolean
   objectionRule: VersusObjectionRule
+  minimumValidOptionsDefault: number
   minimumValidOptionsOverride: MinimumValidOptionsOverride
   onApply: (
     filters: VersusCategoryFilters,
@@ -85,17 +88,6 @@ const OBJECTION_RULE_OPTIONS: Array<{ value: VersusObjectionRule; label: string 
   { value: 'three', label: '3 each' },
 ]
 
-const MIN_VALID_OPTIONS_OVERRIDE_OPTIONS: Array<{
-  value: MinimumValidOptionsOverride
-  label: string
-}> = [
-  { value: null, label: 'Default (3)' },
-  { value: 2, label: '2 min' },
-  { value: 3, label: '3 min' },
-  { value: 5, label: '5 min' },
-  { value: 8, label: '8 min' },
-]
-
 export function VersusSetupModal({
   isOpen,
   onClose,
@@ -106,16 +98,23 @@ export function VersusSetupModal({
   timerOption,
   disableDraws,
   objectionRule,
+  minimumValidOptionsDefault,
   minimumValidOptionsOverride,
   onApply,
 }: VersusSetupModalProps) {
+  const sanitizeOverride = (value: MinimumValidOptionsOverride) =>
+    sanitizeMinValidOptionsOverride(value, minimumValidOptionsDefault)
+  const initialMinimumOverride = sanitizeOverride(minimumValidOptionsOverride)
   const [draftFilters, setDraftFilters] = useState<VersusCategoryFilters>(filters)
   const [draftStealRule, setDraftStealRule] = useState<VersusStealRule>(stealRule)
   const [draftTimerOption, setDraftTimerOption] = useState<VersusTurnTimerOption>(timerOption)
   const [draftDisableDraws, setDraftDisableDraws] = useState(disableDraws)
   const [draftObjectionRule, setDraftObjectionRule] = useState<VersusObjectionRule>(objectionRule)
   const [draftMinimumValidOptionsOverride, setDraftMinimumValidOptionsOverride] =
-    useState<MinimumValidOptionsOverride>(minimumValidOptionsOverride)
+    useState<MinimumValidOptionsOverride>(initialMinimumOverride)
+  const [draftMinimumValidOptionsInput, setDraftMinimumValidOptionsInput] = useState(
+    initialMinimumOverride === null ? '' : String(initialMinimumOverride)
+  )
   const [expandedFamilies, setExpandedFamilies] = useState<
     Partial<Record<VersusFamilyKey, boolean>>
   >({})
@@ -128,7 +127,8 @@ export function VersusSetupModal({
       return
     }
 
-    const nextConfigKey = `${filtersKey}::${stealRule}::${timerOption}::${disableDraws}::${objectionRule}::${minimumValidOptionsOverride}`
+    const sanitizedMinimumOverride = sanitizeOverride(minimumValidOptionsOverride)
+    const nextConfigKey = `${filtersKey}::${stealRule}::${timerOption}::${disableDraws}::${objectionRule}::${sanitizedMinimumOverride}::${minimumValidOptionsDefault}`
     if (lastSyncedConfigRef.current === nextConfigKey) {
       return
     }
@@ -139,12 +139,16 @@ export function VersusSetupModal({
     setDraftTimerOption(timerOption)
     setDraftDisableDraws(disableDraws)
     setDraftObjectionRule(objectionRule)
-    setDraftMinimumValidOptionsOverride(minimumValidOptionsOverride)
+    setDraftMinimumValidOptionsOverride(sanitizedMinimumOverride)
+    setDraftMinimumValidOptionsInput(
+      sanitizedMinimumOverride === null ? '' : String(sanitizedMinimumOverride)
+    )
   }, [
     disableDraws,
     filters,
     filtersKey,
     isOpen,
+    minimumValidOptionsDefault,
     minimumValidOptionsOverride,
     objectionRule,
     stealRule,
@@ -254,9 +258,17 @@ export function VersusSetupModal({
     setDraftDisableDraws(true)
     setDraftObjectionRule('one')
     setDraftMinimumValidOptionsOverride(null)
+    setDraftMinimumValidOptionsInput('')
   }
 
+  const maxMinimumValidOptionsOverride = minimumValidOptionsDefault - 1
+  const hasMinimumOverrideHeadroom = maxMinimumValidOptionsOverride >= 1
+  const minimumOverrideInputIsValid =
+    draftMinimumValidOptionsInput.trim() === '' ||
+    draftMinimumValidOptionsOverride !== null ||
+    !hasMinimumOverrideHeadroom
   const canApply = enabledFamilyCount >= 4 && totalSelectedCategories >= 6
+  const canApplySettings = canApply && minimumOverrideInputIsValid
   const isVersusMode = mode === 'versus'
   const applyDisabledReason =
     enabledFamilyCount < 4
@@ -264,6 +276,10 @@ export function VersusSetupModal({
       : totalSelectedCategories < 6
         ? `Enable at least 6 total categories to generate a board.`
         : null
+  const minimumOverrideErrorMessage =
+    hasMinimumOverrideHeadroom && !minimumOverrideInputIsValid
+      ? `Use a whole number from 1 to ${maxMinimumValidOptionsOverride}.`
+      : null
 
   const buildAppliedFilters = (): VersusCategoryFilters => {
     const nextFilters: VersusCategoryFilters = {}
@@ -338,31 +354,47 @@ export function VersusSetupModal({
               Raise for stricter boards, lower for wilder/rarer category combinations.
             </p>
           </div>
-          <Select
-            value={
-              draftMinimumValidOptionsOverride === null
-                ? 'default'
-                : String(draftMinimumValidOptionsOverride)
-            }
-            onValueChange={(value) =>
-              setDraftMinimumValidOptionsOverride(value === 'default' ? null : Number(value))
-            }
-          >
-            <SelectTrigger className="w-[11rem] shrink-0">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {MIN_VALID_OPTIONS_OVERRIDE_OPTIONS.map((option) => (
-                <SelectItem
-                  key={option.label}
-                  value={option.value === null ? 'default' : String(option.value)}
-                >
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="w-[11rem] shrink-0">
+            <Input
+              inputMode="numeric"
+              type="number"
+              min={1}
+              max={Math.max(maxMinimumValidOptionsOverride, 1)}
+              step={1}
+              placeholder={`Default (${minimumValidOptionsDefault})`}
+              value={draftMinimumValidOptionsInput}
+              disabled={!hasMinimumOverrideHeadroom}
+              onChange={(event) => {
+                const rawValue = event.target.value
+                setDraftMinimumValidOptionsInput(rawValue)
+
+                if (rawValue.trim() === '') {
+                  setDraftMinimumValidOptionsOverride(null)
+                  return
+                }
+
+                const numericValue = Number(rawValue)
+                if (
+                  Number.isInteger(numericValue) &&
+                  numericValue >= 1 &&
+                  numericValue <= maxMinimumValidOptionsOverride
+                ) {
+                  setDraftMinimumValidOptionsOverride(numericValue)
+                } else {
+                  setDraftMinimumValidOptionsOverride(null)
+                }
+              }}
+            />
+          </div>
         </section>
+        {minimumOverrideErrorMessage ? (
+          <p className="mt-1 text-xs text-destructive">{minimumOverrideErrorMessage}</p>
+        ) : (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Leave blank for default ({minimumValidOptionsDefault}). You can only override lower than
+            the default.
+          </p>
+        )}
 
         <Accordion type="multiple" defaultValue={[]} className="space-y-4">
           {isVersusMode && (
@@ -614,11 +646,11 @@ export function VersusSetupModal({
                   draftTimerOption,
                   draftDisableDraws,
                   draftObjectionRule,
-                  draftMinimumValidOptionsOverride
+                  sanitizeOverride(draftMinimumValidOptionsOverride)
                 )
               }
-              disabled={!canApply}
-              title={applyDisabledReason ?? undefined}
+              disabled={!canApplySettings}
+              title={minimumOverrideErrorMessage ?? applyDisabledReason ?? undefined}
             >
               Apply Filters
             </Button>

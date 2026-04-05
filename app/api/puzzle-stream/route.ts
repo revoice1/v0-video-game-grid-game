@@ -18,9 +18,13 @@ import {
   resolveAnonymousSession,
 } from '@/lib/server-session'
 import { buildGenerationPlans } from '@/lib/puzzle-generation-plans'
+import {
+  getMinValidOptionsDefaultFromEnv,
+  sanitizeMinValidOptionsOverride,
+} from '@/lib/min-valid-options'
 import type { Category, PuzzleCellMetadata } from '@/lib/types'
 
-const MIN_VALID_OPTIONS_PER_CELL = Number(process.env.PUZZLE_MIN_VALID_OPTIONS ?? '3')
+const MIN_VALID_OPTIONS_PER_CELL = getMinValidOptionsDefaultFromEnv()
 const MAX_GENERATION_ATTEMPTS = Number(process.env.PUZZLE_GENERATION_MAX_ATTEMPTS ?? '12')
 const VALIDATION_SAMPLE_SIZE = Number(process.env.PUZZLE_VALIDATION_SAMPLE_SIZE ?? '40')
 
@@ -103,12 +107,16 @@ export async function GET(request: NextRequest) {
     ? (JSON.parse(rawFilters) as PuzzleCategoryFilters)
     : undefined
   const parsedMinValidOptions = rawMinValidOptions ? Number(rawMinValidOptions) : Number.NaN
+  const requestedMinValidOptions = Number.isFinite(parsedMinValidOptions)
+    ? parsedMinValidOptions
+    : null
+  const sanitizedMinValidOptionsOverride = sanitizeMinValidOptionsOverride(
+    requestedMinValidOptions,
+    MIN_VALID_OPTIONS_PER_CELL
+  )
   const minValidOptionsPerCellBase =
-    mode !== 'daily' &&
-    Number.isFinite(parsedMinValidOptions) &&
-    Number.isInteger(parsedMinValidOptions) &&
-    parsedMinValidOptions >= 1
-      ? parsedMinValidOptions
+    mode !== 'daily' && sanitizedMinValidOptionsOverride !== null
+      ? sanitizedMinValidOptionsOverride
       : MIN_VALID_OPTIONS_PER_CELL
 
   const encoder = new TextEncoder()

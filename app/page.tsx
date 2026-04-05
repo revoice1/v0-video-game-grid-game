@@ -1,6 +1,8 @@
 import { GameClient } from '@/components/game/game-client'
+import { getMinValidOptionsDefaultFromEnv } from '@/lib/min-valid-options'
 
 export default function Home() {
+  const minimumValidOptionsDefault = getMinValidOptionsDefaultFromEnv()
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': ['WebSite', 'WebApplication'],
@@ -36,7 +38,7 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
-      <GameClient />
+      <GameClient minimumValidOptionsDefault={minimumValidOptionsDefault} />
     </>
   )
 }

@@ -31,6 +31,7 @@ function renderModal(options?: {
       timerOption={options?.timerOption ?? 300}
       disableDraws={options?.disableDraws ?? true}
       objectionRule={options?.objectionRule ?? 'one'}
+      minimumValidOptionsDefault={6}
       minimumValidOptionsOverride={null}
       onApply={() => {}}
     />
@@ -44,12 +45,14 @@ describe('VersusSetupModal', () => {
 
     await user.click(screen.getByRole('button', { name: /Rules/i }))
 
+    const minimumInput = screen.getByRole('spinbutton')
+    expect(minimumInput).toHaveAttribute('placeholder', 'Default (6)')
+
     const selects = screen.getAllByRole('combobox')
-    expect(selects[0]).toHaveTextContent('Default (3)')
-    expect(selects[1]).toHaveTextContent('Fewer reviews')
-    expect(selects[2]).toHaveTextContent('1 each')
-    expect(selects[3]).toHaveTextContent('Disabled')
-    expect(selects[4]).toHaveTextContent('5 min')
+    expect(selects[0]).toHaveTextContent('Fewer reviews')
+    expect(selects[1]).toHaveTextContent('1 each')
+    expect(selects[2]).toHaveTextContent('Disabled')
+    expect(selects[3]).toHaveTextContent('5 min')
     expect(screen.queryAllByText('Custom')).toHaveLength(0)
   })
 
@@ -102,5 +105,18 @@ describe('VersusSetupModal', () => {
     expect(
       within(companiesSection!).queryByRole('button', { name: 'Check All' })
     ).not.toBeInTheDocument()
+  })
+
+  it('only accepts minimum-answer overrides lower than the default', async () => {
+    const user = userEvent.setup()
+    renderModal()
+
+    const minimumInput = screen.getByRole('spinbutton')
+    const applyButton = screen.getByRole('button', { name: 'Apply Filters' })
+
+    await user.type(minimumInput, '7')
+
+    expect(screen.getByText('Use a whole number from 1 to 5.')).toBeInTheDocument()
+    expect(applyButton).toBeDisabled()
   })
 })

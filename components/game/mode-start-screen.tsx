@@ -37,6 +37,7 @@ interface ModeStartScreenProps {
   practiceMinimumValidOptions: number | null
   versusCategoryFilters: VersusCategoryFilters
   versusMinimumValidOptions: number | null
+  minimumValidOptionsDefault: number
   versusStealRule: VersusStealRule
   versusTimerOption: VersusTurnTimerOption
   versusDisableDraws: boolean
@@ -93,6 +94,7 @@ export function ModeStartScreen({
   practiceMinimumValidOptions,
   versusCategoryFilters,
   versusMinimumValidOptions,
+  minimumValidOptionsDefault,
   versusStealRule,
   versusTimerOption,
   versusDisableDraws,
@@ -334,6 +336,7 @@ export function ModeStartScreen({
         timerOption="none"
         disableDraws={false}
         objectionRule="off"
+        minimumValidOptionsDefault={minimumValidOptionsDefault}
         minimumValidOptionsOverride={practiceMinimumValidOptions}
         onApply={onApplyPracticeFilters}
       />
@@ -348,6 +351,7 @@ export function ModeStartScreen({
         timerOption={versusTimerOption}
         disableDraws={versusDisableDraws}
         objectionRule={versusObjectionRule}
+        minimumValidOptionsDefault={minimumValidOptionsDefault}
         minimumValidOptionsOverride={versusMinimumValidOptions}
         onApply={onApplyVersusFilters}
       />

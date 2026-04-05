@@ -24,6 +24,7 @@ function renderVersusStartScreen(overrides: Partial<ComponentProps<typeof ModeSt
     practiceMinimumValidOptions: null,
     versusCategoryFilters: {},
     versusMinimumValidOptions: null,
+    minimumValidOptionsDefault: 6,
     versusStealRule: 'lower',
     versusTimerOption: 300,
     versusDisableDraws: true,
