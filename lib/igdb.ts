@@ -1178,14 +1178,15 @@ export async function getIGDBFamilyNames(gameId: number): Promise<string[]> {
         : game.id
 
   const parentGame = await getRawIGDBGameDetails(parentId)
-  const siblingQuery = [IGDB_GAME_FIELDS, `where parent_game = ${parentId};`, 'limit 100;'].join(
-    ' '
-  )
+  const siblingQuery = [
+    IGDB_GAME_FIELDS,
+    `where parent_game = ${parentId} | version_parent = ${parentId};`,
+    'limit 100;',
+  ].join(' ')
 
   const siblings = (await queryIGDB<IGDBGame>('games', siblingQuery)).filter(
     (entry) =>
       typeof entry.first_release_date === 'number' &&
-      hasOfficialCompanyData(entry) &&
       !hasDisqualifyingKeywords(entry) &&
       !UNOFFICIAL_NAME_PATTERNS.some((pattern) => pattern.test(entry.name)) &&
       !REJECTED_GAME_TYPE_SET.has(entry.game_type ?? -1)
