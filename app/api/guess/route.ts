@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
           [],
         developers: game.developers?.map((developer) => `${developer.id}:${developer.name}`) ?? [],
         publishers: game.publishers?.map((publisher) => `${publisher.id}:${publisher.name}`) ?? [],
-        keywords: game.tags?.map((tag) => `${tag.id}:${tag.name}`) ?? [],
+        keywordCount: game.tags?.length ?? 0,
         igdbGameModes: game.igdb?.game_modes ?? [],
         igdbThemes: game.igdb?.themes ?? [],
         igdbPerspectives: game.igdb?.player_perspectives ?? [],
