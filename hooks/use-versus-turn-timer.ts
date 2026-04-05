@@ -51,6 +51,7 @@ export function useVersusTurnTimer({
 }: UseVersusTurnTimerOptions) {
   const onTurnExpiredEvent = useEffectEvent(onTurnExpired)
   const initializedTurnTimerKeyRef = useRef<string | null>(null)
+  const expiredTurnTimerKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
     const cueKey = pendingFinalSteal
@@ -83,16 +84,25 @@ export function useVersusTurnTimer({
     if (winner || versusTimerOption === 'none') {
       activeTurnTimerKeyRef.current = null
       initializedTurnTimerKeyRef.current = null
+      expiredTurnTimerKeyRef.current = null
       setTurnTimeLeft(null)
       setTurnDeadlineAt(null)
       return
     }
 
     if (!isVersusBoardReady) {
+      if (isVersusMode && (isLoading || loadedPuzzleMode !== 'versus' || puzzleId === null)) {
+        initializedTurnTimerKeyRef.current = null
+        expiredTurnTimerKeyRef.current = null
+        setTurnTimeLeft(null)
+      }
       return
     }
 
     const turnTimerKey = `${puzzleId}:${currentPlayer}`
+    if (expiredTurnTimerKeyRef.current && expiredTurnTimerKeyRef.current !== turnTimerKey) {
+      expiredTurnTimerKeyRef.current = null
+    }
     const parsedDeadlineMs = turnDeadlineAt ? Date.parse(turnDeadlineAt) : Number.NaN
     const hasUsableOnlineDeadline =
       Number.isFinite(parsedDeadlineMs) && parsedDeadlineMs > Date.now()
@@ -122,7 +132,7 @@ export function useVersusTurnTimer({
       activeTurnTimerKeyRef.current = turnTimerKey
     } else {
       activeTurnTimerKeyRef.current = turnTimerKey
-      if (turnTimeLeft === null) {
+      if (turnTimeLeft === null || turnTimeLeft <= 0) {
         setTurnTimeLeft(versusTimerOption)
       }
       setTurnDeadlineAt(null)
@@ -148,6 +158,8 @@ export function useVersusTurnTimer({
       return
     }
 
+    const turnTimerKey = puzzleId ? `${puzzleId}:${currentPlayer}` : null
+
     if (isOnlineMatch) {
       if (!turnDeadlineAt) {
         setTurnTimeLeft(null)
@@ -164,6 +176,10 @@ export function useVersusTurnTimer({
       setTurnTimeLeft(remaining)
 
       if (remaining <= 0) {
+        if (turnTimerKey && expiredTurnTimerKeyRef.current === turnTimerKey) {
+          return
+        }
+        expiredTurnTimerKeyRef.current = turnTimerKey
         onTurnExpiredEvent(getNextPlayer(currentPlayer))
         return
       }
@@ -180,6 +196,10 @@ export function useVersusTurnTimer({
     }
 
     if (turnTimeLeft <= 0) {
+      if (turnTimerKey && expiredTurnTimerKeyRef.current === turnTimerKey) {
+        return
+      }
+      expiredTurnTimerKeyRef.current = turnTimerKey
       onTurnExpiredEvent(getNextPlayer(currentPlayer))
       return
     }

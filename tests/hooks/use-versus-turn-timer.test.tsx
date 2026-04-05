@@ -33,6 +33,54 @@ describe('useVersusTurnTimer', () => {
     expect(setTurnTimeLeft).toHaveBeenCalledWith(20)
   })
 
+  it('resets the timer after loading a new versus board even when puzzle key repeats', () => {
+    const activeTurnTimerKeyRef = { current: null as string | null }
+    const setTurnTimeLeft = vi.fn()
+    const setTurnDeadlineAt = vi.fn()
+
+    const { rerender } = renderHook(
+      ({ isLoading, turnTimeLeft }: { isLoading: boolean; turnTimeLeft: number | null }) =>
+        useVersusTurnTimer({
+          isVersusMode: true,
+          isLoading,
+          loadedPuzzleMode: 'versus',
+          puzzleId: 'versus-puzzle',
+          currentPlayer: 'x',
+          winner: null,
+          versusTimerOption: 20,
+          turnTimeLeft,
+          turnDeadlineAt: null,
+          pendingFinalSteal: null,
+          animationsEnabled: true,
+          audioEnabled: true,
+          activeTurnTimerKeyRef,
+          setTurnTimeLeft,
+          setTurnDeadlineAt,
+          onTurnExpired: vi.fn(),
+        }),
+      {
+        initialProps: {
+          isLoading: false,
+          turnTimeLeft: null as number | null,
+        },
+      }
+    )
+
+    setTurnTimeLeft.mockClear()
+
+    rerender({
+      isLoading: true,
+      turnTimeLeft: 3,
+    })
+
+    rerender({
+      isLoading: false,
+      turnTimeLeft: null,
+    })
+
+    expect(setTurnTimeLeft).toHaveBeenCalledWith(20)
+  })
+
   it('starts a visible online timer immediately when a board becomes ready', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-03-29T20:00:00.000Z'))
@@ -99,6 +147,44 @@ describe('useVersusTurnTimer', () => {
     )
 
     expect(onTurnExpired).toHaveBeenCalledWith('o')
+  })
+
+  it('fires turn expiration once per turn key even if state lingers at zero', () => {
+    const activeTurnTimerKeyRef = { current: 'versus-puzzle:x' as string | null }
+    const onTurnExpired = vi.fn()
+    const setTurnDeadlineAt = vi.fn()
+
+    const { rerender } = renderHook(
+      ({ currentPlayer }: { currentPlayer: 'x' | 'o' }) =>
+        useVersusTurnTimer({
+          isVersusMode: true,
+          isLoading: false,
+          loadedPuzzleMode: 'versus',
+          puzzleId: 'versus-puzzle',
+          currentPlayer,
+          winner: null,
+          versusTimerOption: 20,
+          turnTimeLeft: 0,
+          turnDeadlineAt: null,
+          pendingFinalSteal: null,
+          animationsEnabled: true,
+          audioEnabled: true,
+          activeTurnTimerKeyRef,
+          setTurnTimeLeft: vi.fn(),
+          setTurnDeadlineAt,
+          onTurnExpired,
+        }),
+      {
+        initialProps: { currentPlayer: 'x' as 'x' | 'o' },
+      }
+    )
+
+    rerender({ currentPlayer: 'x' as 'x' | 'o' })
+    expect(onTurnExpired).toHaveBeenCalledTimes(1)
+
+    rerender({ currentPlayer: 'o' as 'x' | 'o' })
+    expect(onTurnExpired).toHaveBeenCalledTimes(2)
+    expect(onTurnExpired).toHaveBeenLastCalledWith('x')
   })
 
   it('keeps counting down across rerenders with a new onTurnExpired callback identity', () => {
