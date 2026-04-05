@@ -14,6 +14,11 @@ const GEMINI_MODEL = 'gemini-3.1-flash-lite-preview'
 const ENABLE_SEARCH_GROUNDING = process.env.GEMINI_OBJECTION_ENABLE_SEARCH_GROUNDING !== '0'
 const IS_DEV = process.env.NODE_ENV !== 'production'
 const PINNED_THINKING_LEVEL = 'HIGH' as const
+const GROUNDED_MAX_ATTEMPTS = 2
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
 export async function POST(request: NextRequest) {
   if (!GEMINI_KEY) {
@@ -146,13 +151,42 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      const response = await fetch(requestUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestVariant.body),
-      })
+      let response: Response | null = null
+      const maxAttempts = requestVariant.label === 'grounded' ? GROUNDED_MAX_ATTEMPTS : 1
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        response = await fetch(requestUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestVariant.body),
+        })
+
+        if (response.status !== 429 || attempt === maxAttempts) {
+          break
+        }
+
+        const retryAfterHeader = response.headers.get('retry-after')
+        const retryAfterSeconds = retryAfterHeader ? Number.parseFloat(retryAfterHeader) : NaN
+        const retryDelayMs =
+          Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+            ? Math.ceil(retryAfterSeconds * 1000)
+            : 500
+
+        logWarn('Gemini grounded request rate-limited; retrying request', {
+          model,
+          variant: requestVariant.label,
+          attempt,
+          maxAttempts,
+          retryAfterHeader: retryAfterHeader ?? null,
+          retryDelayMs,
+        })
+        await sleep(retryDelayMs)
+      }
+
+      if (!response) {
+        continue
+      }
 
       if (response.ok) {
         const payload = (await response.json()) as unknown
