@@ -155,17 +155,23 @@ export async function POST(request: NextRequest) {
               Number.isFinite(THINKING_BUDGET) && THINKING_BUDGET > 0 ? THINKING_BUDGET : null,
           })
         }
-
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
-          {
+        const requestUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`
+        if (IS_DEV) {
+          logInfo('Gemini objection HTTP request', {
+            url: requestUrl.replace(/key=[^&]+/, 'key=REDACTED'),
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestVariant.body),
-          }
-        )
+            headers: { 'Content-Type': 'application/json' },
+            body: requestVariant.body,
+          })
+        }
+
+        const response = await fetch(requestUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestVariant.body),
+        })
 
         if (response.ok) {
           const payload = (await response.json()) as unknown
@@ -179,12 +185,22 @@ export async function POST(request: NextRequest) {
               extractedText,
               parsedJudgment,
             })
+            logInfo('Gemini objection verdict', {
+              model,
+              variant: requestVariant.label,
+              verdict: parsedJudgment?.verdict ?? null,
+              confidence: parsedJudgment?.confidence ?? null,
+              explanation: parsedJudgment?.explanation ?? null,
+              suspectedMissingMetadata: parsedJudgment?.suspectedMissingMetadata ?? null,
+            })
           } else {
             logInfo('Gemini objection verdict', {
               model,
               variant: requestVariant.label,
               verdict: parsedJudgment?.verdict ?? null,
               confidence: parsedJudgment?.confidence ?? null,
+              explanation: parsedJudgment?.explanation ?? null,
+              suspectedMissingMetadata: parsedJudgment?.suspectedMissingMetadata ?? null,
             })
           }
           geminiResponse = new Response(JSON.stringify(payload), {
