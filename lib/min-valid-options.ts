@@ -15,10 +15,6 @@ export function parseMinValidOptionsDefault(rawValue: unknown): number {
   return parsed
 }
 
-export function getMinValidOptionsDefaultFromEnv(): number {
-  return parseMinValidOptionsDefault(process.env.PUZZLE_MIN_VALID_OPTIONS)
-}
-
 export function sanitizeMinValidOptionsOverride(
   rawOverride: number | null | undefined,
   minValidOptionsDefault: number

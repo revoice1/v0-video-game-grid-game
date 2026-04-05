@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/admin'
-import {
-  getMinValidOptionsDefaultFromEnv,
-  sanitizeMinValidOptionsOverride,
-} from '@/lib/min-valid-options'
+import { sanitizeMinValidOptionsOverride } from '@/lib/min-valid-options'
+import { getMinValidOptionsDefaultFromEnv } from '@/lib/min-valid-options-server'
 import { resolveAnonymousSession, applyAnonymousSessionCookie } from '@/lib/server-session'
 
 const CategoryFiltersSchema = z.record(z.string(), z.array(z.string()))

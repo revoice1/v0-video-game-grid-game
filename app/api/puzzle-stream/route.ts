@@ -18,10 +18,8 @@ import {
   resolveAnonymousSession,
 } from '@/lib/server-session'
 import { buildGenerationPlans } from '@/lib/puzzle-generation-plans'
-import {
-  getMinValidOptionsDefaultFromEnv,
-  sanitizeMinValidOptionsOverride,
-} from '@/lib/min-valid-options'
+import { sanitizeMinValidOptionsOverride } from '@/lib/min-valid-options'
+import { getMinValidOptionsDefaultFromEnv } from '@/lib/min-valid-options-server'
 import type { Category, PuzzleCellMetadata } from '@/lib/types'
 
 const MIN_VALID_OPTIONS_PER_CELL = getMinValidOptionsDefaultFromEnv()

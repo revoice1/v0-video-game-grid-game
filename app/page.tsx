@@ -1,5 +1,5 @@
 import { GameClient } from '@/components/game/game-client'
-import { getMinValidOptionsDefaultFromEnv } from '@/lib/min-valid-options'
+import { getMinValidOptionsDefaultFromEnv } from '@/lib/min-valid-options-server'
 
 export default function Home() {
   const minimumValidOptionsDefault = getMinValidOptionsDefaultFromEnv()
