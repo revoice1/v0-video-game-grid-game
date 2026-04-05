@@ -101,6 +101,7 @@ export const OBJECTION_SYSTEM_PROMPT = [
   'The `appMetadata` block contains relevant evidence from the app.',
   'This metadata is useful, but it is known to be incomplete, imperfect, or mismapped in some cases.',
   'Use it as supporting evidence, but do not treat it as automatically conclusive.',
+  'If model grounding/search evidence is available, prefer that evidence over uncertain metadata-only assumptions.',
   'Do not blindly agree with the metadata if the category fit is still weak, indirect, or unclear.',
   'Do not ignore the metadata either just because your memory is incomplete or older.',
   'The `familyNames` array contains alternate editions, ports, remasters, remakes, or expanded releases that belong to the same game family.',

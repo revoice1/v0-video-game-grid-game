@@ -98,6 +98,9 @@ describe('OBJECTION_SYSTEM_PROMPT', () => {
       'metadata is useful, but it is known to be incomplete, imperfect, or mismapped'
     )
     expect(OBJECTION_SYSTEM_PROMPT).toContain(
+      'If model grounding/search evidence is available, prefer that evidence'
+    )
+    expect(OBJECTION_SYSTEM_PROMPT).toContain(
       'If the selected game or any clearly related family variant directly fits both categories'
     )
     expect(OBJECTION_SYSTEM_PROMPT).toContain(

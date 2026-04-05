@@ -11,6 +11,8 @@ import type { Category, CellGuess } from '@/lib/types'
 
 const GEMINI_KEY = process.env.GEMINI_KEY
 const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'models/gemini-3.1-flash-lite-preview'
+const ENABLE_SEARCH_GROUNDING = process.env.GEMINI_OBJECTION_ENABLE_SEARCH_GROUNDING === '1'
+const THINKING_BUDGET = Number.parseInt(process.env.GEMINI_OBJECTION_THINKING_BUDGET ?? '', 10)
 const IS_DEV = process.env.NODE_ENV !== 'production'
 
 function normalizeGeminiModelName(model: string): string {
@@ -84,7 +86,22 @@ export async function POST(request: NextRequest) {
 
     let geminiResponse: Response | null = null
     let lastErrorText = ''
-    const requestBody = {
+    const generationConfig: {
+      temperature: number
+      responseMimeType: string
+      thinkingConfig?: {
+        thinkingBudget: number
+      }
+    } = {
+      temperature: 0.1,
+      responseMimeType: 'application/json',
+    }
+
+    if (Number.isFinite(THINKING_BUDGET) && THINKING_BUDGET > 0) {
+      generationConfig.thinkingConfig = { thinkingBudget: THINKING_BUDGET }
+    }
+
+    const requestBodyBase = {
       systemInstruction: {
         parts: [{ text: OBJECTION_SYSTEM_PROMPT }],
       },
@@ -94,76 +111,110 @@ export async function POST(request: NextRequest) {
           parts: [{ text: datasetForPrompt }],
         },
       ],
-      generationConfig: {
-        temperature: 0.1,
-        responseMimeType: 'application/json',
-      },
+      generationConfig,
     }
+    const requestVariants: Array<{
+      label: 'grounded' | 'standard'
+      body: Record<string, unknown>
+    }> = ENABLE_SEARCH_GROUNDING
+      ? [
+          {
+            label: 'grounded',
+            body: {
+              ...requestBodyBase,
+              tools: [{ googleSearch: {} }],
+            },
+          },
+          {
+            label: 'standard',
+            body: requestBodyBase,
+          },
+        ]
+      : [{ label: 'standard', body: requestBodyBase }]
 
     for (const model of getGeminiModelCandidates()) {
-      if (IS_DEV) {
-        logInfo('Gemini objection outbound request', {
-          model,
-          requestBody,
-        })
-      } else {
-        logInfo('Gemini objection request', {
-          model,
-          gameId: body.guess.gameId,
-          rowCategory: body.rowCategory.name,
-          colCategory: body.colCategory.name,
-          familyCount: dataset.familyNames.length,
-          familyNamesPreview,
-          familyNamesRemainder,
-          promptBytes: datasetForPrompt.length,
-        })
-      }
-
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody),
-        }
-      )
-
-      if (response.ok) {
-        const payload = (await response.json()) as unknown
-        const extractedText = extractGeminiText(payload)
-        const parsedJudgment = extractedText ? normalizeObjectionResponse(extractedText) : null
+      for (const requestVariant of requestVariants) {
         if (IS_DEV) {
-          logInfo('Gemini objection raw response', {
+          logInfo('Gemini objection outbound request', {
             model,
-            payload: JSON.stringify(payload, null, 2),
-            extractedText,
-            parsedJudgment,
+            variant: requestVariant.label,
+            requestBody: requestVariant.body,
           })
         } else {
-          logInfo('Gemini objection verdict', {
+          logInfo('Gemini objection request', {
             model,
-            verdict: parsedJudgment?.verdict ?? null,
-            confidence: parsedJudgment?.confidence ?? null,
+            variant: requestVariant.label,
+            gameId: body.guess.gameId,
+            rowCategory: body.rowCategory.name,
+            colCategory: body.colCategory.name,
+            familyCount: dataset.familyNames.length,
+            familyNamesPreview,
+            familyNamesRemainder,
+            promptBytes: datasetForPrompt.length,
+            thinkingBudget:
+              Number.isFinite(THINKING_BUDGET) && THINKING_BUDGET > 0 ? THINKING_BUDGET : null,
           })
         }
-        geminiResponse = new Response(JSON.stringify(payload), {
+
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestVariant.body),
+          }
+        )
+
+        if (response.ok) {
+          const payload = (await response.json()) as unknown
+          const extractedText = extractGeminiText(payload)
+          const parsedJudgment = extractedText ? normalizeObjectionResponse(extractedText) : null
+          if (IS_DEV) {
+            logInfo('Gemini objection raw response', {
+              model,
+              variant: requestVariant.label,
+              payload: JSON.stringify(payload, null, 2),
+              extractedText,
+              parsedJudgment,
+            })
+          } else {
+            logInfo('Gemini objection verdict', {
+              model,
+              variant: requestVariant.label,
+              verdict: parsedJudgment?.verdict ?? null,
+              confidence: parsedJudgment?.confidence ?? null,
+            })
+          }
+          geminiResponse = new Response(JSON.stringify(payload), {
+            status: response.status,
+            headers: { 'Content-Type': 'application/json' },
+          })
+          break
+        }
+
+        lastErrorText = await response.text()
+        logWarn('Gemini objection request failed', {
+          model,
+          variant: requestVariant.label,
           status: response.status,
-          headers: { 'Content-Type': 'application/json' },
+          body: IS_DEV ? lastErrorText : undefined,
         })
+
+        if (response.status === 404) {
+          continue
+        }
+
+        if (requestVariant.label === 'grounded') {
+          continue
+        }
+
+        geminiResponse = response
         break
       }
 
-      lastErrorText = await response.text()
-      logWarn('Gemini objection request failed', {
-        model,
-        status: response.status,
-        body: IS_DEV ? lastErrorText : undefined,
-      })
-
-      if (response.status !== 404) {
-        geminiResponse = response
+      if (geminiResponse?.ok) {
         break
       }
     }
