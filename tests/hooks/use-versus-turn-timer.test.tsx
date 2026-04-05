@@ -225,6 +225,44 @@ describe('useVersusTurnTimer', () => {
     }
   })
 
+  it('does not reset the local timer when leaving versus mode and returning', () => {
+    const activeTurnTimerKeyRef = { current: null as string | null }
+    const setTurnTimeLeft = vi.fn()
+    const setTurnDeadlineAt = vi.fn()
+
+    const { rerender } = renderHook(
+      ({ isVersusMode }: { isVersusMode: boolean }) =>
+        useVersusTurnTimer({
+          isVersusMode,
+          isLoading: false,
+          loadedPuzzleMode: 'versus',
+          puzzleId: 'versus-puzzle',
+          currentPlayer: 'x',
+          winner: null,
+          versusTimerOption: 20,
+          turnTimeLeft: 14,
+          turnDeadlineAt: null,
+          pendingFinalSteal: null,
+          animationsEnabled: true,
+          audioEnabled: true,
+          activeTurnTimerKeyRef,
+          setTurnTimeLeft,
+          setTurnDeadlineAt,
+          onTurnExpired: vi.fn(),
+        }),
+      {
+        initialProps: {
+          isVersusMode: true,
+        },
+      }
+    )
+
+    rerender({ isVersusMode: false })
+    rerender({ isVersusMode: true })
+
+    expect(setTurnTimeLeft).not.toHaveBeenCalledWith(20)
+  })
+
   it('derives remaining time from an online deadline', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-03-29T20:00:00.000Z'))

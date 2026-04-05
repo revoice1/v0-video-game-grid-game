@@ -80,11 +80,15 @@ export function useVersusTurnTimer({
     const isVersusBoardReady =
       isVersusMode && !isLoading && loadedPuzzleMode === 'versus' && puzzleId !== null
 
-    if (!isVersusBoardReady || winner || versusTimerOption === 'none') {
+    if (winner || versusTimerOption === 'none') {
       activeTurnTimerKeyRef.current = null
       initializedTurnTimerKeyRef.current = null
       setTurnTimeLeft(null)
       setTurnDeadlineAt(null)
+      return
+    }
+
+    if (!isVersusBoardReady) {
       return
     }
 
@@ -118,7 +122,9 @@ export function useVersusTurnTimer({
       activeTurnTimerKeyRef.current = turnTimerKey
     } else {
       activeTurnTimerKeyRef.current = turnTimerKey
-      setTurnTimeLeft(versusTimerOption)
+      if (turnTimeLeft === null) {
+        setTurnTimeLeft(versusTimerOption)
+      }
       setTurnDeadlineAt(null)
     }
   }, [
