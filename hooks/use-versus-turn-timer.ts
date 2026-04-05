@@ -135,7 +135,7 @@ export function useVersusTurnTimer({
       const isTurnChange = previousTurnTimerKey !== null && previousTurnTimerKey !== turnTimerKey
 
       activeTurnTimerKeyRef.current = turnTimerKey
-      if (isTurnChange || turnTimeLeft === null || turnTimeLeft <= 0) {
+      if (turnTimeLeft === null || turnTimeLeft <= 0) {
         setTurnTimeLeft(versusTimerOption)
       }
       setTurnDeadlineAt(null)
