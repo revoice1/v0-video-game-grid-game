@@ -3,7 +3,13 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Check, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { getCategoryDisplayName } from '@/lib/category-display'
 import { getPlatformDisplayLabel } from '@/lib/category-display'
@@ -636,6 +642,11 @@ export function GameSearch({
             <DialogTitle>
               {previewGame ? `Cover preview for ${previewGame.name}` : 'Cover preview'}
             </DialogTitle>
+            <DialogDescription>
+              {previewGame
+                ? `Expanded cover art preview for ${previewGame.name}.`
+                : 'Expanded cover art preview.'}
+            </DialogDescription>
           </DialogHeader>
           {previewGame?.background_image ? (
             <div className="space-y-3">
