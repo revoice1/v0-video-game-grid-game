@@ -27,7 +27,7 @@ function renderModal(options?: {
       onClose={() => {}}
       mode="versus"
       filters={options?.filters ?? {}}
-      stealRule={options?.stealRule ?? 'lower'}
+      stealRule={options?.stealRule ?? 'fewer_reviews'}
       timerOption={options?.timerOption ?? 300}
       disableDraws={options?.disableDraws ?? true}
       objectionRule={options?.objectionRule ?? 'one'}
@@ -44,7 +44,7 @@ describe('VersusSetupModal', () => {
     await user.click(screen.getByRole('button', { name: /Rules/i }))
 
     const selects = screen.getAllByRole('combobox')
-    expect(selects[0]).toHaveTextContent('Lower score')
+    expect(selects[0]).toHaveTextContent('Fewer reviews')
     expect(selects[1]).toHaveTextContent('1 each')
     expect(selects[2]).toHaveTextContent('Disabled')
     expect(selects[3]).toHaveTextContent('5 min')
@@ -94,7 +94,7 @@ describe('VersusSetupModal', () => {
     const companiesHeading = screen.getByText('Companies')
     const companiesSection = companiesHeading.closest('section')
 
-    expect(screen.getByText('Custom')).toBeInTheDocument()
+    expect(screen.getAllByText('Custom').length).toBeGreaterThan(0)
     expect(companiesSection).not.toBeNull()
     expect(within(companiesSection!).getByText('All 16 enabled')).toBeInTheDocument()
     expect(

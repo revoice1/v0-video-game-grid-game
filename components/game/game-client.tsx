@@ -122,7 +122,7 @@ import {
 } from '@/hooks/use-versus-steal'
 
 const MAX_GUESSES = 9
-const DEFAULT_VERSUS_STEAL_RULE: VersusStealRule = 'lower'
+const DEFAULT_VERSUS_STEAL_RULE: VersusStealRule = 'fewer_reviews'
 const DEFAULT_VERSUS_TIMER_OPTION: VersusTurnTimerOption = 300
 const DEFAULT_VERSUS_DISABLE_DRAWS = true
 const DEFAULT_VERSUS_OBJECTION_RULE: VersusObjectionRule = 'one'
@@ -2205,7 +2205,7 @@ export function GameClient() {
         setWinner(savedState.winner ?? null)
         setPendingFinalSteal(savedState.pendingFinalSteal ?? null)
         setVersusCategoryFilters((savedState.versusCategoryFilters as VersusCategoryFilters) ?? {})
-        setVersusStealRule(savedState.versusStealRule ?? 'lower')
+        setVersusStealRule(savedState.versusStealRule ?? DEFAULT_VERSUS_STEAL_RULE)
         setVersusTimerOption(savedState.versusTimerOption ?? 300)
         setVersusDisableDraws(savedState.versusDisableDraws ?? true)
         setVersusObjectionRule(savedState.versusObjectionRule ?? 'one')
@@ -2685,11 +2685,11 @@ export function GameClient() {
 
         if (!hasSavedVersusState) {
           setVersusCategoryFilters({})
-          versusStealRuleRef.current = 'lower'
+          versusStealRuleRef.current = DEFAULT_VERSUS_STEAL_RULE
           versusTimerOptionRef.current = 300
           versusDisableDrawsRef.current = true
           versusObjectionRuleRef.current = 'one'
-          setVersusStealRule('lower')
+          setVersusStealRule(DEFAULT_VERSUS_STEAL_RULE)
           setVersusTimerOption(300)
           setVersusDisableDraws(true)
           setVersusObjectionRule('one')
