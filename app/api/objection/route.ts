@@ -55,6 +55,34 @@ export async function POST(request: NextRequest) {
       body.colCategory,
       familyNames
     )
+    const datasetForPrompt = JSON.stringify(dataset, null, 2)
+    const familyNamesPreview = dataset.familyNames.slice(0, 12)
+    const familyNamesRemainder =
+      dataset.familyNames.length > familyNamesPreview.length
+        ? dataset.familyNames.length - familyNamesPreview.length
+        : 0
+
+    logInfo('Objection review dataset summary', {
+      gameId: body.guess.gameId,
+      gameName: body.guess.gameName,
+      rowCategory: body.rowCategory.name,
+      colCategory: body.colCategory.name,
+      familyCount: dataset.familyNames.length,
+      familyNamesPreview,
+      familyNamesRemainder,
+      metadataCounts: {
+        genres: dataset.metadata.genres.length,
+        platforms: dataset.metadata.platforms.length,
+        developers: dataset.metadata.developers.length,
+        publishers: dataset.metadata.publishers.length,
+        gameModes: dataset.metadata.gameModes.length,
+        themes: dataset.metadata.themes.length,
+        perspectives: dataset.metadata.perspectives.length,
+        keywords: dataset.metadata.keywords.length,
+      },
+      promptBytes: datasetForPrompt.length,
+    })
+
     let geminiResponse: Response | null = null
     let lastErrorText = ''
     const requestBody = {
@@ -64,7 +92,7 @@ export async function POST(request: NextRequest) {
       contents: [
         {
           role: 'user',
-          parts: [{ text: JSON.stringify(dataset, null, 2) }],
+          parts: [{ text: datasetForPrompt }],
         },
       ],
       generationConfig: {
@@ -75,9 +103,9 @@ export async function POST(request: NextRequest) {
 
     for (const model of getGeminiModelCandidates()) {
       if (IS_DEV) {
-        logInfo('Gemini objection request payload', {
+        logInfo('Gemini objection outbound request', {
           model,
-          body: JSON.stringify(requestBody, null, 2),
+          requestBody,
         })
       } else {
         logInfo('Gemini objection request', {
@@ -85,7 +113,10 @@ export async function POST(request: NextRequest) {
           gameId: body.guess.gameId,
           rowCategory: body.rowCategory.name,
           colCategory: body.colCategory.name,
-          familyCount: familyNames.length,
+          familyCount: dataset.familyNames.length,
+          familyNamesPreview,
+          familyNamesRemainder,
+          promptBytes: datasetForPrompt.length,
         })
       }
 
