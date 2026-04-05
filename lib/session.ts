@@ -43,6 +43,7 @@ export function getSessionId(): string {
 const DAILY_STATE_KEY = 'gamegrid_daily_state'
 const PRACTICE_STATE_KEY = 'gamegrid_practice_state'
 const VERSUS_STATE_KEY = 'gamegrid_versus_state'
+const CURRENT_SAVE_STATE_VERSION = 2
 const VALID_VERSUS_STEAL_RULES = new Set([
   'off',
   'lower',
@@ -91,6 +92,7 @@ export interface CellGuessRecord {
 }
 
 export interface SavedGameState {
+  version?: number
   puzzleId: string
   puzzle?: Puzzle
   guesses: (CellGuess | CellGuessRecord | null)[]
@@ -166,18 +168,27 @@ function sanitizeSavedGameState(rawState: unknown): SavedGameState | null {
   }
 
   const sanitized: SavedGameState = {
+    version: CURRENT_SAVE_STATE_VERSION,
     puzzleId: state.puzzleId,
-    guesses: state.guesses
+    guesses: Array(9).fill(null),
+    guessesRemaining: 9,
+    isComplete: false,
+  }
+  const isLegacyState =
+    typeof state.version !== 'number' || state.version < CURRENT_SAVE_STATE_VERSION
+
+  if (!isLegacyState) {
+    sanitized.guesses = state.guesses
       .slice(0, 9)
-      .map((guess) => (guess && typeof guess === 'object' ? guess : null)),
-    guessesRemaining:
+      .map((guess) => (guess && typeof guess === 'object' ? guess : null))
+    sanitized.guessesRemaining =
       typeof state.guessesRemaining === 'number' && Number.isFinite(state.guessesRemaining)
         ? state.guessesRemaining
-        : 9,
-    isComplete: Boolean(state.isComplete),
+        : 9
+    sanitized.isComplete = Boolean(state.isComplete)
   }
 
-  if (state.puzzle && typeof state.puzzle === 'object') {
+  if (!isLegacyState && state.puzzle && typeof state.puzzle === 'object') {
     sanitized.puzzle = state.puzzle as Puzzle
   }
 
@@ -272,7 +283,12 @@ export function saveGameState(
 
   const resolvedDailyDate = dailyDate ?? state.puzzle?.date ?? state.date ?? getUtcDateKey()
   const key = getStateKey(mode, resolvedDailyDate)
-  const saveState = mode === 'daily' ? { ...state, date: resolvedDailyDate } : state
+  const versionedState: SavedGameState = {
+    ...state,
+    version: CURRENT_SAVE_STATE_VERSION,
+  }
+  const saveState =
+    mode === 'daily' ? { ...versionedState, date: resolvedDailyDate } : versionedState
   localStorage.setItem(key, JSON.stringify(saveState))
 }
 

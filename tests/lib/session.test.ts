@@ -32,7 +32,10 @@ describe('session game-state persistence', () => {
 
     saveGameState(savedState, 'versus')
 
-    expect(loadGameState('versus')).toEqual(savedState)
+    expect(loadGameState('versus')).toEqual({
+      ...savedState,
+      version: 2,
+    })
   })
 
   it('keys daily saves by date and expires mismatched dates', () => {
@@ -49,6 +52,7 @@ describe('session game-state persistence', () => {
     expect(loadGameState('daily', '2026-03-29')).toEqual({
       ...todayState,
       date: '2026-03-29',
+      version: 2,
     })
     expect(loadGameState('daily', '2026-03-28')).toBeNull()
   })
@@ -90,7 +94,10 @@ describe('session game-state persistence', () => {
     const restored = loadGameState('versus')
 
     expect(restored).not.toBeNull()
+    expect(restored?.version).toBe(2)
     expect(restored?.guesses).toHaveLength(9)
+    expect(restored?.guessesRemaining).toBe(9)
+    expect(restored?.isComplete).toBe(false)
     expect(restored?.versusStealRule).toBeUndefined()
     expect(restored?.versusTimerOption).toBeUndefined()
     expect(restored?.versusObjectionRule).toBeUndefined()
