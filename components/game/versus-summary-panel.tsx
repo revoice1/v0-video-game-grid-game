@@ -62,6 +62,14 @@ function getObjectionLimit(rule: VersusObjectionRule): number {
   return 0
 }
 
+function getStealRuleLabel(rule: VersusStealRule): string {
+  if (rule === 'off') return 'Off'
+  if (rule === 'lower') return 'Lower score'
+  if (rule === 'higher') return 'Higher score'
+  if (rule === 'fewer_reviews') return 'Fewer reviews'
+  return 'More reviews'
+}
+
 function buildResultDetail(
   guesses: Array<CellGuess | null>,
   winner: TicTacToePlayer | 'draw',
@@ -133,12 +141,7 @@ export function VersusSummaryPanel({
           <div>
             <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">Rules</p>
             <div className="mt-1 space-y-1 text-xs text-muted-foreground">
-              <p>
-                Steals:{' '}
-                {stealRule === 'off'
-                  ? 'Off'
-                  : `${stealRule === 'lower' ? 'Lower' : 'Higher'} score`}
-              </p>
+              <p>Steals: {getStealRuleLabel(stealRule)}</p>
               <p>
                 Objections:{' '}
                 {objectionRule === 'off' ? 'Off' : objectionRule === 'one' ? '1 each' : '3 each'}
@@ -216,10 +219,16 @@ export function VersusSummaryPanel({
         <div className="mt-3 grid gap-2">
           {placedGuesses.map(({ guess, index }) => {
             const owner = guess.owner ?? 'x'
+            const showdownMetricLabel =
+              stealRule === 'fewer_reviews' || stealRule === 'more_reviews' ? 'Reviews' : 'Score'
+            const showdownMetricValue =
+              stealRule === 'fewer_reviews' || stealRule === 'more_reviews'
+                ? guess.stealRatingCount
+                : guess.stealRating
             const scoreLabel =
-              guess.stealRating !== null && guess.stealRating !== undefined
-                ? String(guess.stealRating)
-                : 'No score'
+              showdownMetricValue !== null && showdownMetricValue !== undefined
+                ? String(showdownMetricValue)
+                : `No ${showdownMetricLabel.toLowerCase()}`
             const reviewLabel =
               guess.objectionVerdict === 'sustained'
                 ? 'Sustained'
@@ -244,7 +253,7 @@ export function VersusSummaryPanel({
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-foreground">{guess.gameName}</p>
                   <p className="text-xs text-muted-foreground">
-                    Cell {index + 1} · Score {scoreLabel}
+                    Cell {index + 1} · {showdownMetricLabel} {scoreLabel}
                     {reviewLabel ? ` · ${reviewLabel}` : ''}
                     {guess.showdownScoreRevealed ? ' · Revealed' : ''}
                   </p>

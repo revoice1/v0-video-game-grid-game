@@ -37,7 +37,7 @@ type VersusFamilyKey = Extract<
 >
 
 export type VersusCategoryFilters = Partial<Record<VersusFamilyKey, string[]>>
-export type VersusStealRule = 'off' | 'lower' | 'higher'
+export type VersusStealRule = 'off' | 'lower' | 'higher' | 'fewer_reviews' | 'more_reviews'
 export type VersusTurnTimerOption = 'none' | 20 | 60 | 120 | 300
 export type VersusObjectionRule = 'off' | 'one' | 'three'
 
@@ -72,6 +72,8 @@ const STEAL_RULE_OPTIONS: Array<{ value: VersusStealRule; label: string }> = [
   { value: 'off', label: 'Off' },
   { value: 'lower', label: 'Lower score' },
   { value: 'higher', label: 'Higher score' },
+  { value: 'fewer_reviews', label: 'Fewer reviews' },
+  { value: 'more_reviews', label: 'More reviews' },
 ]
 
 const OBJECTION_RULE_OPTIONS: Array<{ value: VersusObjectionRule; label: string }> = [
@@ -314,7 +316,7 @@ export function VersusSetupModal({
                         {hasCustomStealRule && <CustomIndicator label="" />}
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Higher or lower score required to successfully steal the square.
+                        Use rating score or review-count obscurity to decide whether a steal lands.
                       </p>
                     </div>
                     <Select

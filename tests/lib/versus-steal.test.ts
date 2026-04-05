@@ -8,13 +8,14 @@ const baseContext = {
   selectedCell: 2,
 }
 
-function makeGuess(stealRating: number | null): CellGuess {
+function makeGuess(stealRating: number | null, stealRatingCount: number | null = null): CellGuess {
   return {
     gameId: 1,
     gameName: 'Test Game',
     gameImage: null,
     isCorrect: true,
     stealRating,
+    stealRatingCount,
   }
 }
 
@@ -100,5 +101,17 @@ describe('resolveStealOutcome', () => {
 
     expect(outcome.successful).toBe(false)
     expect(outcome.hasShowdownScores).toBe(false)
+  })
+
+  it('supports the fewer-reviews steal rule for obscure picks', () => {
+    const outcome = resolveStealOutcome({
+      ...baseContext,
+      rule: 'fewer_reviews',
+      defendingGuess: makeGuess(88, 1200),
+      attackingGuess: makeGuess(79, 245),
+    })
+
+    expect(outcome.successful).toBe(true)
+    expect(outcome.hasShowdownScores).toBe(true)
   })
 })

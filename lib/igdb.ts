@@ -702,6 +702,8 @@ function mapIGDBGameToGame(game: IGDBGame): Game {
     (date) => date
   )
   const stealRating = typeof game.total_rating === 'number' ? Math.round(game.total_rating) : null
+  const stealRatingCount =
+    typeof game.total_rating_count === 'number' ? game.total_rating_count : null
 
   return {
     id: game.id,
@@ -713,6 +715,7 @@ function mapIGDBGameToGame(game: IGDBGame): Game {
     releaseDates,
     metacritic: getMetacriticScore(game.total_rating),
     stealRating,
+    stealRatingCount,
     gameTypeLabel: getGameTypeLabel(game.game_type),
     originalPlatformName: getOriginalPlatformName(game),
     hasSameNamePortFamily: game.hasSameNamePortFamily === true,

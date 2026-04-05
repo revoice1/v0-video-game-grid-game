@@ -167,6 +167,14 @@ interface ActiveJudgmentVerdict {
 
 const STEAL_SHOWDOWN_DURATION_MS = 3400
 
+function getStealShowdownMetric(guess: CellGuess, rule: Exclude<VersusStealRule, 'off'>) {
+  if (rule === 'fewer_reviews' || rule === 'more_reviews') {
+    return guess.stealRatingCount ?? null
+  }
+
+  return guess.stealRating ?? null
+}
+
 interface PendingFinalSteal {
   defender: TicTacToePlayer
   cellIndex: number
@@ -805,9 +813,14 @@ export function GameClient() {
         const attackingGuess = { ...stealPayload.attackingGuess, owner: event.player }
         const successful = stealPayload.successful
         const defendingGuess = guessesRef.current[cellIndex]
+        const activeStealRule =
+          versusStealRuleRef.current === 'off' ? 'lower' : versusStealRuleRef.current
+        const defendingScore = defendingGuess
+          ? getStealShowdownMetric(defendingGuess, activeStealRule)
+          : null
+        const attackingScore = getStealShowdownMetric(attackingGuess, activeStealRule)
         const hasShowdownScores =
-          typeof defendingGuess?.stealRating === 'number' &&
-          typeof attackingGuess.stealRating === 'number'
+          typeof defendingScore === 'number' && typeof attackingScore === 'number'
         const suppressReplayEffects = onlineVersus.isHydratingHistory
         const showdownDuration =
           !suppressReplayEffects && animationsEnabled && hasShowdownScores
@@ -819,10 +832,10 @@ export function GameClient() {
             burstId: Date.now(),
             durationMs: showdownDuration,
             defenderName: defendingGuess?.gameName ?? 'Defender',
-            defenderScore: defendingGuess!.stealRating!,
+            defenderScore: defendingScore!,
             attackerName: attackingGuess.gameName,
-            attackerScore: attackingGuess.stealRating!,
-            rule: versusStealRuleRef.current === 'higher' ? 'higher' : 'lower',
+            attackerScore: attackingScore!,
+            rule: activeStealRule,
             successful,
           })
         }
@@ -1173,7 +1186,7 @@ export function GameClient() {
         defenderScore: options?.defenderScore ?? 82,
         attackerName: 'Challenger',
         attackerScore: options?.attackerScore ?? 76,
-        rule: versusStealRule === 'higher' ? 'higher' : 'lower',
+        rule: versusStealRule === 'off' ? 'lower' : versusStealRule,
         successful: options?.successful ?? true,
         lowEffects: animationQuality === 'low',
       })
@@ -1698,7 +1711,7 @@ export function GameClient() {
           const objectionPlayer = pendingVersusObjectionReview.player
 
           if (pendingVersusObjectionReview.isVersusSteal) {
-            const effectiveStealRule = versusStealRule === 'higher' ? 'higher' : 'lower'
+            const effectiveStealRule = versusStealRule === 'off' ? 'lower' : versusStealRule
             const defendingGuess = guesses[objectionCellIndex]
 
             if (defendingGuess) {
@@ -1712,15 +1725,17 @@ export function GameClient() {
               })
               const showdownDuration =
                 animationsEnabled && stealOutcome.hasShowdownScores ? STEAL_SHOWDOWN_DURATION_MS : 0
+              const defendingScore = getStealShowdownMetric(defendingGuess, effectiveStealRule)
+              const attackingScore = getStealShowdownMetric(nextGuess, effectiveStealRule)
 
               if (stealOutcome.hasShowdownScores) {
                 setActiveStealShowdown({
                   burstId: Date.now(),
                   durationMs: showdownDuration,
                   defenderName: defendingGuess.gameName,
-                  defenderScore: defendingGuess.stealRating!,
+                  defenderScore: defendingScore!,
                   attackerName: nextGuess.gameName,
-                  attackerScore: nextGuess.stealRating!,
+                  attackerScore: attackingScore!,
                   rule: effectiveStealRule,
                   successful: stealOutcome.successful,
                 })
@@ -1735,9 +1750,9 @@ export function GameClient() {
                 viaObjection: true,
                 hadShowdownScores: stealOutcome.hasShowdownScores,
                 finalSteal: pendingFinalSteal?.cellIndex === objectionCellIndex,
-                attackingScore: nextGuess.stealRating ?? null,
+                attackingScore,
                 defendingGameName: defendingGuess.gameName,
-                defendingScore: defendingGuess.stealRating ?? null,
+                defendingScore,
               })
 
               setPendingVersusObjectionReview(null)
@@ -1751,9 +1766,9 @@ export function GameClient() {
                   selectedCell: objectionCellIndex,
                   hasShowdownScores: stealOutcome.hasShowdownScores,
                   gameName: nextGuess.gameName,
-                  attackingScore: nextGuess.stealRating,
+                  attackingScore,
                   defendingGameName: defendingGuess.gameName,
-                  defendingScore: defendingGuess.stealRating,
+                  defendingScore,
                   versusStealRule: effectiveStealRule,
                   currentPlayer: objectionPlayer,
                 })
@@ -2977,8 +2992,9 @@ export function GameClient() {
           pendingFinalSteal: pendingFinalSteal as PendingVersusSteal | null,
           selectedCell,
         })
-        const defendingScore = existingGuess.stealRating
-        const attackingScore = newGuess.stealRating
+        const effectiveStealRule = versusStealRule
+        const defendingScore = getStealShowdownMetric(existingGuess, effectiveStealRule)
+        const attackingScore = getStealShowdownMetric(newGuess, effectiveStealRule)
         const showdownDuration =
           animationsEnabled && outcome.hasShowdownScores ? STEAL_SHOWDOWN_DURATION_MS : 0
 
@@ -2990,7 +3006,7 @@ export function GameClient() {
             defenderScore: defendingScore!,
             attackerName: game.name,
             attackerScore: attackingScore!,
-            rule: versusStealRule === 'higher' ? 'higher' : 'lower',
+            rule: effectiveStealRule,
             successful: outcome.successful,
           })
         }
@@ -3004,9 +3020,9 @@ export function GameClient() {
           viaObjection: false,
           hadShowdownScores: outcome.hasShowdownScores,
           finalSteal: pendingFinalSteal?.cellIndex === selectedCell,
-          attackingScore: newGuess.stealRating ?? null,
+          attackingScore,
           defendingGameName: existingGuess.gameName,
-          defendingScore: existingGuess.stealRating ?? null,
+          defendingScore,
         })
 
         if (isCurrentOnlineMatch) {
@@ -3028,9 +3044,9 @@ export function GameClient() {
             defender: failedStealResolution?.defender,
             hadShowdownScores: outcome.hasShowdownScores,
             attackingGameName: newGuess.gameName,
-            attackingScore: newGuess.stealRating ?? null,
+            attackingScore,
             defendingGameName: existingGuess.gameName,
-            defendingScore: existingGuess.stealRating ?? null,
+            defendingScore,
           })
         }
 
@@ -3043,7 +3059,7 @@ export function GameClient() {
             attackingScore,
             defendingGameName: existingGuess.gameName,
             defendingScore,
-            versusStealRule,
+            versusStealRule: effectiveStealRule,
             currentPlayer,
           })
 

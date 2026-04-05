@@ -1,7 +1,7 @@
 import type { CellGuess } from '@/lib/types'
 
 export type TicTacToePlayer = 'x' | 'o'
-export type VersusStealRule = 'lower' | 'higher'
+export type VersusStealRule = 'lower' | 'higher' | 'fewer_reviews' | 'more_reviews'
 
 export function getNextPlayer(player: TicTacToePlayer): TicTacToePlayer {
   return player === 'x' ? 'o' : 'x'
@@ -74,20 +74,32 @@ export function buildStealFailureDescription(options: {
     versusStealRule,
     currentPlayer,
   } = options
+  const ruleDescriptor =
+    versusStealRule === 'lower'
+      ? 'lower than'
+      : versusStealRule === 'higher'
+        ? 'higher than'
+        : versusStealRule === 'fewer_reviews'
+          ? 'fewer reviews than'
+          : 'more reviews than'
+  const metricLabel =
+    versusStealRule === 'fewer_reviews' || versusStealRule === 'more_reviews'
+      ? 'review count'
+      : 'score'
 
   if (pendingFinalSteal && pendingFinalSteal.cellIndex === selectedCell) {
     if (!hasShowdownScores) {
-      return `${getPlayerLabel(pendingFinalSteal.defender)} keeps the win because both answers needed a score.`
+      return `${getPlayerLabel(pendingFinalSteal.defender)} keeps the win because both answers needed a ${metricLabel}.`
     }
 
-    return `${gameName} (${attackingScore}) needed to be ${versusStealRule === 'lower' ? 'lower' : 'higher'} than ${defendingGameName} (${defendingScore}). ${getPlayerLabel(pendingFinalSteal.defender)} keeps the win.`
+    return `${gameName} (${attackingScore}) needed to be ${ruleDescriptor} ${defendingGameName} (${defendingScore}). ${getPlayerLabel(pendingFinalSteal.defender)} keeps the win.`
   }
 
   if (!hasShowdownScores) {
-    return `${getPlayerLabel(getNextPlayer(currentPlayer))} is up. Both answers need a score to settle the steal.`
+    return `${getPlayerLabel(getNextPlayer(currentPlayer))} is up. Both answers need a ${metricLabel} to settle the steal.`
   }
 
-  return `${getPlayerLabel(getNextPlayer(currentPlayer))} is up. ${gameName} (${attackingScore}) had to be ${versusStealRule === 'lower' ? 'lower' : 'higher'} than ${defendingGameName} (${defendingScore}).`
+  return `${getPlayerLabel(getNextPlayer(currentPlayer))} is up. ${gameName} (${attackingScore}) had to be ${ruleDescriptor} ${defendingGameName} (${defendingScore}).`
 }
 
 export function getVersusFullBoardResolution(

@@ -1,7 +1,11 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
-import { VersusSetupModal, type VersusCategoryFilters } from '@/components/game/versus-setup-modal'
+import {
+  VersusSetupModal,
+  type VersusCategoryFilters,
+  type VersusStealRule,
+} from '@/components/game/versus-setup-modal'
 import { CURATED_VERSUS_CATEGORY_FAMILIES } from '@/lib/versus-category-options'
 
 const companyFamily = CURATED_VERSUS_CATEGORY_FAMILIES.find((family) => family.key === 'company')
@@ -12,7 +16,7 @@ if (!companyFamily) {
 
 function renderModal(options?: {
   filters?: VersusCategoryFilters
-  stealRule?: 'off' | 'lower' | 'higher'
+  stealRule?: VersusStealRule
   objectionRule?: 'off' | 'one' | 'three'
   timerOption?: 'none' | 20 | 60 | 120 | 300
   disableDraws?: boolean

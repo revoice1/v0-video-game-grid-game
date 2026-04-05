@@ -9,6 +9,7 @@ export interface Game {
   releaseDates?: string[]
   metacritic: number | null
   stealRating?: number | null
+  stealRatingCount?: number | null
   gameTypeLabel?: string | null
   originalPlatformName?: string | null
   hasSameNamePortFamily?: boolean
@@ -87,6 +88,7 @@ export interface CellGuess {
   releaseDates?: string[]
   metacritic?: number | null
   stealRating?: number | null
+  stealRatingCount?: number | null
   genres?: string[]
   platforms?: string[]
   developers?: string[]

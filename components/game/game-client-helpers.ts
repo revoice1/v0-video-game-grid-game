@@ -6,6 +6,7 @@ type GuessLookupResultGame = {
   released?: string | null
   metacritic?: number | null
   stealRating?: number | null
+  stealRatingCount?: number | null
   genres?: string[]
   platforms?: string[]
   developers?: string[]
@@ -31,6 +32,7 @@ function getGameFallbackMetadata(game: Game): Required<GuessLookupResultGame> {
     released: game.released ?? null,
     metacritic: game.metacritic ?? null,
     stealRating: game.stealRating ?? null,
+    stealRatingCount: game.stealRatingCount ?? null,
     genres: game.genres.map((genre) => genre.name),
     platforms: game.platforms.map(({ platform }) => platform.name),
     developers: game.developers?.map((developer) => developer.name) ?? [],
@@ -75,6 +77,10 @@ export function hydrateStoredGuess(existingGuess: CellGuess, result: GuessLookup
     released: pickResolvedValue(result.game?.released, existingGuess.released ?? null),
     metacritic: pickResolvedValue(result.game?.metacritic, existingGuess.metacritic ?? null),
     stealRating: pickResolvedValue(result.game?.stealRating, existingGuess.stealRating ?? null),
+    stealRatingCount: pickResolvedValue(
+      result.game?.stealRatingCount,
+      existingGuess.stealRatingCount ?? null
+    ),
     genres: pickResolvedArray(result.game?.genres, existingGuess.genres ?? []),
     platforms: pickResolvedArray(result.game?.platforms, existingGuess.platforms ?? []),
     developers: pickResolvedArray(result.game?.developers, existingGuess.developers ?? []),
@@ -115,6 +121,7 @@ export function buildGuessFromSelection(options: {
     metacritic: pickResolvedValue(result.game?.metacritic, fallbackMetadata.metacritic),
     // Keep steal/showdown scoring tied to the authoritative validation payload.
     stealRating: result.game?.stealRating ?? null,
+    stealRatingCount: result.game?.stealRatingCount ?? null,
     genres: pickResolvedArray(result.game?.genres, fallbackMetadata.genres),
     platforms: pickResolvedArray(result.game?.platforms, fallbackMetadata.platforms),
     developers: pickResolvedArray(result.game?.developers, fallbackMetadata.developers),
@@ -137,6 +144,7 @@ export function buildGuessFromSelection(options: {
     released: resolvedMetadata.released,
     metacritic: resolvedMetadata.metacritic,
     stealRating: resolvedMetadata.stealRating,
+    stealRatingCount: resolvedMetadata.stealRatingCount,
     genres: resolvedMetadata.genres,
     platforms: resolvedMetadata.platforms,
     developers: resolvedMetadata.developers,

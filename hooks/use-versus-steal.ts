@@ -43,8 +43,13 @@ export function resolveStealOutcome({
   pendingFinalSteal,
   selectedCell,
 }: StealContext): StealOutcome {
-  const defendingScore = defendingGuess.stealRating
-  const attackingScore = attackingGuess.stealRating
+  const usesReviewCountRule = rule === 'fewer_reviews' || rule === 'more_reviews'
+  const defendingScore = usesReviewCountRule
+    ? defendingGuess.stealRatingCount
+    : defendingGuess.stealRating
+  const attackingScore = usesReviewCountRule
+    ? attackingGuess.stealRatingCount
+    : attackingGuess.stealRating
   const hasShowdownScores =
     defendingScore !== null &&
     defendingScore !== undefined &&
@@ -53,7 +58,9 @@ export function resolveStealOutcome({
 
   const successful =
     hasShowdownScores &&
-    (rule === 'lower' ? attackingScore < defendingScore : attackingScore > defendingScore)
+    (rule === 'lower' || rule === 'fewer_reviews'
+      ? attackingScore < defendingScore
+      : attackingScore > defendingScore)
 
   if (successful) {
     return {

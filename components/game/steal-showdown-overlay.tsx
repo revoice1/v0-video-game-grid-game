@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
+import type { VersusStealRule } from './versus-setup-modal'
 
 export interface StealShowdownOverlayProps {
   burstId: number
@@ -9,7 +10,7 @@ export interface StealShowdownOverlayProps {
   defenderScore: number
   attackerName: string
   attackerScore: number
-  rule: 'lower' | 'higher'
+  rule: Exclude<VersusStealRule, 'off'>
   successful: boolean
   lowEffects?: boolean
 }
@@ -139,7 +140,11 @@ export function StealShowdownOverlay({
           <p className="mt-1 text-center text-xs text-muted-foreground">
             {rule === 'lower'
               ? 'Lower rating steals the square'
-              : 'Higher rating steals the square'}
+              : rule === 'higher'
+                ? 'Higher rating steals the square'
+                : rule === 'fewer_reviews'
+                  ? 'Fewer reviews steals the square'
+                  : 'More reviews steals the square'}
           </p>
           <div className="mt-5 grid grid-cols-1 items-center gap-4 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-5">
             <div className="showdown-panel showdown-panel-left min-w-0 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">

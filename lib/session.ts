@@ -61,6 +61,7 @@ export interface CellGuessRecord {
   released?: string | null
   metacritic?: number | null
   stealRating?: number | null
+  stealRatingCount?: number | null
   genres?: string[]
   platforms?: string[]
   developers?: string[]
@@ -97,7 +98,7 @@ export interface SavedGameState {
     cellIndex: number
   } | null
   versusCategoryFilters?: Record<string, string[]>
-  versusStealRule?: 'off' | 'lower' | 'higher'
+  versusStealRule?: 'off' | 'lower' | 'higher' | 'fewer_reviews' | 'more_reviews'
   versusTimerOption?: 'none' | 20 | 60 | 120 | 300
   versusDisableDraws?: boolean
   versusObjectionRule?: 'off' | 'one' | 'three'
