@@ -115,6 +115,7 @@ export async function POST(request: NextRequest) {
       ],
       generationConfig,
     }
+    const tools = [{ googleSearch: {} }]
     const requestVariants: Array<{
       label: 'grounded' | 'standard'
       body: Record<string, unknown>
@@ -124,7 +125,7 @@ export async function POST(request: NextRequest) {
             label: 'grounded',
             body: {
               ...requestBodyBase,
-              tools: [{ googleSearch: {} }],
+              tools,
             },
           },
           {
