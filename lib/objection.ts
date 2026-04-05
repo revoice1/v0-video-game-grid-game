@@ -79,7 +79,7 @@ function buildCategoryValidationQuestion(category: Category): string {
     case 'game_mode':
       return `Does this game have ${category.name} as a real supported mode of play? Do not count trivial side features, metadata quirks, or weak indirect multiplayer associations.`
     case 'perspective':
-      return `Is ${category.name} one of this game's recognized gameplay perspectives? For First person specifically, count official modes/toggles that let players complete substantial gameplay (or the full campaign) in first person, even if another perspective is the default camera.`
+      return `Is ${category.name} one of this game's recognized gameplay perspectives? Count official modes/toggles that enable substantial gameplay (or a full campaign) in the named perspective, even when another camera style is the default.`
     case 'genre':
       return `Is this game commonly and directly classified as ${category.name}? Do not infer broad parent genres or genre-adjacent relationships unless the metadata explicitly supports them.`
     case 'theme':

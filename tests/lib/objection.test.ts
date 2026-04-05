@@ -65,7 +65,7 @@ describe('buildObjectionDataset', () => {
         name: 'First person',
         type: 'perspective',
         validationQuestion:
-          "Is First person one of this game's recognized gameplay perspectives? For First person specifically, count official modes/toggles that let players complete substantial gameplay (or the full campaign) in first person, even if another perspective is the default camera.",
+          "Is First person one of this game's recognized gameplay perspectives? Count official modes/toggles that enable substantial gameplay (or a full campaign) in the named perspective, even when another camera style is the default.",
       },
       appSignals: {
         matchedRow: false,
