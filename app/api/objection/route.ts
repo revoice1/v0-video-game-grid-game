@@ -135,8 +135,8 @@ export async function POST(request: NextRequest) {
         ]
       : [{ label: 'standard', body: requestBodyBase }]
 
-    for (const model of getGeminiModelCandidates()) {
-      for (const requestVariant of requestVariants) {
+    for (const requestVariant of requestVariants) {
+      for (const model of getGeminiModelCandidates()) {
         if (IS_DEV) {
           logInfo('Gemini objection outbound request', {
             model,
@@ -219,6 +219,15 @@ export async function POST(request: NextRequest) {
           status: response.status,
           body: IS_DEV ? lastErrorText : undefined,
         })
+
+        if (requestVariant.label === 'grounded' && response.status === 429) {
+          logWarn('Gemini grounded request hit rate limit; trying next model', {
+            model,
+            variant: requestVariant.label,
+            status: response.status,
+          })
+          continue
+        }
 
         if (response.status === 404) {
           continue
