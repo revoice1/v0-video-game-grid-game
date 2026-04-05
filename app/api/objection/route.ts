@@ -11,7 +11,7 @@ import type { Category, CellGuess } from '@/lib/types'
 
 const GEMINI_KEY = process.env.GEMINI_KEY
 const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'models/gemini-3.1-flash-lite-preview'
-const ENABLE_SEARCH_GROUNDING = process.env.GEMINI_OBJECTION_ENABLE_SEARCH_GROUNDING === '1'
+const ENABLE_SEARCH_GROUNDING = process.env.GEMINI_OBJECTION_ENABLE_SEARCH_GROUNDING !== '0'
 const THINKING_BUDGET = Number.parseInt(process.env.GEMINI_OBJECTION_THINKING_BUDGET ?? '', 10)
 const IS_DEV = process.env.NODE_ENV !== 'production'
 
@@ -26,6 +26,8 @@ function getGeminiModelCandidates(): string[] {
     new Set(
       [
         configured,
+        'gemini-2.5-flash',
+        'gemini-2.5-pro',
         'gemini-3.1-flash-lite-preview',
         'gemini-2.5-flash-lite',
         'gemini-flash-lite-latest',
@@ -82,6 +84,9 @@ export async function POST(request: NextRequest) {
         perspectives: dataset.appMetadata.perspectives.length,
       },
       promptBytes: datasetForPrompt.length,
+      groundingEnabled: ENABLE_SEARCH_GROUNDING,
+      thinkingBudget:
+        Number.isFinite(THINKING_BUDGET) && THINKING_BUDGET > 0 ? THINKING_BUDGET : null,
     })
 
     let geminiResponse: Response | null = null
