@@ -89,6 +89,10 @@ export function useVersusTurnTimer({
     }
 
     if (!isVersusBoardReady) {
+      if (isVersusMode && (isLoading || loadedPuzzleMode !== 'versus' || puzzleId === null)) {
+        initializedTurnTimerKeyRef.current = null
+        setTurnTimeLeft(null)
+      }
       return
     }
 

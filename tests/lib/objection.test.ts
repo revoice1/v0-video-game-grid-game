@@ -95,7 +95,7 @@ describe('OBJECTION_SYSTEM_PROMPT', () => {
       'Use the category validation questions as the main standard'
     )
     expect(OBJECTION_SYSTEM_PROMPT).toContain(
-      'metadata is useful, but it is known to be incomplete, imperfect, or mismapped'
+      'The appMetadata block is useful but known to be incomplete, imperfect, or mismapped'
     )
     expect(OBJECTION_SYSTEM_PROMPT).toContain(
       'If model grounding/search evidence is available, prefer that evidence'

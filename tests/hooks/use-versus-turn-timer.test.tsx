@@ -33,6 +33,54 @@ describe('useVersusTurnTimer', () => {
     expect(setTurnTimeLeft).toHaveBeenCalledWith(20)
   })
 
+  it('resets the timer after loading a new versus board even when puzzle key repeats', () => {
+    const activeTurnTimerKeyRef = { current: null as string | null }
+    const setTurnTimeLeft = vi.fn()
+    const setTurnDeadlineAt = vi.fn()
+
+    const { rerender } = renderHook(
+      ({ isLoading, turnTimeLeft }: { isLoading: boolean; turnTimeLeft: number | null }) =>
+        useVersusTurnTimer({
+          isVersusMode: true,
+          isLoading,
+          loadedPuzzleMode: 'versus',
+          puzzleId: 'versus-puzzle',
+          currentPlayer: 'x',
+          winner: null,
+          versusTimerOption: 20,
+          turnTimeLeft,
+          turnDeadlineAt: null,
+          pendingFinalSteal: null,
+          animationsEnabled: true,
+          audioEnabled: true,
+          activeTurnTimerKeyRef,
+          setTurnTimeLeft,
+          setTurnDeadlineAt,
+          onTurnExpired: vi.fn(),
+        }),
+      {
+        initialProps: {
+          isLoading: false,
+          turnTimeLeft: null,
+        },
+      }
+    )
+
+    setTurnTimeLeft.mockClear()
+
+    rerender({
+      isLoading: true,
+      turnTimeLeft: 3,
+    })
+
+    rerender({
+      isLoading: false,
+      turnTimeLeft: null,
+    })
+
+    expect(setTurnTimeLeft).toHaveBeenCalledWith(20)
+  })
+
   it('starts a visible online timer immediately when a board becomes ready', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-03-29T20:00:00.000Z'))
