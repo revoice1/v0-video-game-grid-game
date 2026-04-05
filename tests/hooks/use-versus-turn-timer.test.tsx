@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
+import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { useVersusTurnTimer } from '@/hooks/use-versus-turn-timer'
 
@@ -97,6 +98,161 @@ describe('useVersusTurnTimer', () => {
         onTurnExpired,
       })
     )
+
+    expect(onTurnExpired).toHaveBeenCalledWith('o')
+  })
+
+  it('fires turn expiration once per turn key even if state lingers at zero', () => {
+    const activeTurnTimerKeyRef = { current: 'versus-puzzle:x' as string | null }
+    const onTurnExpired = vi.fn()
+    const setTurnDeadlineAt = vi.fn()
+
+    const { rerender } = renderHook(
+      ({ currentPlayer }: { currentPlayer: 'x' | 'o' }) =>
+        useVersusTurnTimer({
+          isVersusMode: true,
+          isLoading: false,
+          loadedPuzzleMode: 'versus',
+          puzzleId: 'versus-puzzle',
+          currentPlayer,
+          winner: null,
+          versusTimerOption: 20,
+          turnTimeLeft: 0,
+          turnDeadlineAt: null,
+          pendingFinalSteal: null,
+          animationsEnabled: true,
+          audioEnabled: true,
+          activeTurnTimerKeyRef,
+          setTurnTimeLeft: vi.fn(),
+          setTurnDeadlineAt,
+          onTurnExpired,
+        }),
+      {
+        initialProps: { currentPlayer: 'x' as 'x' | 'o' },
+      }
+    )
+
+    rerender({ currentPlayer: 'x' as 'x' | 'o' })
+    expect(onTurnExpired).toHaveBeenCalledTimes(1)
+
+    rerender({ currentPlayer: 'o' as 'x' | 'o' })
+    expect(onTurnExpired).toHaveBeenCalledTimes(2)
+    expect(onTurnExpired).toHaveBeenLastCalledWith('x')
+  })
+
+  it('resets the timer when the turn changes after an expiration', () => {
+    const activeTurnTimerKeyRef = { current: 'versus-puzzle:x' as string | null }
+    const setTurnTimeLeft = vi.fn()
+
+    const { rerender } = renderHook(
+      ({ currentPlayer }: { currentPlayer: 'x' | 'o' }) =>
+        useVersusTurnTimer({
+          isVersusMode: true,
+          isLoading: false,
+          loadedPuzzleMode: 'versus',
+          puzzleId: 'versus-puzzle',
+          currentPlayer,
+          winner: null,
+          versusTimerOption: 2,
+          turnTimeLeft: 0,
+          turnDeadlineAt: null,
+          pendingFinalSteal: null,
+          animationsEnabled: true,
+          audioEnabled: true,
+          activeTurnTimerKeyRef,
+          setTurnTimeLeft,
+          setTurnDeadlineAt: vi.fn(),
+          onTurnExpired: vi.fn(),
+        }),
+      {
+        initialProps: { currentPlayer: 'x' as 'x' | 'o' },
+      }
+    )
+
+    setTurnTimeLeft.mockClear()
+
+    rerender({ currentPlayer: 'o' as 'x' | 'o' })
+
+    expect(setTurnTimeLeft).toHaveBeenCalledWith(2)
+  })
+
+  it('resets the timer when the turn changes even if previous turn still had time left', () => {
+    const activeTurnTimerKeyRef = { current: 'versus-puzzle:x' as string | null }
+    const setTurnTimeLeft = vi.fn()
+
+    const { rerender } = renderHook(
+      ({
+        currentPlayer,
+        turnTimeLeft,
+      }: {
+        currentPlayer: 'x' | 'o'
+        turnTimeLeft: number | null
+      }) =>
+        useVersusTurnTimer({
+          isVersusMode: true,
+          isLoading: false,
+          loadedPuzzleMode: 'versus',
+          puzzleId: 'versus-puzzle',
+          currentPlayer,
+          winner: null,
+          versusTimerOption: 20,
+          turnTimeLeft,
+          turnDeadlineAt: null,
+          pendingFinalSteal: null,
+          animationsEnabled: true,
+          audioEnabled: true,
+          activeTurnTimerKeyRef,
+          setTurnTimeLeft,
+          setTurnDeadlineAt: vi.fn(),
+          onTurnExpired: vi.fn(),
+        }),
+      {
+        initialProps: {
+          currentPlayer: 'x' as 'x' | 'o',
+          turnTimeLeft: 12 as number | null,
+        },
+      }
+    )
+
+    setTurnTimeLeft.mockClear()
+
+    rerender({ currentPlayer: 'o' as 'x' | 'o', turnTimeLeft: 12 as number | null })
+
+    expect(setTurnTimeLeft).toHaveBeenCalledWith(20)
+  })
+
+  it('expires immediately when test-driven timer state is pushed to zero', () => {
+    const activeTurnTimerKeyRef = { current: null as string | null }
+    const onTurnExpired = vi.fn()
+    let setTimerState: ((value: number | null) => void) | null = null
+
+    renderHook(() => {
+      const [turnTimeLeft, setTurnTimeLeft] = useState<number | null>(2)
+      setTimerState = setTurnTimeLeft
+
+      useVersusTurnTimer({
+        isVersusMode: true,
+        isLoading: false,
+        loadedPuzzleMode: 'versus',
+        puzzleId: 'versus-puzzle',
+        currentPlayer: 'x',
+        winner: null,
+        versusTimerOption: 2,
+        turnTimeLeft,
+        turnDeadlineAt: null,
+        pendingFinalSteal: null,
+        animationsEnabled: true,
+        audioEnabled: true,
+        activeTurnTimerKeyRef,
+        setTurnTimeLeft,
+        setTurnDeadlineAt: vi.fn(),
+        onTurnExpired,
+      })
+    })
+
+    act(() => {
+      setTimerState?.(0)
+    })
 
     expect(onTurnExpired).toHaveBeenCalledWith('o')
   })
