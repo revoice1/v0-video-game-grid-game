@@ -1560,7 +1560,9 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
         title: options?.fromOverruledObjection
           ? 'Objection overruled'
           : invalidGuessResolution.title,
-        description: invalidGuessResolution.description,
+        description: options?.fromOverruledObjection
+          ? `Judge Gemini overruled the objection. ${invalidGuessResolution.description}`
+          : invalidGuessResolution.description,
       })
     },
     [
@@ -2081,7 +2083,11 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
 
       toast({
         title: payload.verdict === 'sustained' ? 'Objection sustained' : 'Objection overruled',
-        description: payload.explanation ?? 'The courtroom judge returned a verdict.',
+        description:
+          payload.explanation ??
+          (payload.verdict === 'overruled'
+            ? 'Judge Gemini overruled the objection.'
+            : 'Judge Gemini sustained the objection.'),
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Judgment failed.'
