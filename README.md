@@ -56,6 +56,9 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+For LAN testing from another device, open `http://<your-host-lan-ip>:3000` after adding that origin
+to `ALLOWED_DEV_ORIGINS` in `.env.local`.
+
 ## Environment Variables
 
 | Variable                                   | Required | Description                                                                                                                   |
@@ -72,6 +75,27 @@ Open [http://localhost:3000](http://localhost:3000).
 | `PUZZLE_GENERATION_MAX_ATTEMPTS`           | No       | Max candidate grids to try before failing, default `12`                                                                       |
 | `PUZZLE_VALIDATION_SAMPLE_SIZE`            | No       | IGDB matches sampled when validating each cell, default `40`                                                                  |
 | `ALLOWED_DEV_ORIGINS`                      | No       | Comma-separated extra dev origins for remote local testing, for example `http://your-hostname:3000,http://your-local-ip:3000` |
+
+## Devcontainer LAN Access
+
+When using VS Code Dev Containers with local Docker, this repo publishes container ports directly on
+the host (`3000` and `54321`) so LAN clients can reach the dev server.
+
+To allow LAN-origin requests in Next.js dev mode, set `ALLOWED_DEV_ORIGINS` in `.env.local`, for example:
+
+```bash
+ALLOWED_DEV_ORIGINS=http://192.168.1.25:3000,http://devbox.local:3000
+```
+
+Notes:
+
+- Ensure your host firewall allows inbound TCP `3000` from your LAN subnet.
+- Docker Desktop/WSL/VPN network rules can still block LAN reachability even when the app is bound
+  to `0.0.0.0` and ports are published.
+
+The devcontainer also persists GitHub CLI and `@openai/codex` auth state in named Docker volumes
+(`/home/node/.config/gh` and `/home/node/.codex`), so you should only need to log in once per
+machine unless you remove those volumes.
 
 ## Database Setup
 

@@ -1,0 +1,65 @@
+{
+  "name": "GameGrid Dev Environment",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:20",
+  "remoteUser": "node",
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "moby": false
+    }
+  },
+  "waitFor": "postCreateCommand",
+  "postStartCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}",
+  "remoteEnv": {
+    "ALLOWED_DEV_ORIGINS": "http://127.0.0.1:3000,http://localhost:3000"
+  },
+  "otherPortsAttributes": {
+    "onAutoForward": "ignore"
+  },
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb"
+  },
+  "runArgs": ["-p", "3000:3000", "-p", "54321:54321"],
+  "forwardPorts": [3000, 54321],
+  "portsAttributes": {
+    "3000": {
+      "label": "GameGrid (Next.js)",
+      "onAutoForward": "notify"
+    },
+    "54321": {
+      "label": "Supabase Local API",
+      "onAutoForward": "silent"
+    }
+  },
+  "mounts": [
+    "source=gamegrid-node-modules,target=${containerWorkspaceFolder}/node_modules,type=volume",
+    "source=gamegrid-npm-cache,target=/home/node/.npm,type=volume",
+    "source=gamegrid-playwright-cache,target=/home/node/.cache/ms-playwright,type=volume",
+    "source=gamegrid-gh-config,target=/home/node/.config/gh,type=volume",
+    "source=gamegrid-codex-config,target=/home/node/.codex,type=volume"
+  ],
+  "containerEnv": {
+    "NEXT_TELEMETRY_DISABLED": "1",
+    "PLAYWRIGHT_BROWSERS_PATH": "/home/node/.cache/ms-playwright"
+  },
+  "postCreateCommand": "mkdir -p /home/node/.config/gh /home/node/.codex && sudo chown -R node:node /workspaces/gamegrid/node_modules /home/node/.npm /home/node/.cache/ms-playwright /home/node/.config/gh /home/node/.codex && npm install -g @openai/codex && npm ci && npx playwright install --with-deps chromium",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "editor.formatOnSave": true,
+        "files.eol": "\n",
+        "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"]
+      },
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "ms-playwright.playwright",
+        "anthropic.claude-code",
+        "openai.chatgpt",
+        "vitest.explorer"
+      ]
+    }
+  }
+}

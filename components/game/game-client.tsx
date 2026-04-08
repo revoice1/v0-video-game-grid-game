@@ -1,19 +1,14 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import dynamic from 'next/dynamic'
 import { GameHeader } from './game-header'
 import { GameGrid } from './game-grid'
 import { GameSearch } from './game-search'
 import { DevReloadBadge } from './dev-reload-badge'
-import { ResultsModal } from './results-modal'
-import { DailyHistoryModal, type DailyArchiveEntry } from './daily-history-modal'
-import { HowToPlayModal } from './how-to-play-modal'
-import { GuessDetailsModal } from './guess-details-modal'
-import { VersusObjectionModal } from './versus-objection-modal'
+import type { DailyArchiveEntry } from './daily-history-modal'
 import { VersusSummaryPanel } from './versus-summary-panel'
-import { OnlineVersusLobby } from './online-versus-lobby'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
-import { AchievementsModal } from './achievements-modal'
 import { PuzzleLoadingScreen } from './puzzle-loading-screen'
 import { StealShowdownOverlay } from './steal-showdown-overlay'
 import {
@@ -65,12 +60,11 @@ import {
   type LoadingAttempt,
   type LoadingIntersection,
 } from './loading-helpers'
-import {
-  VersusSetupModal,
-  type VersusCategoryFilters,
-  type VersusObjectionRule,
-  type VersusStealRule,
-  type VersusTurnTimerOption,
+import type {
+  VersusCategoryFilters,
+  VersusObjectionRule,
+  VersusStealRule,
+  VersusTurnTimerOption,
 } from './versus-setup-modal'
 import { clearGameState, loadGameState, saveGameState, type SavedGameState } from '@/lib/session'
 import { sanitizeMinValidOptionsOverride } from '@/lib/min-valid-options'
@@ -121,6 +115,27 @@ import {
   type PendingVersusSteal,
   type StealAction,
 } from '@/hooks/use-versus-steal'
+
+const ResultsModal = dynamic(() => import('./results-modal').then((m) => m.ResultsModal))
+const DailyHistoryModal = dynamic(() =>
+  import('./daily-history-modal').then((m) => m.DailyHistoryModal)
+)
+const HowToPlayModal = dynamic(() => import('./how-to-play-modal').then((m) => m.HowToPlayModal))
+const GuessDetailsModal = dynamic(() =>
+  import('./guess-details-modal').then((m) => m.GuessDetailsModal)
+)
+const VersusObjectionModal = dynamic(() =>
+  import('./versus-objection-modal').then((m) => m.VersusObjectionModal)
+)
+const OnlineVersusLobby = dynamic(() =>
+  import('./online-versus-lobby').then((m) => m.OnlineVersusLobby)
+)
+const AchievementsModal = dynamic(() =>
+  import('./achievements-modal').then((m) => m.AchievementsModal)
+)
+const VersusSetupModal = dynamic(() =>
+  import('./versus-setup-modal').then((m) => m.VersusSetupModal)
+)
 
 const MAX_GUESSES = 9
 const DEFAULT_VERSUS_STEAL_RULE: VersusStealRule = 'fewer_reviews'
@@ -4106,7 +4121,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
         }}
       />
 
-      {!isVersusMode && (
+      {!isVersusMode && showResults && (
         <ResultsModal
           isOpen={showResults}
           onClose={() => setShowResults(false)}
@@ -4120,59 +4135,67 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
         />
       )}
 
-      <DailyHistoryModal
-        isOpen={mode === 'daily' && showDailyHistory}
-        onClose={() => setShowDailyHistory(false)}
-        entries={dailyArchiveEntries}
-        isLoading={dailyArchiveLoading}
-        errorMessage={dailyArchiveError}
-        currentDate={puzzle.date}
-        onSelect={handleDailyArchiveSelect}
-      />
+      {mode === 'daily' && showDailyHistory && (
+        <DailyHistoryModal
+          isOpen
+          onClose={() => setShowDailyHistory(false)}
+          entries={dailyArchiveEntries}
+          isLoading={dailyArchiveLoading}
+          errorMessage={dailyArchiveError}
+          currentDate={puzzle.date}
+          onSelect={handleDailyArchiveSelect}
+        />
+      )}
 
-      <HowToPlayModal
-        isOpen={showHowToPlay}
-        onClose={() => setShowHowToPlay(false)}
-        mode={mode}
-        minimumCellOptions={resolvedMinimumCellOptions}
-        validationStatus={puzzle.validation_status}
-        dailyResetLabel={dailyResetLabel}
-      />
+      {showHowToPlay && (
+        <HowToPlayModal
+          isOpen
+          onClose={() => setShowHowToPlay(false)}
+          mode={mode}
+          minimumCellOptions={resolvedMinimumCellOptions}
+          validationStatus={puzzle.validation_status}
+          dailyResetLabel={dailyResetLabel}
+        />
+      )}
 
-      <AchievementsModal isOpen={showAchievements} onClose={() => setShowAchievements(false)} />
+      {showAchievements && <AchievementsModal isOpen onClose={() => setShowAchievements(false)} />}
 
-      <VersusSetupModal
-        mode="practice"
-        isOpen={showPracticeSetup}
-        onClose={() => setShowPracticeSetup(false)}
-        errorMessage={practiceSetupError}
-        filters={practiceCategoryFilters}
-        stealRule="off"
-        timerOption="none"
-        disableDraws={false}
-        objectionRule="off"
-        minimumValidOptionsDefault={minimumValidOptionsDefault}
-        minimumValidOptionsOverride={practiceMinimumValidOptions}
-        onApply={handleApplyPracticeFilters}
-      />
+      {showPracticeSetup && (
+        <VersusSetupModal
+          mode="practice"
+          isOpen
+          onClose={() => setShowPracticeSetup(false)}
+          errorMessage={practiceSetupError}
+          filters={practiceCategoryFilters}
+          stealRule="off"
+          timerOption="none"
+          disableDraws={false}
+          objectionRule="off"
+          minimumValidOptionsDefault={minimumValidOptionsDefault}
+          minimumValidOptionsOverride={practiceMinimumValidOptions}
+          onApply={handleApplyPracticeFilters}
+        />
+      )}
 
-      <VersusSetupModal
-        isOpen={showVersusSetup}
-        onClose={() => {
-          pendingVersusSetupIntentRef.current = null
-          setShowVersusSetup(false)
-        }}
-        mode="versus"
-        errorMessage={versusSetupError}
-        filters={versusCategoryFilters}
-        stealRule={versusStealRule}
-        timerOption={versusTimerOption}
-        disableDraws={versusDisableDraws}
-        objectionRule={versusObjectionRule}
-        minimumValidOptionsDefault={minimumValidOptionsDefault}
-        minimumValidOptionsOverride={versusMinimumValidOptions}
-        onApply={handleApplyVersusFilters}
-      />
+      {showVersusSetup && (
+        <VersusSetupModal
+          isOpen
+          onClose={() => {
+            pendingVersusSetupIntentRef.current = null
+            setShowVersusSetup(false)
+          }}
+          mode="versus"
+          errorMessage={versusSetupError}
+          filters={versusCategoryFilters}
+          stealRule={versusStealRule}
+          timerOption={versusTimerOption}
+          disableDraws={versusDisableDraws}
+          objectionRule={versusObjectionRule}
+          minimumValidOptionsDefault={minimumValidOptionsDefault}
+          minimumValidOptionsOverride={versusMinimumValidOptions}
+          onApply={handleApplyVersusFilters}
+        />
+      )}
 
       {showVersusObjectionModal ? (
         <VersusObjectionModal
