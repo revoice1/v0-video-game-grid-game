@@ -1,0 +1,2 @@
+# Keep text files normalized across local hosts and devcontainers.
+* text=auto eol=lf
