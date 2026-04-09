@@ -589,7 +589,7 @@ describe('useOnlineVersusRoom', () => {
       })
     })
 
-    it('skips event-history replay when the refreshed room already has state_data', async () => {
+    it('still fetches event history when the refreshed room already has state_data', async () => {
       const snapshot = {
         puzzleId: 'p1',
         guesses: Array(9).fill(null),
@@ -617,10 +617,8 @@ describe('useOnlineVersusRoom', () => {
       await waitFor(() => {
         const urls = fetchSpy.mock.calls.slice(beforeVisibility).map((call) => String(call[0]))
         expect(urls).toContain('/api/versus/room/ABCD')
+        expect(urls).toContain('/api/versus/room-events/room-1')
       })
-
-      const urls = fetchSpy.mock.calls.slice(beforeVisibility).map((call) => String(call[0]))
-      expect(urls).not.toContain('/api/versus/room-events/room-1')
     })
   })
 

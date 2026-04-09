@@ -101,6 +101,7 @@ export function useOnlineVersusRoom(): UseOnlineVersusRoomReturn {
   const channelRef = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null)
   const roomRef = useRef<VersusRoom | null>(null)
   const myRoleRef = useRef<RoomPlayer | null>(null)
+  const eventsRef = useRef<OnlineVersusEvent[]>([])
   // Set synchronously on mount (before any async fetch) if localStorage has an
   // in-progress room. The ?join= effect reads this to avoid a double-join race.
   const isResumingRef = useRef(loadRoomEntry() !== null)
@@ -120,6 +121,9 @@ export function useOnlineVersusRoom(): UseOnlineVersusRoomReturn {
   useEffect(() => {
     myRoleRef.current = myRole
   }, [myRole])
+  useEffect(() => {
+    eventsRef.current = events
+  }, [events])
 
   // ── Realtime subscription ─────────────────────────────────────────────────
 
@@ -219,6 +223,10 @@ export function useOnlineVersusRoom(): UseOnlineVersusRoomReturn {
 
   const fetchEventHistory = useCallback(async (roomId: string) => {
     const replayStartedAtMs = Date.now()
+    const highestKnownEventIdAtReplayStart = eventsRef.current.reduce(
+      (highestId, event) => Math.max(highestId, event.id),
+      0
+    )
     setIsHydratingHistory(true)
     try {
       const res = await fetch(`/api/versus/room-events/${roomId}`)
@@ -233,7 +241,12 @@ export function useOnlineVersusRoom(): UseOnlineVersusRoomReturn {
           if (!known.has(e.id)) {
             known.set(e.id, {
               ...e,
-              source: classifyFetchedOnlineVersusEventSource(e.created_at, replayStartedAtMs),
+              source: classifyFetchedOnlineVersusEventSource({
+                createdAt: e.created_at,
+                replayStartedAtMs,
+                eventId: e.id,
+                highestKnownEventIdAtReplayStart,
+              }),
             })
           }
         }
@@ -282,14 +295,7 @@ export function useOnlineVersusRoom(): UseOnlineVersusRoomReturn {
   fetchRoomStateRef.current = fetchRoomState
 
   const catchUpRoom = useCallback(async (roomId: string, code: string) => {
-    const refreshedRoom = await fetchRoomStateRef.current(code)
-
-    // If the room already has a canonical snapshot, prefer hydrating from it
-    // rather than replaying missed history over the top of newer state.
-    if (refreshedRoom?.state_data) {
-      return
-    }
-
+    await fetchRoomStateRef.current(code)
     await fetchEventHistoryRef.current(roomId)
   }, [])
 

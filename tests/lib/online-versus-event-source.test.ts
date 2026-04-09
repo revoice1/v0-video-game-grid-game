@@ -11,20 +11,62 @@ describe('online versus event source helpers', () => {
     const replayStartedAtMs = Date.parse('2026-04-09T00:00:10.000Z')
 
     expect(
-      classifyFetchedOnlineVersusEventSource('2026-04-09T00:00:09.000Z', replayStartedAtMs)
+      classifyFetchedOnlineVersusEventSource({
+        createdAt: '2026-04-09T00:00:09.000Z',
+        replayStartedAtMs,
+        eventId: 9,
+        highestKnownEventIdAtReplayStart: 0,
+      })
     ).toBe('history')
 
     expect(
-      classifyFetchedOnlineVersusEventSource('2026-04-09T00:00:10.000Z', replayStartedAtMs)
+      classifyFetchedOnlineVersusEventSource({
+        createdAt: '2026-04-09T00:00:10.000Z',
+        replayStartedAtMs,
+        eventId: 10,
+        highestKnownEventIdAtReplayStart: 0,
+      })
     ).toBe('live-catchup')
 
     expect(
-      classifyFetchedOnlineVersusEventSource('2026-04-09T00:00:11.000Z', replayStartedAtMs)
+      classifyFetchedOnlineVersusEventSource({
+        createdAt: '2026-04-09T00:00:11.000Z',
+        replayStartedAtMs,
+        eventId: 11,
+        highestKnownEventIdAtReplayStart: 0,
+      })
     ).toBe('live-catchup')
   })
 
+  it('uses event ids to recover missed live events during catch-up', () => {
+    expect(
+      classifyFetchedOnlineVersusEventSource({
+        createdAt: '2026-04-09T00:00:09.000Z',
+        replayStartedAtMs: Date.parse('2026-04-09T00:00:15.000Z'),
+        eventId: 11,
+        highestKnownEventIdAtReplayStart: 10,
+      })
+    ).toBe('live-catchup')
+
+    expect(
+      classifyFetchedOnlineVersusEventSource({
+        createdAt: '2026-04-09T00:00:12.000Z',
+        replayStartedAtMs: Date.parse('2026-04-09T00:00:15.000Z'),
+        eventId: 10,
+        highestKnownEventIdAtReplayStart: 10,
+      })
+    ).toBe('history')
+  })
+
   it('falls back safely when created_at is invalid', () => {
-    expect(classifyFetchedOnlineVersusEventSource('not-a-date', Date.now())).toBe('history')
+    expect(
+      classifyFetchedOnlineVersusEventSource({
+        createdAt: 'not-a-date',
+        replayStartedAtMs: Date.now(),
+        eventId: 1,
+        highestKnownEventIdAtReplayStart: 0,
+      })
+    ).toBe('history')
   })
 
   it('only suppresses replay effects for true history events', () => {
