@@ -3152,6 +3152,10 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
           })
         }
 
+        // Close the search sheet immediately so the showdown can take over the screen on mobile.
+        setSelectedCell(null)
+        setSearchQueryDraft('')
+
         appendVersusEvent({
           type: 'steal',
           player: currentPlayer,

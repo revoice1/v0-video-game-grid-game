@@ -30,6 +30,101 @@ test('versus failed steal shows the destructive toast path', async ({ page }) =>
   await expect(page.getByTestId('steal-miss-splash')).toBeVisible()
 })
 
+test('mobile failed steal closes search and shows the showdown overlay', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await resetStorage(page)
+  await seedStorageValue(page, 'gamegrid_search_confirm', false)
+  await seedStorageValue(page, 'gamegrid_versus_state', {
+    puzzleId: 'versus-mobile-failed-steal',
+    puzzle: { ...fakePuzzle, id: 'versus-mobile-failed-steal', is_daily: false, date: null },
+    guesses: [
+      {
+        gameId: 1,
+        gameName: 'Defender Game',
+        gameImage: null,
+        isCorrect: true,
+        owner: 'x',
+        stealRating: 71,
+      },
+      ...Array(8).fill(null),
+    ],
+    guessesRemaining: 9,
+    isComplete: false,
+    currentPlayer: 'o',
+    stealableCell: 0,
+    winner: null,
+    pendingFinalSteal: null,
+    versusCategoryFilters: {},
+    versusStealRule: 'lower',
+    versusTimerOption: 'none',
+    turnTimeLeft: null,
+  })
+
+  const versusSearchResult = {
+    id: 202,
+    name: 'Tie Breaker Game',
+    slug: 'tie-breaker-game',
+    background_image: null,
+    released: '2005-10-11',
+    metacritic: 81,
+    genres: [{ id: 1, name: 'Action', slug: 'action' }],
+    platforms: [{ platform: { id: 6, name: 'PC (Microsoft Windows)', slug: 'pc' } }],
+  }
+
+  await page.route('**/api/search?*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ results: [versusSearchResult] }),
+    })
+  })
+
+  await page.route('**/api/guess', async (route) => {
+    const requestBody = route.request().postDataJSON()
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        valid: true,
+        duplicate: false,
+        matchesRow: true,
+        matchesCol: true,
+        game: {
+          id: requestBody.gameId,
+          name: requestBody.gameName,
+          slug: versusSearchResult.slug,
+          url: null,
+          background_image: null,
+          released: versusSearchResult.released,
+          releaseDates: [versusSearchResult.released],
+          metacritic: versusSearchResult.metacritic,
+          stealRating: 88,
+          stealRatingCount: 245,
+          genres: ['Action'],
+          platforms: ['PC (Microsoft Windows)'],
+          developers: [],
+          publishers: [],
+          tags: [],
+          gameModes: ['Single player'],
+          themes: [],
+          perspectives: [],
+          companies: [],
+        },
+      }),
+    })
+  })
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Versus' }).click()
+  await page.getByTestId('grid-cell-0').click({ force: true })
+  await page.getByPlaceholder('Search for a video game...').fill('ti')
+  await page.getByRole('button', { name: /tie breaker game/i }).click()
+
+  await expect(page.getByTestId('steal-showdown-overlay')).toBeVisible()
+  await expect(page.getByPlaceholder('Search for a video game...')).toHaveCount(0)
+})
+
 test('final steal locks interaction to the target cell and dims the rest of the board', async ({
   page,
 }) => {

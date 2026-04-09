@@ -117,7 +117,7 @@ export function StealShowdownOverlay({
   }, [lowEffects, revealedDefenderDigits])
 
   return (
-    <div data-testid="steal-showdown-overlay" className="fixed inset-0 z-[80]">
+    <div data-testid="steal-showdown-overlay" className="fixed inset-0 z-[110]">
       <div
         className={cn(
           'absolute inset-0 transition-all duration-300',
