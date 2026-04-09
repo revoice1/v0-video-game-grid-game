@@ -78,7 +78,10 @@ function getGemini25ThinkingBudget(model: string, level: string): number {
   }
 }
 
-function getGeminiThinkingConfig(model: string, level: string): {
+function getGeminiThinkingConfig(
+  model: string,
+  level: string
+): {
   thinkingLevel?: string
   thinkingBudget?: number
 } {

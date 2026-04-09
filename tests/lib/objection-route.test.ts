@@ -180,14 +180,14 @@ describe('/api/objection route', () => {
         thinkingConfig: {
           thinkingBudget: 0,
         },
-      }
+      },
     })
     expect(requestBody).not.toMatchObject({
       generationConfig: {
         thinkingConfig: {
           thinkingLevel: expect.anything(),
         },
-      }
+      },
     })
   })
 })
