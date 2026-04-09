@@ -13,10 +13,33 @@ const GEMINI_KEY = process.env.GEMINI_KEY
 const GEMINI_MODEL = (process.env.GEMINI_MODEL ?? 'gemini-flash-lite-latest')
   .replace(/^models\//, '')
   .trim()
-const ENABLE_SEARCH_GROUNDING = process.env.GEMINI_OBJECTION_ENABLE_SEARCH_GROUNDING !== '0'
 const IS_DEV = process.env.NODE_ENV !== 'production'
-const PINNED_THINKING_LEVEL = 'MINIMAL' as const
 const GROUNDED_MAX_ATTEMPTS = 2
+const DEFAULT_THINKING_LEVEL = 'HIGH'
+const SUPPORTED_THINKING_LEVELS = new Set(['MINIMAL', 'LOW', 'MEDIUM', 'HIGH'])
+
+function isSearchGroundingEnabled(value: string | undefined): boolean {
+  if (!value) {
+    return false
+  }
+
+  const normalized = value.trim().toLowerCase()
+  return normalized === '1' || normalized === 'true'
+}
+
+function getThinkingLevel(value: string | undefined): string {
+  const normalized = value?.trim().toUpperCase()
+  if (normalized && SUPPORTED_THINKING_LEVELS.has(normalized)) {
+    return normalized
+  }
+
+  return DEFAULT_THINKING_LEVEL
+}
+
+const ENABLE_SEARCH_GROUNDING = isSearchGroundingEnabled(
+  process.env.GEMINI_OBJECTION_ENABLE_SEARCH_GROUNDING
+)
+const THINKING_LEVEL = getThinkingLevel(process.env.GEMINI_OBJECTION_THINKING_LEVEL)
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -71,7 +94,7 @@ export async function POST(request: NextRequest) {
       },
       promptBytes: datasetForPrompt.length,
       groundingEnabled: ENABLE_SEARCH_GROUNDING,
-      thinkingLevel: PINNED_THINKING_LEVEL,
+      thinkingLevel: THINKING_LEVEL,
     })
 
     let geminiResponse: Response | null = null
@@ -87,7 +110,7 @@ export async function POST(request: NextRequest) {
       responseMimeType: 'application/json',
     }
 
-    generationConfig.thinkingConfig = { thinkingLevel: PINNED_THINKING_LEVEL }
+    generationConfig.thinkingConfig = { thinkingLevel: THINKING_LEVEL }
 
     const requestBodyBase = {
       systemInstruction: {
@@ -140,7 +163,7 @@ export async function POST(request: NextRequest) {
           familyNamesPreview,
           familyNamesRemainder,
           promptBytes: datasetForPrompt.length,
-          thinkingLevel: PINNED_THINKING_LEVEL,
+          thinkingLevel: THINKING_LEVEL,
         })
       }
       const requestUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`

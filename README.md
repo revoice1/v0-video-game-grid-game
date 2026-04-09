@@ -70,7 +70,8 @@ to `ALLOWED_DEV_ORIGINS` in `.env.local`.
 | `TWITCH_IGDB_CLIENT_SECRET`                | Yes      | IGDB API client secret                                                                                                        |
 | `GEMINI_KEY`                               | No       | Gemini API key used by `/api/objection` for objection review judgments                                                        |
 | `GEMINI_MODEL`                             | No       | Gemini model name override for objections (default: `gemini-flash-lite-latest`; `models/` prefix is normalized)               |
-| `GEMINI_OBJECTION_ENABLE_SEARCH_GROUNDING` | No       | Set to `0` to disable grounded objection requests (default enabled); grounded calls may require billing-enabled API access    |
+| `GEMINI_OBJECTION_THINKING_LEVEL`          | No       | Thinking level for objection review requests, one of `MINIMAL`, `LOW`, `MEDIUM`, or `HIGH` (default: `HIGH`)                  |
+| `GEMINI_OBJECTION_ENABLE_SEARCH_GROUNDING` | No       | Set to `1` to enable grounded Google Search objection requests (default disabled); grounded calls may require billing access  |
 | `PUZZLE_MIN_VALID_OPTIONS`                 | No       | Minimum valid answers per cell, default `3`                                                                                   |
 | `PUZZLE_GENERATION_MAX_ATTEMPTS`           | No       | Max candidate grids to try before failing, default `12`                                                                       |
 | `PUZZLE_VALIDATION_SAMPLE_SIZE`            | No       | IGDB matches sampled when validating each cell, default `40`                                                                  |
