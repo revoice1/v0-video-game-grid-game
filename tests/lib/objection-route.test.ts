@@ -127,16 +127,16 @@ describe('/api/objection route', () => {
     expect(requestBody).toMatchObject({
       generationConfig: {
         thinkingConfig: {
-          thinkingLevel: 'HIGH',
+          thinkingLevel: 'high',
         },
       },
     })
     expect(requestBody).not.toHaveProperty('tools')
   })
 
-  it('supports opt-in Google search grounding and thinking overrides', async () => {
+  it('supports opt-in Google search grounding and thinking overrides for Gemini 3.1 Flash-Lite', async () => {
     process.env.GEMINI_OBJECTION_ENABLE_SEARCH_GROUNDING = '1'
-    process.env.GEMINI_OBJECTION_THINKING_LEVEL = 'medium'
+    process.env.GEMINI_OBJECTION_THINKING_LEVEL = 'minimal'
 
     let requestBody: Record<string, unknown> | null = null
     const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
@@ -153,56 +153,41 @@ describe('/api/objection route', () => {
     expect(requestBody).toMatchObject({
       generationConfig: {
         thinkingConfig: {
-          thinkingLevel: 'MEDIUM',
+          thinkingLevel: 'minimal',
         },
       },
       tools: [{ googleSearch: {} }],
     })
   })
 
-  it('falls back to the standard request when the grounded variant fails', async () => {
-    process.env.GEMINI_OBJECTION_ENABLE_SEARCH_GROUNDING = '1'
+  it('uses thinking budgets for explicit Gemini 2.5 models', async () => {
+    process.env.GEMINI_MODEL = 'gemini-2.5-flash-lite'
     process.env.GEMINI_OBJECTION_THINKING_LEVEL = 'minimal'
 
-    const requestBodies: Array<Record<string, unknown>> = []
+    let requestBody: Record<string, unknown> | null = null
     const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
-      requestBodies.push(JSON.parse(String(init?.body)))
-
-      if (requestBodies.length === 1) {
-        return new Response('grounded request failed', { status: 503 })
-      }
-
+      requestBody = JSON.parse(String(init?.body))
       return buildGeminiResponse()
     })
     vi.stubGlobal('fetch', fetchMock)
 
     const { POST } = await import('@/app/api/objection/route')
     const response = await POST(buildRequest())
-    const payload = await response.json()
-
     expect(response.status).toBe(200)
-    expect(payload).toEqual({
-      verdict: 'overruled',
-      confidence: 'high',
-      explanation: 'The app rejection is probably correct.',
-      suspectedMissingMetadata: null,
-    })
-    expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(requestBodies[0]).toMatchObject({
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(requestBody).toMatchObject({
       generationConfig: {
         thinkingConfig: {
-          thinkingLevel: 'MINIMAL',
+          thinkingBudget: 0,
         },
-      },
-      tools: [{ googleSearch: {} }],
+      }
     })
-    expect(requestBodies[1]).toMatchObject({
+    expect(requestBody).not.toMatchObject({
       generationConfig: {
         thinkingConfig: {
-          thinkingLevel: 'MINIMAL',
+          thinkingLevel: expect.anything(),
         },
-      },
+      }
     })
-    expect(requestBodies[1]).not.toHaveProperty('tools')
   })
 })

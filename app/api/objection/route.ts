@@ -10,13 +10,14 @@ import {
 import type { Category, CellGuess } from '@/lib/types'
 
 const GEMINI_KEY = process.env.GEMINI_KEY
-const GEMINI_MODEL = (process.env.GEMINI_MODEL ?? 'gemini-flash-lite-latest')
+const GEMINI_MODEL = (process.env.GEMINI_MODEL ?? 'gemini-3.1-flash-lite-preview')
   .replace(/^models\//, '')
   .trim()
 const IS_DEV = process.env.NODE_ENV !== 'production'
 const GROUNDED_MAX_ATTEMPTS = 2
 const DEFAULT_THINKING_LEVEL = 'HIGH'
 const SUPPORTED_THINKING_LEVELS = new Set(['MINIMAL', 'LOW', 'MEDIUM', 'HIGH'])
+const GEMINI_3_LATEST_ALIASES = new Set(['gemini-flash-lite-latest'])
 
 function isSearchGroundingEnabled(value: string | undefined): boolean {
   if (!value) {
@@ -40,6 +41,63 @@ const ENABLE_SEARCH_GROUNDING = isSearchGroundingEnabled(
   process.env.GEMINI_OBJECTION_ENABLE_SEARCH_GROUNDING
 )
 const THINKING_LEVEL = getThinkingLevel(process.env.GEMINI_OBJECTION_THINKING_LEVEL)
+
+function isGemini3Model(model: string): boolean {
+  return /^gemini-3(?:[.-]|$)/.test(model) || GEMINI_3_LATEST_ALIASES.has(model)
+}
+
+function isGemini25Model(model: string): boolean {
+  return /^gemini-2\.5(?:[.-]|$)/.test(model)
+}
+
+function getGemini25ThinkingBudget(model: string, level: string): number {
+  if (model.includes('flash-lite')) {
+    switch (level) {
+      case 'MINIMAL':
+        return 0
+      case 'LOW':
+        return 512
+      case 'MEDIUM':
+        return 4096
+      case 'HIGH':
+      default:
+        return 24576
+    }
+  }
+
+  switch (level) {
+    case 'MINIMAL':
+      return 0
+    case 'LOW':
+      return 1024
+    case 'MEDIUM':
+      return 8192
+    case 'HIGH':
+    default:
+      return 24576
+  }
+}
+
+function getGeminiThinkingConfig(model: string, level: string): {
+  thinkingLevel?: string
+  thinkingBudget?: number
+} {
+  if (isGemini25Model(model)) {
+    return {
+      thinkingBudget: getGemini25ThinkingBudget(model, level),
+    }
+  }
+
+  if (isGemini3Model(model)) {
+    return {
+      thinkingLevel: level.toLowerCase(),
+    }
+  }
+
+  return {
+    thinkingLevel: level.toLowerCase(),
+  }
+}
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -94,7 +152,7 @@ export async function POST(request: NextRequest) {
       },
       promptBytes: datasetForPrompt.length,
       groundingEnabled: ENABLE_SEARCH_GROUNDING,
-      thinkingLevel: THINKING_LEVEL,
+      thinkingConfig: getGeminiThinkingConfig(GEMINI_MODEL, THINKING_LEVEL),
     })
 
     let geminiResponse: Response | null = null
@@ -104,13 +162,14 @@ export async function POST(request: NextRequest) {
       responseMimeType: string
       thinkingConfig?: {
         thinkingLevel?: string
+        thinkingBudget?: number
       }
     } = {
       temperature: 0.1,
       responseMimeType: 'application/json',
     }
 
-    generationConfig.thinkingConfig = { thinkingLevel: THINKING_LEVEL }
+    generationConfig.thinkingConfig = getGeminiThinkingConfig(GEMINI_MODEL, THINKING_LEVEL)
 
     const requestBodyBase = {
       systemInstruction: {
@@ -163,7 +222,7 @@ export async function POST(request: NextRequest) {
           familyNamesPreview,
           familyNamesRemainder,
           promptBytes: datasetForPrompt.length,
-          thinkingLevel: THINKING_LEVEL,
+          thinkingConfig: generationConfig.thinkingConfig,
         })
       }
       const requestUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`
@@ -257,15 +316,6 @@ export async function POST(request: NextRequest) {
         status: response.status,
         body: IS_DEV ? lastErrorText : undefined,
       })
-
-      if (requestVariant.label === 'grounded') {
-        logWarn('Gemini grounded request failed; falling back to standard variant', {
-          model,
-          variant: requestVariant.label,
-          status: response.status,
-        })
-        continue
-      }
 
       geminiResponse = response
       break
