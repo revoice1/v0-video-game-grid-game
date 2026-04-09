@@ -391,6 +391,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
   const { enabled: versusAlarmsEnabled } = useVersusAlarmPreference()
   const { enabled: versusAudioEnabled } = useVersusAudioPreference()
   const versusEventLogRef = useRef<VersusEventRecord[]>([])
+  const activeStealShowdownRef = useRef<ActiveStealShowdown | null>(null)
   const detectConfiguredAnimationQuality = useCallback(
     () => (animationsEnabled ? detectAnimationQuality() : 'low'),
     [animationsEnabled]
@@ -418,6 +419,10 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
   useEffect(() => {
     versusObjectionRuleRef.current = versusObjectionRule
   }, [versusObjectionRule])
+
+  useEffect(() => {
+    activeStealShowdownRef.current = activeStealShowdown
+  }, [activeStealShowdown])
 
   useEffect(() => {
     guessesRef.current = guesses
@@ -835,17 +840,20 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
         event.source,
         onlineVersus.isHydratingHistory
       )
+      const isOwnNonHistoryEvent = shouldSkipOwnOnlineVersusEventReplay(
+        eventSource,
+        event.player,
+        myRole
+      )
       // Non-history events from this client are already applied locally.
       // History replay still needs to rebuild "own" events after a join/reload.
-      if (shouldSkipOwnOnlineVersusEventReplay(eventSource, event.player, myRole)) {
+      if (isOwnNonHistoryEvent && event.type !== 'steal') {
         appliedOnlineEventIdsRef.current.add(event.id)
         continue
       }
 
-      const alreadyApplied = appliedOnlineEventIdsRef.current.has(event.id)
-      if (!alreadyApplied) {
-        appliedOnlineEventIdsRef.current.add(event.id)
-      }
+      const alreadyApplied = appliedOnlineEventIdsRef.current.has(event.id) || isOwnNonHistoryEvent
+      appliedOnlineEventIdsRef.current.add(event.id)
 
       const payload = event.payload as Record<string, unknown>
       const cellIndex = payload.cellIndex as number
@@ -898,6 +906,10 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
         })
         applyResolution(resolution, steals ? cellIndex : null)
       } else if (event.type === 'steal') {
+        if (isOwnNonHistoryEvent && activeStealShowdownRef.current) {
+          continue
+        }
+
         const stealPayload = payload as unknown as OnlineVersusStealPayload
         const attackingGuess = { ...stealPayload.attackingGuess, owner: event.player }
         const successful = stealPayload.successful
