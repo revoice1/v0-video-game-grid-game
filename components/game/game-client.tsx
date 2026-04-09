@@ -71,6 +71,11 @@ import type {
   VersusTurnTimerOption,
 } from './versus-setup-modal'
 import { clearGameState, loadGameState, saveGameState, type SavedGameState } from '@/lib/session'
+import {
+  normalizeOnlineVersusEventSource,
+  shouldSkipOwnOnlineVersusEventReplay,
+  shouldSuppressOnlineVersusReplayEffects,
+} from '@/lib/online-versus-event-source'
 import { sanitizeMinValidOptionsOverride } from '@/lib/min-valid-options'
 import {
   useAnimationPreference,
@@ -827,9 +832,13 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     const myRole = onlineVersus.myRole
 
     for (const event of onlineVersus.events) {
-      // Live events from this client are already applied locally. We only
-      // replay "own" events while hydrating history after a join/reload.
-      if (!onlineVersus.isHydratingHistory && event.player === myRole) {
+      const eventSource = normalizeOnlineVersusEventSource(
+        event.source,
+        onlineVersus.isHydratingHistory
+      )
+      // Non-history events from this client are already applied locally.
+      // History replay still needs to rebuild "own" events after a join/reload.
+      if (shouldSkipOwnOnlineVersusEventReplay(eventSource, event.player, myRole)) {
         appliedOnlineEventIdsRef.current.add(event.id)
         continue
       }
@@ -900,7 +909,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
         const attackingScore = getStealShowdownMetric(attackingGuess, activeStealRule)
         const hasShowdownScores =
           typeof defendingScore === 'number' && typeof attackingScore === 'number'
-        const suppressReplayEffects = onlineVersus.isHydratingHistory
+        const suppressReplayEffects = shouldSuppressOnlineVersusReplayEffects(eventSource)
         const showdownDuration =
           !suppressReplayEffects && animationsEnabled && hasShowdownScores
             ? STEAL_SHOWDOWN_DURATION_MS

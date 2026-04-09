@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { classifyFetchedOnlineVersusEventSource } from '@/lib/online-versus-event-source'
 import type {
   OnlineVersusEvent,
   OnlineVersusEventType,
@@ -173,11 +174,26 @@ export function useOnlineVersusRoom(): UseOnlineVersusRoomReturn {
         },
         (payload) => {
           setEvents((prev) => {
-            const incoming = payload.new as OnlineVersusEvent
-            // Deduplicate: Realtime can deliver an event that was already
-            // fetched during the initial history load
-            if (prev.some((e) => e.id === incoming.id)) return prev
-            return [...prev, incoming]
+            const incoming = {
+              ...(payload.new as OnlineVersusEvent),
+              source: 'live' as const,
+            }
+            const existingIndex = prev.findIndex((event) => event.id === incoming.id)
+            if (existingIndex === -1) {
+              return [...prev, incoming]
+            }
+
+            const existing = prev[existingIndex]
+            if (existing.source === 'live') {
+              return prev
+            }
+
+            const next = [...prev]
+            next[existingIndex] = {
+              ...existing,
+              source: 'live',
+            }
+            return next
           })
         }
       )
@@ -202,6 +218,7 @@ export function useOnlineVersusRoom(): UseOnlineVersusRoomReturn {
   // are not overwritten by the (slightly older) history snapshot.
 
   const fetchEventHistory = useCallback(async (roomId: string) => {
+    const replayStartedAtMs = Date.now()
     setIsHydratingHistory(true)
     try {
       const res = await fetch(`/api/versus/room-events/${roomId}`)
@@ -213,7 +230,12 @@ export function useOnlineVersusRoom(): UseOnlineVersusRoomReturn {
         // Build a map of already-known events, then add any fetched ones missing from it
         const known = new Map(prev.map((e) => [e.id, e]))
         for (const e of fetched) {
-          if (!known.has(e.id)) known.set(e.id, e)
+          if (!known.has(e.id)) {
+            known.set(e.id, {
+              ...e,
+              source: classifyFetchedOnlineVersusEventSource(e.created_at, replayStartedAtMs),
+            })
+          }
         }
         // Return sorted by id so order is deterministic regardless of arrival order
         return Array.from(known.values()).sort((a, b) => a.id - b.id)

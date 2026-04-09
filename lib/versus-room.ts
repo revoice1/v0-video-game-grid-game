@@ -11,6 +11,7 @@ import type {
 
 export type RoomStatus = 'waiting' | 'active' | 'finished'
 export type RoomPlayer = 'x' | 'o'
+export type OnlineVersusEventSource = 'live' | 'history' | 'live-catchup'
 
 export interface RoomSettings {
   categoryFilters: VersusCategoryFilters
@@ -110,4 +111,5 @@ export interface OnlineVersusEvent {
   player: RoomPlayer
   type: OnlineVersusEventType
   payload: Record<string, unknown>
+  source?: OnlineVersusEventSource
 }
