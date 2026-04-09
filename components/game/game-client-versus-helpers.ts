@@ -362,3 +362,51 @@ export function getVersusPlacementResolution(options: {
     description: `${getPlayerLabel(nextPlayer)} is up.`,
   }
 }
+
+export function getOnlineVersusPlacementStateTransition(options: {
+  resolution: ReturnType<typeof getVersusPlacementResolution>
+  newStealable: number | null
+}) {
+  const { resolution, newStealable } = options
+
+  if (resolution.kind === 'winner' || resolution.kind === 'claims-win') {
+    return {
+      winner: resolution.winner,
+      pendingFinalSteal: null,
+      stealableCell: null,
+      nextPlayer: null,
+      shouldClearTurnDeadline: true,
+    }
+  }
+
+  if (resolution.kind === 'draw') {
+    return {
+      winner: 'draw' as const,
+      pendingFinalSteal: null,
+      stealableCell: null,
+      nextPlayer: null,
+      shouldClearTurnDeadline: true,
+    }
+  }
+
+  if (resolution.kind === 'final-steal') {
+    return {
+      winner: null,
+      pendingFinalSteal: {
+        defender: resolution.defender,
+        cellIndex: resolution.cellIndex,
+      },
+      stealableCell: newStealable ?? resolution.cellIndex,
+      nextPlayer: resolution.nextPlayer,
+      shouldClearTurnDeadline: false,
+    }
+  }
+
+  return {
+    winner: null,
+    pendingFinalSteal: null,
+    stealableCell: newStealable,
+    nextPlayer: resolution.nextPlayer,
+    shouldClearTurnDeadline: false,
+  }
+}

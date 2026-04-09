@@ -53,6 +53,7 @@ import {
 import {
   buildStealFailureDescription,
   getOnlineVersusStealShowdownData,
+  getOnlineVersusPlacementStateTransition,
   getNextPlayer,
   getPlayerLabel,
   getStealShowdownMetric,
@@ -895,25 +896,23 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
         resolution: ReturnType<typeof getVersusPlacementResolution>,
         newStealable: number | null
       ) => {
+        const nextState = getOnlineVersusPlacementStateTransition({
+          resolution,
+          newStealable,
+        })
+
         setLockImpactCell(null)
-        if (resolution.kind === 'winner' || resolution.kind === 'claims-win') {
-          setPendingFinalSteal(null)
-          setWinner(resolution.winner)
-          setStealableCell(null)
+        setPendingFinalSteal(nextState.pendingFinalSteal)
+        setStealableCell(nextState.stealableCell)
+
+        if (nextState.winner !== null) {
+          setWinner(nextState.winner)
+        } else if (nextState.nextPlayer) {
+          setCurrentPlayer(nextState.nextPlayer)
+        }
+
+        if (nextState.shouldClearTurnDeadline) {
           setTurnDeadlineAt(null)
-        } else if (resolution.kind === 'draw') {
-          setPendingFinalSteal(null)
-          setWinner('draw')
-          setStealableCell(null)
-          setTurnDeadlineAt(null)
-        } else if (resolution.kind === 'final-steal') {
-          setPendingFinalSteal({ defender: resolution.defender, cellIndex: resolution.cellIndex })
-          setStealableCell(null)
-          setCurrentPlayer(resolution.nextPlayer)
-        } else {
-          setPendingFinalSteal(null)
-          setStealableCell(newStealable)
-          setCurrentPlayer(resolution.nextPlayer)
         }
       }
 

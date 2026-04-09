@@ -3,6 +3,7 @@ import {
   buildStealFailureDescription,
   getClaimCounts,
   getNextPlayer,
+  getOnlineVersusPlacementStateTransition,
   getOnlineVersusStealShowdownData,
   getPlayerLabel,
   getStealShowdownMetric,
@@ -406,6 +407,43 @@ describe('game client versus helpers', () => {
       nextPlayer: 'o',
       title: 'Last chance steal',
       description: 'O gets one chance to answer back on that square.',
+    })
+  })
+
+  it('keeps the repeated final steal square stealable for the joiner-side remote state', () => {
+    const resolution = getVersusPlacementResolution({
+      newGuesses: [
+        makeOwnedGuess('x'),
+        makeOwnedGuess('x'),
+        makeOwnedGuess('x'),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+      ],
+      currentPlayer: 'x',
+      selectedCell: 2,
+      isVersusSteal: true,
+      stealsEnabled: true,
+      disableDraws: false,
+    })
+
+    expect(
+      getOnlineVersusPlacementStateTransition({
+        resolution,
+        newStealable: 2,
+      })
+    ).toEqual({
+      winner: null,
+      pendingFinalSteal: {
+        defender: 'x',
+        cellIndex: 2,
+      },
+      stealableCell: 2,
+      nextPlayer: 'o',
+      shouldClearTurnDeadline: false,
     })
   })
 })
