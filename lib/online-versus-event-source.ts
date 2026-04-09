@@ -45,3 +45,21 @@ export function shouldSkipOwnOnlineVersusEventReplay(
 export function shouldSuppressOnlineVersusReplayEffects(source: OnlineVersusEventSource): boolean {
   return source === 'history'
 }
+
+export function shouldReplayOnlineVersusSpectacle(options: {
+  eventSource: OnlineVersusEventSource
+  alreadyApplied: boolean
+  alreadyShown: boolean
+}): boolean {
+  const { eventSource, alreadyApplied, alreadyShown } = options
+
+  if (alreadyShown) {
+    return false
+  }
+
+  if (shouldSuppressOnlineVersusReplayEffects(eventSource)) {
+    return false
+  }
+
+  return !alreadyApplied || eventSource === 'live' || eventSource === 'live-catchup'
+}

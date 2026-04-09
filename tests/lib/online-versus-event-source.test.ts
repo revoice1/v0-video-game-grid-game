@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   classifyFetchedOnlineVersusEventSource,
   normalizeOnlineVersusEventSource,
+  shouldReplayOnlineVersusSpectacle,
   shouldSkipOwnOnlineVersusEventReplay,
   shouldSuppressOnlineVersusReplayEffects,
 } from '@/lib/online-versus-event-source'
@@ -73,6 +74,40 @@ describe('online versus event source helpers', () => {
     expect(shouldSuppressOnlineVersusReplayEffects('history')).toBe(true)
     expect(shouldSuppressOnlineVersusReplayEffects('live')).toBe(false)
     expect(shouldSuppressOnlineVersusReplayEffects('live-catchup')).toBe(false)
+  })
+
+  it('allows spectacle replay when an already-applied event upgrades from history to live', () => {
+    expect(
+      shouldReplayOnlineVersusSpectacle({
+        eventSource: 'history',
+        alreadyApplied: true,
+        alreadyShown: false,
+      })
+    ).toBe(false)
+
+    expect(
+      shouldReplayOnlineVersusSpectacle({
+        eventSource: 'live',
+        alreadyApplied: true,
+        alreadyShown: false,
+      })
+    ).toBe(true)
+
+    expect(
+      shouldReplayOnlineVersusSpectacle({
+        eventSource: 'live-catchup',
+        alreadyApplied: true,
+        alreadyShown: false,
+      })
+    ).toBe(true)
+
+    expect(
+      shouldReplayOnlineVersusSpectacle({
+        eventSource: 'live',
+        alreadyApplied: true,
+        alreadyShown: true,
+      })
+    ).toBe(false)
   })
 
   it('skips only my non-history events because they are already applied locally', () => {

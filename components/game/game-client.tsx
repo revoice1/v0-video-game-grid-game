@@ -75,6 +75,7 @@ import type {
 import { clearGameState, loadGameState, saveGameState, type SavedGameState } from '@/lib/session'
 import {
   normalizeOnlineVersusEventSource,
+  shouldReplayOnlineVersusSpectacle,
   shouldSkipOwnOnlineVersusEventReplay,
   shouldSuppressOnlineVersusReplayEffects,
 } from '@/lib/online-versus-event-source'
@@ -489,6 +490,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     setActiveJudgmentVerdict(null)
     publishedPuzzleRoomIdRef.current = null
     appliedOnlineEventIdsRef.current = new Set()
+    shownOnlineStealShowdownIdsRef.current = new Set()
     finishedOnlineRoomIdRef.current = null
     preparedOnlineRoomKeyRef.current = null
     lastSavedOnlineSnapshotRef.current = null
@@ -589,6 +591,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       setPendingVersusObjectionReview(null)
       publishedPuzzleRoomIdRef.current = null
       appliedOnlineEventIdsRef.current = new Set()
+      shownOnlineStealShowdownIdsRef.current = new Set()
       lastSavedOnlineSnapshotRef.current = roomSnapshotSignature
       lastAppliedOnlineSnapshotRef.current = null
     }
@@ -670,6 +673,8 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
   const publishedPuzzleRoomIdRef = useRef<string | null>(null)
   // Tracks online event IDs already applied to local state (prevents double-apply on re-renders).
   const appliedOnlineEventIdsRef = useRef(new Set<number>())
+  // Tracks which steal events have already rendered a showdown overlay.
+  const shownOnlineStealShowdownIdsRef = useRef(new Set<number>())
   // Mirror of guesses state for synchronous reads inside the online event effect.
   const guessesRef = useRef(guesses)
   // True while a saveSnapshot() call is in-flight; prevents concurrent saves racing.
@@ -837,9 +842,10 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
         continue
       }
 
-      // Skip already-processed events
-      if (appliedOnlineEventIdsRef.current.has(event.id)) continue
-      appliedOnlineEventIdsRef.current.add(event.id)
+      const alreadyApplied = appliedOnlineEventIdsRef.current.has(event.id)
+      if (!alreadyApplied) {
+        appliedOnlineEventIdsRef.current.add(event.id)
+      }
 
       const payload = event.payload as Record<string, unknown>
       const cellIndex = payload.cellIndex as number
@@ -876,6 +882,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       }
 
       if (event.type === 'claim') {
+        if (alreadyApplied) continue
         const claimPayload = payload as unknown as OnlineVersusClaimPayload
         const guess = { ...claimPayload.guess, owner: event.player }
         const next = guessesRef.current.map((g, i) => (i === cellIndex ? guess : g))
@@ -909,7 +916,14 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
             ? STEAL_SHOWDOWN_DURATION_MS
             : 0
 
-        if (showdown.hasShowdownScores && !suppressReplayEffects) {
+        if (
+          showdown.hasShowdownScores &&
+          shouldReplayOnlineVersusSpectacle({
+            eventSource,
+            alreadyApplied,
+            alreadyShown: shownOnlineStealShowdownIdsRef.current.has(event.id),
+          })
+        ) {
           setActiveStealShowdown({
             burstId: Date.now(),
             durationMs: showdownDuration,
@@ -920,6 +934,11 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
             rule: activeStealRule,
             successful,
           })
+          shownOnlineStealShowdownIdsRef.current.add(event.id)
+        }
+
+        if (alreadyApplied) {
+          continue
         }
 
         if (successful) {
@@ -970,6 +989,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
           }
         }
       } else if (event.type === 'miss') {
+        if (alreadyApplied) continue
         const missPayload = payload as unknown as OnlineVersusMissPayload
         const nextGuessesRemaining =
           typeof missPayload.guessesRemaining === 'number'
@@ -992,6 +1012,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
           }
         }
       } else if (event.type === 'objection') {
+        if (alreadyApplied) continue
         const objectionPayload = payload as unknown as OnlineVersusObjectionPayload
         const verdict = objectionPayload.verdict
         const updatedGuess =
@@ -3494,6 +3515,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       commitVersusEventLog([])
       publishedPuzzleRoomIdRef.current = null
       appliedOnlineEventIdsRef.current = new Set()
+      shownOnlineStealShowdownIdsRef.current = new Set()
       finishedOnlineRoomIdRef.current = null
       preparedOnlineRoomKeyRef.current = null
       lastSavedOnlineSnapshotRef.current = null
