@@ -20,7 +20,7 @@ export interface StoredOnlineVersusEvent {
   payload: Record<string, unknown> | null
 }
 
-interface RuntimeState {
+export interface ValidatedOnlineVersusRuntimeState {
   guesses: (CellGuess | null)[]
   guessesRemaining: number
   currentPlayer: RoomPlayer
@@ -36,6 +36,8 @@ interface RuntimeState {
   }
 }
 
+type RuntimeState = ValidatedOnlineVersusRuntimeState
+
 interface ValidationFailure {
   code:
     | 'room_inactive'
@@ -45,6 +47,7 @@ interface ValidationFailure {
     | 'invalid_event_payload'
     | 'wrong_turn'
     | 'cell_unavailable'
+    | 'duplicate_game'
     | 'steal_not_available'
     | 'objections_unavailable'
     | 'objection_limit_reached'
@@ -57,6 +60,7 @@ export interface ValidationSuccess {
   ok: true
   type: SupportedGameplayEventType
   payload: ClaimPayload | MissPayload | ObjectionPayload | StealPayload
+  state: ValidatedOnlineVersusRuntimeState
 }
 
 export interface ValidationError extends ValidationFailure {
@@ -88,11 +92,13 @@ const LooseCellGuessSchema = z
 
 const ClaimPayloadSchema = z.object({
   cellIndex: z.number().int().min(0).max(8),
+  clientEventId: z.string().trim().min(1).max(100).optional(),
   guess: LooseCellGuessSchema,
 })
 
 const MissPayloadSchema = z.object({
   cellIndex: z.number().int().min(0).max(8),
+  clientEventId: z.string().trim().min(1).max(100).optional(),
   guessesRemaining: z.number().int().min(0).max(9).optional(),
   resolutionKind: z.enum(['next-player', 'defender-wins']),
   nextPlayer: z.enum(['x', 'o']).optional(),
@@ -101,19 +107,26 @@ const MissPayloadSchema = z.object({
 
 const ObjectionPayloadSchema = z.object({
   cellIndex: z.number().int().min(0).max(8),
+  clientEventId: z.string().trim().min(1).max(100).optional(),
   verdict: z.enum(['sustained', 'overruled']),
   updatedGuess: LooseCellGuessSchema,
   isSteal: z.boolean(),
+  successful: z.boolean().optional(),
   guessesRemaining: z.number().int().min(0).max(9).optional(),
   resolutionKind: z.enum(['next-player', 'defender-wins']).optional(),
   nextPlayer: z.enum(['x', 'o']).optional(),
   defender: z.enum(['x', 'o']).optional(),
+  hadShowdownScores: z.boolean().optional(),
+  attackingGameName: z.string().nullable().optional(),
+  attackingScore: z.number().nullable().optional(),
+  defendingGameName: z.string().nullable().optional(),
+  defendingScore: z.number().nullable().optional(),
 })
 
 const StealPayloadSchema = z.object({
   cellIndex: z.number().int().min(0).max(8),
   attackingGuess: LooseCellGuessSchema,
-  clientEventId: z.string().min(1).optional(),
+  clientEventId: z.string().trim().min(1).max(100).optional(),
   successful: z.boolean(),
   resolutionKind: z.enum(['next-player', 'defender-wins']).optional(),
   nextPlayer: z.enum(['x', 'o']).optional(),
@@ -146,10 +159,10 @@ const SnapshotSchema = z.object({
   }),
 })
 
-type ClaimPayload = z.infer<typeof ClaimPayloadSchema>
-type MissPayload = z.infer<typeof MissPayloadSchema>
-type ObjectionPayload = z.infer<typeof ObjectionPayloadSchema>
-type StealPayload = z.infer<typeof StealPayloadSchema>
+export type ClaimPayload = z.infer<typeof ClaimPayloadSchema>
+export type MissPayload = z.infer<typeof MissPayloadSchema>
+export type ObjectionPayload = z.infer<typeof ObjectionPayloadSchema>
+export type StealPayload = z.infer<typeof StealPayloadSchema>
 type ParsedIncomingEvent =
   | {
       type: 'claim'
@@ -376,6 +389,23 @@ function applyStoredEvent(
       ...parsed.data.updatedGuess,
       owner: event.player,
     } as CellGuess
+
+    if (parsed.data.isSteal && parsed.data.successful === false) {
+      return {
+        ...nextState,
+        currentPlayer:
+          parsed.data.resolutionKind === 'next-player'
+            ? (parsed.data.nextPlayer ?? state.currentPlayer)
+            : state.currentPlayer,
+        winner:
+          parsed.data.resolutionKind === 'defender-wins'
+            ? (parsed.data.defender ?? state.winner)
+            : state.winner,
+        stealableCell: null,
+        pendingFinalSteal: null,
+      }
+    }
+
     const nextGuesses = state.guesses.map((guess, index) =>
       index === parsed.data.cellIndex ? updatedGuess : guess
     )
@@ -386,9 +416,7 @@ function applyStoredEvent(
       player: event.player,
       cellIndex: parsed.data.cellIndex,
       settings,
-      // Mirror the current online event replay path, which treats sustained
-      // objections as a placement even if the original attempt was a steal.
-      isVersusSteal: false,
+      isVersusSteal: parsed.data.isSteal,
     })
   }
 
@@ -551,6 +579,14 @@ function validateClaimAgainstState(
     }
   }
 
+  if (state.guesses.some((guess) => guess?.gameId === payload.guess.gameId)) {
+    return {
+      code: 'duplicate_game',
+      error: 'That game has already been used on this board.',
+      status: 409,
+    }
+  }
+
   if (payload.guess.owner && payload.guess.owner !== player) {
     return {
       code: 'invalid_event_payload',
@@ -589,6 +625,19 @@ function validateStealAgainstState(
     return {
       code: 'steal_not_available',
       error: 'There is no opponent claim to steal from on that cell.',
+      status: 409,
+    }
+  }
+
+  if (
+    state.guesses.some(
+      (guess, index) =>
+        index !== payload.cellIndex && guess?.gameId === payload.attackingGuess.gameId
+    )
+  ) {
+    return {
+      code: 'duplicate_game',
+      error: 'That game has already been used on this board.',
       status: 409,
     }
   }
@@ -711,6 +760,19 @@ function validateObjectionAgainstState(
     }
   }
 
+  if (
+    payload.verdict === 'sustained' &&
+    state.guesses.some(
+      (guess, index) => index !== payload.cellIndex && guess?.gameId === payload.updatedGuess.gameId
+    )
+  ) {
+    return {
+      code: 'duplicate_game',
+      error: 'That game has already been used on this board.',
+      status: 409,
+    }
+  }
+
   if (payload.verdict === 'overruled') {
     if (!payload.resolutionKind) {
       return {
@@ -769,6 +831,7 @@ function validateCandidates<T extends ClaimPayload | MissPayload | ObjectionPayl
         ok: true,
         type,
         payload,
+        state: candidateState,
       }
     }
 

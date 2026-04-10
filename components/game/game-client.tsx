@@ -51,6 +51,7 @@ import {
   submitGuessSelection,
 } from './game-client-submission'
 import {
+  getOnlineVersusPlacementResult,
   buildStealFailureDescription,
   getOnlineVersusStealShowdownData,
   getOnlineVersusPlacementStateTransition,
@@ -199,12 +200,12 @@ interface ActiveJudgmentVerdict {
 
 const STEAL_SHOWDOWN_DURATION_MS = 3400
 
-function createOnlineVersusStealClientEventId() {
+function createOnlineVersusClientEventId(prefix: string) {
   if (typeof globalThis.crypto?.randomUUID === 'function') {
     return globalThis.crypto.randomUUID()
   }
 
-  return `steal_${Date.now()}_${Math.random().toString(36).slice(2)}`
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2)}`
 }
 
 interface PendingFinalSteal {
@@ -1085,6 +1086,108 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
         }))
 
         if (verdict === 'sustained') {
+          if (objectionPayload.isSteal && updatedGuess) {
+            const defendingGuess = guessesRef.current[cellIndex]
+            const activeStealRule =
+              versusStealRuleRef.current === 'off' ? 'lower' : versusStealRuleRef.current
+
+            if (defendingGuess) {
+              const successful = objectionPayload.successful !== false
+              const showdown = getOnlineVersusStealShowdownData({
+                stealPayload: objectionPayload,
+                defendingGuess,
+                attackingGuess: updatedGuess,
+                rule: activeStealRule,
+              })
+              const suppressReplayEffects = shouldSuppressOnlineVersusReplayEffects(eventSource)
+              const showdownDuration =
+                !suppressReplayEffects && animationsEnabled && showdown.hasShowdownScores
+                  ? STEAL_SHOWDOWN_DURATION_MS
+                  : 0
+
+              if (
+                showdown.hasShowdownScores &&
+                shouldReplayOnlineVersusSpectacle({
+                  eventSource,
+                  alreadyShown: shownOnlineStealShowdownIdsRef.current.has(event.id),
+                  previousProcessedSource,
+                })
+              ) {
+                setActiveStealShowdown({
+                  burstId: Date.now(),
+                  durationMs: showdownDuration,
+                  defenderName: showdown.defenderName,
+                  defenderScore: showdown.defendingScore!,
+                  attackerName: showdown.attackerName,
+                  attackerScore: showdown.attackingScore!,
+                  rule: activeStealRule,
+                  successful,
+                })
+                shownOnlineStealShowdownIdsRef.current.add(event.id)
+              }
+
+              if (alreadyApplied) {
+                processedOnlineEventSourcesRef.current.set(event.id, eventSource)
+                continue
+              }
+
+              if (successful) {
+                const nextGuess = showdown.hasShowdownScores
+                  ? {
+                      ...updatedGuess,
+                      showdownScoreRevealed: true,
+                    }
+                  : updatedGuess
+                const next = guessesRef.current.map((g, i) => (i === cellIndex ? nextGuess : g))
+                guessesRef.current = next
+                setGuesses(next)
+                const placementResult = getOnlineVersusPlacementResult({
+                  newGuesses: next,
+                  currentPlayer: event.player,
+                  selectedCell: cellIndex,
+                  isVersusSteal: true,
+                  stealsEnabled: steals,
+                  disableDraws: noDraws,
+                  newStealable: steals ? cellIndex : null,
+                })
+                applyResolution(placementResult.resolution, placementResult.nextState.stealableCell)
+                processedOnlineEventSourcesRef.current.set(event.id, eventSource)
+                continue
+              }
+
+              const applyFailedSteal = () => {
+                setPendingFinalSteal(null)
+                setStealableCell(null)
+                setLockImpactCell(null)
+
+                if (objectionPayload.resolutionKind === 'defender-wins') {
+                  const defender = objectionPayload.defender as TicTacToePlayer
+                  if (defender === 'x' || defender === 'o') {
+                    setWinner(defender)
+                  }
+                  return
+                }
+
+                const nextPlayer = objectionPayload.nextPlayer as TicTacToePlayer
+                if (nextPlayer === 'x' || nextPlayer === 'o') {
+                  setCurrentPlayer(nextPlayer)
+                  return
+                }
+
+                setCurrentPlayer(myRole)
+              }
+
+              if (showdownDuration > 0) {
+                window.setTimeout(applyFailedSteal, showdownDuration)
+              } else {
+                applyFailedSteal()
+              }
+
+              processedOnlineEventSourcesRef.current.set(event.id, eventSource)
+              continue
+            }
+          }
+
           const next = guessesRef.current.map((g, i) => (i === cellIndex ? updatedGuess : g))
           guessesRef.current = next
           setGuesses(next)
@@ -1687,8 +1790,10 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       }
 
       if (isCurrentOnlineMatch) {
+        const clientEventId = createOnlineVersusClientEventId('miss')
         void sendOnlineEventWithRecovery('miss', {
           cellIndex: pendingVersusObjectionReview?.cellIndex ?? selectedCell,
+          clientEventId,
           guessesRemaining: nextGuessesRemaining,
           resolutionKind: invalidGuessResolution.kind,
           nextPlayer:
@@ -1804,7 +1909,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
               [objectionPlayer]: versusObjectionsUsed[objectionPlayer] + 1,
             }
           : versusObjectionsUsed
-      let nextGuess = {
+      let nextGuess: CellGuess = {
         ...detailGuess,
         objectionUsed: true,
         objectionVerdict: payload.verdict,
@@ -1822,12 +1927,61 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
           : null),
       }
 
-      const nextGuesses = guesses.map((guess, index) =>
+      let nextGuesses = guesses.map((guess, index) =>
         index === activeDetailCell ? nextGuess : guess
       )
 
-      const shouldCommitGuessToBoard =
-        !pendingVersusObjectionReview || payload.verdict === 'sustained'
+      let authoritativeOnlineObjectionPayload: OnlineVersusObjectionPayload | null = null
+
+      if (mode === 'versus' && pendingVersusObjectionReview && isCurrentOnlineMatch) {
+        const clientEventId = createOnlineVersusClientEventId('objection')
+        const overruledResolution =
+          payload.verdict === 'overruled'
+            ? pendingVersusObjectionReview.invalidGuessResolution
+            : null
+        const overruledGuessesRemaining =
+          payload.verdict === 'overruled' ? Math.max(0, guessesRemaining - 1) : undefined
+
+        const onlineResult = await sendOnlineEventWithRecovery('objection', {
+          cellIndex: activeDetailCell,
+          clientEventId,
+          verdict: payload.verdict,
+          updatedGuess: nextGuess,
+          isSteal: pendingVersusObjectionReview.isVersusSteal,
+          guessesRemaining: overruledGuessesRemaining,
+          resolutionKind: overruledResolution?.kind,
+          nextPlayer:
+            overruledResolution?.kind === 'next-player'
+              ? overruledResolution.nextPlayer
+              : undefined,
+          defender:
+            overruledResolution?.kind === 'defender-wins'
+              ? overruledResolution.defender
+              : undefined,
+        })
+
+        if (!onlineResult.ok) {
+          return
+        }
+
+        if (onlineResult.type === 'objection' && onlineResult.payload) {
+          authoritativeOnlineObjectionPayload =
+            onlineResult.payload as unknown as OnlineVersusObjectionPayload
+
+          if (payload.verdict === 'sustained') {
+            nextGuess = {
+              ...nextGuess,
+              ...(authoritativeOnlineObjectionPayload.updatedGuess as CellGuess),
+              owner: pendingVersusObjectionReview.player,
+            }
+            nextGuesses = guesses.map((guess, index) =>
+              index === activeDetailCell ? nextGuess : guess
+            )
+          }
+        }
+      }
+
+      const shouldCommitGuessToBoard = mode !== 'versus' && payload.verdict === 'sustained'
 
       if (shouldCommitGuessToBoard) {
         setGuesses(nextGuesses)
@@ -1851,32 +2005,6 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
           onSteal: pendingVersusObjectionReview.isVersusSteal,
         })
 
-        if (isCurrentOnlineMatch) {
-          const overruledResolution =
-            payload.verdict === 'overruled'
-              ? pendingVersusObjectionReview.invalidGuessResolution
-              : null
-          const overruledGuessesRemaining =
-            payload.verdict === 'overruled' ? Math.max(0, guessesRemaining - 1) : undefined
-
-          void sendOnlineEventWithRecovery('objection', {
-            cellIndex: activeDetailCell,
-            verdict: payload.verdict,
-            updatedGuess: nextGuess,
-            isSteal: pendingVersusObjectionReview.isVersusSteal,
-            guessesRemaining: overruledGuessesRemaining,
-            resolutionKind: overruledResolution?.kind,
-            nextPlayer:
-              overruledResolution?.kind === 'next-player'
-                ? overruledResolution.nextPlayer
-                : undefined,
-            defender:
-              overruledResolution?.kind === 'defender-wins'
-                ? overruledResolution.defender
-                : undefined,
-          })
-        }
-
         if (payload.verdict === 'sustained') {
           const objectionCellIndex = activeDetailCell
           const objectionPlayer = pendingVersusObjectionReview.player
@@ -1886,7 +2014,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
             const defendingGuess = guesses[objectionCellIndex]
 
             if (defendingGuess) {
-              const stealOutcome = resolveStealOutcome({
+              const localStealOutcome = resolveStealOutcome({
                 currentPlayer: objectionPlayer,
                 defendingGuess,
                 attackingGuess: nextGuess,
@@ -1894,21 +2022,35 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
                 pendingFinalSteal: pendingFinalSteal as PendingVersusSteal | null,
                 selectedCell: objectionCellIndex,
               })
+              const onlineStealPayload = authoritativeOnlineObjectionPayload?.isSteal
+                ? authoritativeOnlineObjectionPayload
+                : null
+              const showdown = getOnlineVersusStealShowdownData({
+                stealPayload: onlineStealPayload ?? {
+                  hadShowdownScores: localStealOutcome.hasShowdownScores,
+                  attackingGameName: nextGuess.gameName,
+                  attackingScore: getStealShowdownMetric(nextGuess, effectiveStealRule),
+                  defendingGameName: defendingGuess.gameName,
+                  defendingScore: getStealShowdownMetric(defendingGuess, effectiveStealRule),
+                },
+                defendingGuess,
+                attackingGuess: nextGuess,
+                rule: effectiveStealRule,
+              })
+              const successful = onlineStealPayload?.successful ?? localStealOutcome.successful
               const showdownDuration =
-                animationsEnabled && stealOutcome.hasShowdownScores ? STEAL_SHOWDOWN_DURATION_MS : 0
-              const defendingScore = getStealShowdownMetric(defendingGuess, effectiveStealRule)
-              const attackingScore = getStealShowdownMetric(nextGuess, effectiveStealRule)
+                animationsEnabled && showdown.hasShowdownScores ? STEAL_SHOWDOWN_DURATION_MS : 0
 
-              if (stealOutcome.hasShowdownScores) {
+              if (showdown.hasShowdownScores) {
                 setActiveStealShowdown({
                   burstId: Date.now(),
                   durationMs: showdownDuration,
-                  defenderName: defendingGuess.gameName,
-                  defenderScore: defendingScore!,
-                  attackerName: nextGuess.gameName,
-                  attackerScore: attackingScore!,
+                  defenderName: showdown.defenderName,
+                  defenderScore: showdown.defendingScore!,
+                  attackerName: showdown.attackerName,
+                  attackerScore: showdown.attackingScore!,
                   rule: effectiveStealRule,
-                  successful: stealOutcome.successful,
+                  successful,
                 })
               }
 
@@ -1917,13 +2059,13 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
                 player: objectionPlayer,
                 cellIndex: objectionCellIndex,
                 gameName: nextGuess.gameName,
-                successful: stealOutcome.successful,
+                successful,
                 viaObjection: true,
-                hadShowdownScores: stealOutcome.hasShowdownScores,
+                hadShowdownScores: showdown.hasShowdownScores,
                 finalSteal: pendingFinalSteal?.cellIndex === objectionCellIndex,
-                attackingScore,
-                defendingGameName: defendingGuess.gameName,
-                defendingScore,
+                attackingScore: showdown.attackingScore,
+                defendingGameName: showdown.defenderName,
+                defendingScore: showdown.defendingScore,
               })
 
               setPendingVersusObjectionReview(null)
@@ -1931,21 +2073,21 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
               setObjectionVerdict(null)
               setObjectionExplanation(null)
 
-              if (!stealOutcome.successful) {
+              if (!successful) {
                 const failureDescription = buildStealFailureDescription({
                   pendingFinalSteal,
                   selectedCell: objectionCellIndex,
-                  hasShowdownScores: stealOutcome.hasShowdownScores,
+                  hasShowdownScores: showdown.hasShowdownScores,
                   gameName: nextGuess.gameName,
-                  attackingScore,
-                  defendingGameName: defendingGuess.gameName,
-                  defendingScore,
+                  attackingScore: showdown.attackingScore,
+                  defendingGameName: showdown.defenderName,
+                  defendingScore: showdown.defendingScore,
                   versusStealRule: effectiveStealRule,
                   currentPlayer: objectionPlayer,
                 })
 
                 const resolveFailedSustainedSteal = () => {
-                  const revealedGuesses = stealOutcome.hasShowdownScores
+                  const revealedGuesses = showdown.hasShowdownScores
                     ? guesses.map((guess, index) =>
                         index === objectionCellIndex && guess
                           ? {
@@ -1959,21 +2101,49 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
                   let persistedWinner = winner
                   let persistedPendingFinalSteal = pendingFinalSteal
 
-                  if (stealOutcome.hasShowdownScores) {
+                  if (showdown.hasShowdownScores) {
                     setGuesses(revealedGuesses)
                   }
 
-                  for (const action of stealOutcome.actions) {
-                    if (action.kind === 'setNextPlayer') {
-                      persistedCurrentPlayer = action.player
-                    } else if (action.kind === 'setWinner') {
-                      persistedWinner = action.player
-                    } else if (action.kind === 'clearPendingSteal') {
-                      persistedPendingFinalSteal = null
+                  if (onlineStealPayload?.resolutionKind === 'defender-wins') {
+                    persistedPendingFinalSteal = null
+                    setPendingFinalSteal(null)
+                    setStealableCell(null)
+                    setLockImpactCell(null)
+                    if (
+                      onlineStealPayload.defender === 'x' ||
+                      onlineStealPayload.defender === 'o'
+                    ) {
+                      persistedWinner = onlineStealPayload.defender
+                      setWinner(onlineStealPayload.defender)
                     }
-                  }
+                  } else if (onlineStealPayload?.resolutionKind === 'next-player') {
+                    persistedPendingFinalSteal = null
+                    setPendingFinalSteal(null)
+                    setStealableCell(null)
+                    setLockImpactCell(null)
+                    if (
+                      onlineStealPayload.nextPlayer === 'x' ||
+                      onlineStealPayload.nextPlayer === 'o'
+                    ) {
+                      persistedCurrentPlayer = onlineStealPayload.nextPlayer
+                      setCurrentPlayer(onlineStealPayload.nextPlayer)
+                    }
+                  } else {
+                    // The initiating client can reach this branch before the server echoes back
+                    // authoritative resolution fields, so keep the local action fallback in place.
+                    for (const action of localStealOutcome.actions) {
+                      if (action.kind === 'setNextPlayer') {
+                        persistedCurrentPlayer = action.player
+                      } else if (action.kind === 'setWinner') {
+                        persistedWinner = action.player
+                      } else if (action.kind === 'clearPendingSteal') {
+                        persistedPendingFinalSteal = null
+                      }
+                    }
 
-                  applyStealActions(stealOutcome.actions)
+                    applyStealActions(localStealOutcome.actions)
+                  }
                   const persistedState = buildPersistedVersusState({
                     guesses: revealedGuesses,
                     currentPlayer: persistedCurrentPlayer,
@@ -2003,7 +2173,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
 
               nextGuess = {
                 ...nextGuess,
-                ...(stealOutcome.hasShowdownScores ? { showdownScoreRevealed: true } : null),
+                ...(showdown.hasShowdownScores ? { showdownScoreRevealed: true } : null),
               }
               const successfulStealGuesses = guesses.map((guess, index) =>
                 index === objectionCellIndex ? nextGuess : guess
@@ -2014,53 +2184,39 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
               setLockImpactCell(null)
               setStealableCell(stealsEnabled ? objectionCellIndex : null)
 
-              const placementResolution = getVersusPlacementResolution({
+              const placementResult = getOnlineVersusPlacementResult({
                 newGuesses: successfulStealGuesses,
                 currentPlayer: objectionPlayer,
                 selectedCell: objectionCellIndex,
                 isVersusSteal: true,
                 stealsEnabled,
                 disableDraws: versusDisableDraws,
+                newStealable: stealsEnabled ? objectionCellIndex : null,
               })
+              const placementResolution = placementResult.resolution
+              const placementState = placementResult.nextState
 
               let persistedCurrentPlayer = currentPlayer
               let persistedWinner = winner
-              let persistedStealableCell = stealsEnabled ? objectionCellIndex : null
-              let persistedPendingFinalSteal = null
+              const persistedStealableCell = placementState.stealableCell
+              const persistedPendingFinalSteal = placementState.pendingFinalSteal
 
-              if (placementResolution.kind === 'final-steal') {
-                setPendingFinalSteal({
-                  defender: placementResolution.defender,
-                  cellIndex: placementResolution.cellIndex,
-                })
-                setCurrentPlayer(placementResolution.nextPlayer)
-                persistedCurrentPlayer = placementResolution.nextPlayer
-                persistedPendingFinalSteal = {
-                  defender: placementResolution.defender,
-                  cellIndex: placementResolution.cellIndex,
-                }
-              } else if (placementResolution.kind === 'winner') {
-                setWinner(placementResolution.winner)
-                setStealableCell(null)
-                persistedWinner = placementResolution.winner
-                persistedStealableCell = null
-              } else if (placementResolution.kind === 'claims-win') {
-                setWinner(placementResolution.winner)
-                setStealableCell(null)
-                persistedWinner = placementResolution.winner
-                persistedStealableCell = null
-              } else if (placementResolution.kind === 'draw') {
+              setPendingFinalSteal(placementState.pendingFinalSteal)
+              setStealableCell(placementState.stealableCell)
+
+              if (placementResolution.kind === 'draw') {
                 setActiveDoubleKoSplash({
                   burstId: Date.now(),
                   durationMs: 1400,
                 })
-                setWinner('draw')
-                setStealableCell(null)
-                persistedWinner = 'draw'
-                persistedStealableCell = null
-              } else {
-                setCurrentPlayer(placementResolution.nextPlayer)
-                persistedCurrentPlayer = placementResolution.nextPlayer
+              }
+
+              if (placementState.winner !== null) {
+                setWinner(placementState.winner)
+                persistedWinner = placementState.winner
+              } else if (placementState.nextPlayer) {
+                setCurrentPlayer(placementState.nextPlayer)
+                persistedCurrentPlayer = placementState.nextPlayer
               }
 
               const persistedState = buildPersistedVersusState({
@@ -2302,8 +2458,10 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
         setWinner(expirationResolution.defender)
 
         if (isCurrentOnlineMatch && pendingFinalSteal) {
+          const clientEventId = createOnlineVersusClientEventId('miss')
           void sendOnlineEventWithRecovery('miss', {
             cellIndex: pendingFinalSteal.cellIndex,
+            clientEventId,
             guessesRemaining,
             resolutionKind: 'defender-wins',
             defender: pendingFinalSteal.defender,
@@ -3221,7 +3379,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
         const attackingScore = getStealShowdownMetric(newGuess, effectiveStealRule)
         const showdownDuration =
           animationsEnabled && outcome.hasShowdownScores ? STEAL_SHOWDOWN_DURATION_MS : 0
-        const clientEventId = isCurrentOnlineMatch ? createOnlineVersusStealClientEventId() : null
+        const clientEventId = isCurrentOnlineMatch ? createOnlineVersusClientEventId('steal') : null
 
         if (outcome.hasShowdownScores) {
           if (clientEventId) {
@@ -3393,8 +3551,10 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
             viaObjection: false,
           })
           if (isCurrentOnlineMatch) {
+            const claimClientEventId = createOnlineVersusClientEventId('claim')
             void sendOnlineEventWithRecovery('claim', {
               cellIndex: selectedCell,
+              clientEventId: claimClientEventId,
               guess: newGuess,
             })
           }

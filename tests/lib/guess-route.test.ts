@@ -108,6 +108,17 @@ describe('/api/guess route', () => {
           keywords: ['classic'],
         },
       },
+      selectedGame: {
+        id: 700,
+        name: 'Test Game (Official)',
+        slug: 'test-game-official',
+        gameUrl: 'https://example.com/test-game-official',
+        background_image: 'https://example.com/test-official.png',
+        released: '1998-02-03',
+        metacritic: 88,
+        genres: [{ id: 1, name: 'Role-playing (RPG)', slug: 'rpg' }],
+        platforms: [{ platform: { id: 6, name: 'PC (Microsoft Windows)', slug: 'pc' } }],
+      },
       matchesRow: true,
       matchesCol: false,
       explanation: validationExplanation,
@@ -144,6 +155,13 @@ describe('/api/guess route', () => {
           gameModes: ['Single player'],
           companies: ['Sony'],
         }),
+        selectedGame: {
+          id: 700,
+          name: 'Test Game (Official)',
+          slug: 'test-game-official',
+          url: 'https://example.com/test-game-official',
+          background_image: 'https://example.com/test-official.png',
+        },
       })
     )
     expect(applyAnonymousSessionCookieMock).toHaveBeenCalledOnce()

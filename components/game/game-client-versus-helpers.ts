@@ -13,7 +13,7 @@ export function getStealShowdownMetric(guess: CellGuess, rule: VersusStealRule) 
 }
 
 export function getOnlineVersusStealShowdownData(options: {
-  stealPayload: OnlineVersusStealPayload
+  stealPayload: Partial<OnlineVersusStealPayload>
   defendingGuess: CellGuess | null
   attackingGuess: CellGuess
   rule: VersusStealRule
@@ -408,5 +408,32 @@ export function getOnlineVersusPlacementStateTransition(options: {
     stealableCell: newStealable,
     nextPlayer: resolution.nextPlayer,
     shouldClearTurnDeadline: false,
+  }
+}
+
+export function getOnlineVersusPlacementResult(options: {
+  newGuesses: Array<CellGuess | null>
+  currentPlayer: TicTacToePlayer
+  selectedCell: number
+  isVersusSteal: boolean
+  stealsEnabled: boolean
+  disableDraws: boolean
+  newStealable: number | null
+}) {
+  const resolution = getVersusPlacementResolution({
+    newGuesses: options.newGuesses,
+    currentPlayer: options.currentPlayer,
+    selectedCell: options.selectedCell,
+    isVersusSteal: options.isVersusSteal,
+    stealsEnabled: options.stealsEnabled,
+    disableDraws: options.disableDraws,
+  })
+
+  return {
+    resolution,
+    nextState: getOnlineVersusPlacementStateTransition({
+      resolution,
+      newStealable: options.newStealable,
+    }),
   }
 }

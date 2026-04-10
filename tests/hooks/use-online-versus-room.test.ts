@@ -279,6 +279,8 @@ describe('useOnlineVersusRoom', () => {
         ok: false,
         error: 'It is not your turn.',
         code: 'wrong_turn',
+        payload: null,
+        type: null,
       })
 
       const urls = fetchSpy.mock.calls.map((call) => String(call[0]))

@@ -18,12 +18,21 @@ type GuessLookupResultGame = {
   companies?: string[]
 }
 
+type GuessLookupResultSelectedGame = {
+  id?: number
+  name?: string
+  slug?: string | null
+  url?: string | null
+  background_image?: string | null
+}
+
 export interface GuessLookupResult {
   valid?: boolean
   matchesRow?: boolean
   matchesCol?: boolean
   validationExplanation?: GuessValidationExplanation | null
   game?: GuessLookupResultGame | null
+  selectedGame?: GuessLookupResultSelectedGame | null
 }
 
 function getGameFallbackMetadata(game: Game): Required<GuessLookupResultGame> {
@@ -135,14 +144,20 @@ export function buildGuessFromSelection(options: {
     perspectives: pickResolvedArray(result.game?.perspectives, fallbackMetadata.perspectives),
     companies: pickResolvedArray(result.game?.companies, fallbackMetadata.companies),
   }
+  const selectedGame = result.selectedGame
+  const selectedGameId = selectedGame?.id ?? game.id
+  const selectedGameName = selectedGame?.name ?? game.name
+  const selectedGameSlug = selectedGame?.slug ?? resolvedMetadata.slug
+  const selectedGameUrl = selectedGame?.url ?? resolvedMetadata.url
+  const selectedGameImage = selectedGame?.background_image ?? game.background_image
 
   return {
-    gameId: game.id,
-    gameName: game.name,
+    gameId: selectedGameId,
+    gameName: selectedGameName,
     owner: mode === 'versus' ? currentPlayer : undefined,
-    gameSlug: resolvedMetadata.slug,
-    gameUrl: resolvedMetadata.url,
-    gameImage: game.background_image,
+    gameSlug: selectedGameSlug,
+    gameUrl: selectedGameUrl,
+    gameImage: selectedGameImage,
     isCorrect: Boolean(result.valid),
     released: resolvedMetadata.released,
     metacritic: resolvedMetadata.metacritic,

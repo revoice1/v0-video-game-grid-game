@@ -1353,6 +1353,7 @@ export async function validateIGDBGameForCell(
 ): Promise<{
   valid: boolean
   game: Game | null
+  selectedGame: Game | null
   matchesRow: boolean
   matchesCol: boolean
   explanation: GuessValidationExplanation | null
@@ -1362,6 +1363,7 @@ export async function validateIGDBGameForCell(
     return {
       valid: false,
       game: null,
+      selectedGame: null,
       matchesRow: false,
       matchesCol: false,
       explanation: null,
@@ -1380,6 +1382,7 @@ export async function validateIGDBGameForCell(
   return {
     valid: matchesRow && matchesCol,
     game: resolvedDetails.game,
+    selectedGame: resolvedDetails.selectedGame,
     matchesRow,
     matchesCol,
     explanation,

@@ -67,11 +67,13 @@ export type OnlineVersusEventType = 'claim' | 'miss' | 'objection' | 'steal' | '
 
 export interface OnlineVersusClaimPayload {
   cellIndex: number
+  clientEventId?: string
   guess: CellGuess
 }
 
 export interface OnlineVersusMissPayload {
   cellIndex: number
+  clientEventId?: string
   guessesRemaining: number
   resolutionKind: 'next-player' | 'defender-wins'
   nextPlayer?: RoomPlayer
@@ -80,13 +82,20 @@ export interface OnlineVersusMissPayload {
 
 export interface OnlineVersusObjectionPayload {
   cellIndex: number
+  clientEventId?: string
   verdict: 'sustained' | 'overruled'
   updatedGuess: CellGuess
   isSteal: boolean
+  successful?: boolean
   guessesRemaining?: number
   resolutionKind?: 'next-player' | 'defender-wins'
   nextPlayer?: RoomPlayer
   defender?: RoomPlayer
+  hadShowdownScores?: boolean
+  attackingGameName?: string | null
+  attackingScore?: number | null
+  defendingGameName?: string | null
+  defendingScore?: number | null
 }
 
 export interface OnlineVersusStealPayload {

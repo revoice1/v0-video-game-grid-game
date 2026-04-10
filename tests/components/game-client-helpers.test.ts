@@ -263,6 +263,37 @@ describe('game client helpers', () => {
     })
   })
 
+  it('prefers the authoritative selected game identity when the API provides one', () => {
+    expect(
+      buildGuessFromSelection({
+        game: baseGame,
+        result: {
+          ...lookupResult,
+          selectedGame: {
+            id: 77,
+            name: 'Test Game (PS1)',
+            slug: 'test-game-ps1',
+            url: 'https://example.com/test-game-ps1',
+            background_image: 'https://example.com/test-game-ps1.png',
+          },
+        },
+        mode: 'versus',
+        currentPlayer: 'x',
+      })
+    ).toEqual(
+      expect.objectContaining({
+        gameId: 77,
+        gameName: 'Test Game (PS1)',
+        gameSlug: 'test-game-ps1',
+        gameUrl: 'https://example.com/test-game-ps1',
+        gameImage: 'https://example.com/test-game-ps1.png',
+        released: '1998-02-03',
+        platforms: ['PS1'],
+        validationExplanation,
+      })
+    )
+  })
+
   it('preserves search-result metadata when validation details are sparse', () => {
     expect(
       buildGuessFromSelection({

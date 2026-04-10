@@ -32,6 +32,20 @@ function serializeGameDetails(game: Awaited<ReturnType<typeof validateIGDBGameFo
     : null
 }
 
+function serializeSelectedGameDetails(
+  game: Awaited<ReturnType<typeof validateIGDBGameForCell>>['selectedGame']
+) {
+  return game
+    ? {
+        id: game.id,
+        name: game.name,
+        slug: game.slug ?? null,
+        url: game.gameUrl ?? null,
+        background_image: game.background_image,
+      }
+    : null
+}
+
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const adminSupabase = createAdminClient()
@@ -63,11 +77,8 @@ export async function POST(request: NextRequest) {
     const resolvedSession = resolveAnonymousSession(request)
 
     // Validate the guess
-    const { valid, game, matchesRow, matchesCol, explanation } = await validateIGDBGameForCell(
-      gameId,
-      rowCategory,
-      colCategory
-    )
+    const { valid, game, selectedGame, matchesRow, matchesCol, explanation } =
+      await validateIGDBGameForCell(gameId, rowCategory, colCategory)
 
     if (lookupOnly) {
       return applyAnonymousSessionCookie(
@@ -78,6 +89,7 @@ export async function POST(request: NextRequest) {
           matchesCol,
           validationExplanation: explanation,
           game: serializeGameDetails(game),
+          selectedGame: serializeSelectedGameDetails(selectedGame),
         }),
         resolvedSession,
         request
@@ -102,6 +114,7 @@ export async function POST(request: NextRequest) {
             matchesCol: false,
             validationExplanation: null,
             game: null,
+            selectedGame: null,
           }),
           resolvedSession,
           request
@@ -170,6 +183,7 @@ export async function POST(request: NextRequest) {
         matchesCol,
         validationExplanation: explanation,
         game: serializeGameDetails(game),
+        selectedGame: serializeSelectedGameDetails(selectedGame),
       }),
       resolvedSession,
       request

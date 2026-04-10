@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildStealFailureDescription,
   getClaimCounts,
+  getOnlineVersusPlacementResult,
   getNextPlayer,
   getOnlineVersusPlacementStateTransition,
   getOnlineVersusStealShowdownData,
@@ -444,6 +445,49 @@ describe('game client versus helpers', () => {
       stealableCell: 2,
       nextPlayer: 'o',
       shouldClearTurnDeadline: false,
+    })
+  })
+
+  it('derives the same remote placement result and transition in one helper', () => {
+    expect(
+      getOnlineVersusPlacementResult({
+        newGuesses: [
+          makeOwnedGuess('x'),
+          makeOwnedGuess('x'),
+          makeOwnedGuess('x'),
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+        ],
+        currentPlayer: 'x',
+        selectedCell: 2,
+        isVersusSteal: true,
+        stealsEnabled: true,
+        disableDraws: false,
+        newStealable: 2,
+      })
+    ).toEqual({
+      resolution: {
+        kind: 'final-steal',
+        defender: 'x',
+        cellIndex: 2,
+        nextPlayer: 'o',
+        title: 'Last chance steal',
+        description: 'O gets one chance to answer back on that square.',
+      },
+      nextState: {
+        winner: null,
+        pendingFinalSteal: {
+          defender: 'x',
+          cellIndex: 2,
+        },
+        stealableCell: 2,
+        nextPlayer: 'o',
+        shouldClearTurnDeadline: false,
+      },
     })
   })
 })

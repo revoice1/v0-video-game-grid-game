@@ -26,6 +26,8 @@ export interface SendEventResult {
   ok: boolean
   error: string | null
   code?: string | null
+  payload?: Record<string, unknown> | null
+  type?: OnlineVersusEventType | null
 }
 
 export interface UseOnlineVersusRoomReturn {
@@ -448,7 +450,9 @@ export function useOnlineVersusRoom(): UseOnlineVersusRoomReturn {
     ): Promise<SendEventResult> => {
       const currentRoom = roomRef.current
       const role = myRoleRef.current
-      if (!currentRoom || !role) return { ok: false, error: 'Not in a match.', code: null }
+      if (!currentRoom || !role) {
+        return { ok: false, error: 'Not in a match.', code: null, payload: null, type: null }
+      }
 
       try {
         const res = await fetch('/api/versus/event', {
@@ -469,11 +473,22 @@ export function useOnlineVersusRoom(): UseOnlineVersusRoomReturn {
             ok: false,
             error: json.error ?? 'Failed to send event.',
             code: typeof json.code === 'string' ? json.code : null,
+            payload: null,
+            type: null,
           }
         }
-        return { ok: true, error: null, code: null }
+        return {
+          ok: true,
+          error: null,
+          code: null,
+          payload:
+            json && typeof json === 'object' && json.payload && typeof json.payload === 'object'
+              ? (json.payload as Record<string, unknown>)
+              : null,
+          type: typeof json?.type === 'string' ? (json.type as OnlineVersusEventType) : null,
+        }
       } catch {
-        return { ok: false, error: 'Network error.', code: null }
+        return { ok: false, error: 'Network error.', code: null, payload: null, type: null }
       }
     },
     []

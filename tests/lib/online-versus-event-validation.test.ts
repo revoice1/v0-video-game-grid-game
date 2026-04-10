@@ -133,6 +133,32 @@ describe('validateOnlineVersusEvent', () => {
     )
   })
 
+  it('rejects claims that reuse a game already on the board', () => {
+    const guesses = Array.from({ length: 9 }, () => null) as (CellGuess | null)[]
+    guesses[4] = makeGuess('o', 42, 'Already Used')
+
+    const result = validateOnlineVersusEvent({
+      roomStatus: 'active',
+      puzzleId: 'puzzle-1',
+      settings: makeSettings(),
+      snapshot: makeSnapshot({ guesses }),
+      player: 'x',
+      type: 'claim',
+      payload: {
+        cellIndex: 0,
+        guess: makeGuess('x', 42, 'Already Used'),
+      },
+      existingEvents: [],
+    })
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: false,
+        code: 'duplicate_game',
+      })
+    )
+  })
+
   it('accepts a steal when the event log is ahead of the saved snapshot', () => {
     const result = validateOnlineVersusEvent({
       roomStatus: 'active',
@@ -177,6 +203,93 @@ describe('validateOnlineVersusEvent', () => {
       expect.objectContaining({
         ok: false,
         code: 'steal_not_available',
+      })
+    )
+  })
+
+  it('rejects steals that reuse a game from another cell', () => {
+    const guesses = Array.from({ length: 9 }, () => null) as (CellGuess | null)[]
+    guesses[0] = makeGuess('x', 10, 'Defender')
+    guesses[5] = makeGuess('o', 99, 'Already Used')
+
+    const result = validateOnlineVersusEvent({
+      roomStatus: 'active',
+      puzzleId: 'puzzle-1',
+      settings: makeSettings(),
+      snapshot: makeSnapshot({
+        guesses,
+        currentPlayer: 'o',
+        stealableCell: 0,
+      }),
+      player: 'o',
+      type: 'steal',
+      payload: {
+        cellIndex: 0,
+        attackingGuess: makeGuess('o', 99, 'Already Used'),
+        successful: false,
+        resolutionKind: 'next-player',
+        nextPlayer: 'x',
+      },
+      existingEvents: [],
+    })
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: false,
+        code: 'duplicate_game',
+      })
+    )
+  })
+
+  it('keeps the defending claim when replaying a failed sustained steal objection', () => {
+    const result = validateOnlineVersusEvent({
+      roomStatus: 'active',
+      puzzleId: 'puzzle-1',
+      settings: makeSettings(),
+      snapshot: null,
+      player: 'x',
+      type: 'claim',
+      payload: {
+        cellIndex: 1,
+        guess: makeGuess('x', 30, 'Fresh Pick'),
+      },
+      existingEvents: [
+        makeClaimEvent(1, 'x', 0, makeGuess('x', 10, 'Defender')),
+        {
+          id: 2,
+          player: 'o',
+          type: 'objection',
+          payload: {
+            cellIndex: 0,
+            verdict: 'sustained',
+            updatedGuess: makeGuess('o', 20, 'Counter Pick'),
+            isSteal: true,
+            successful: false,
+            resolutionKind: 'next-player',
+            nextPlayer: 'x',
+            hadShowdownScores: true,
+            attackingGameName: 'Counter Pick',
+            attackingScore: 99,
+            defendingGameName: 'Defender',
+            defendingScore: 95,
+          },
+        },
+      ],
+    })
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        type: 'claim',
+        state: expect.objectContaining({
+          currentPlayer: 'x',
+          guesses: expect.arrayContaining([
+            expect.objectContaining({
+              gameId: 10,
+              owner: 'x',
+            }),
+          ]),
+        }),
       })
     )
   })
