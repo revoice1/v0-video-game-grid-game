@@ -3495,6 +3495,31 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
         }
       }
 
+      let authoritativeOnlineClaimPayload: OnlineVersusClaimPayload | null = null
+
+      if (mode === 'versus' && !isVersusSteal && isCurrentOnlineMatch) {
+        const claimClientEventId = createOnlineVersusClientEventId('claim')
+        const onlineResult = await sendOnlineEventWithRecovery('claim', {
+          cellIndex: selectedCell,
+          clientEventId: claimClientEventId,
+          guess: newGuess,
+        })
+
+        if (!onlineResult.ok) {
+          return
+        }
+
+        if (onlineResult.type === 'claim' && onlineResult.payload) {
+          authoritativeOnlineClaimPayload =
+            onlineResult.payload as unknown as OnlineVersusClaimPayload
+          newGuess = {
+            ...newGuess,
+            ...(authoritativeOnlineClaimPayload.guess as CellGuess),
+            owner: currentPlayer,
+          }
+        }
+      }
+
       const postGuessState = getPostGuessState({
         mode,
         puzzle,
@@ -3550,14 +3575,6 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
             gameName: newGuess.gameName,
             viaObjection: false,
           })
-          if (isCurrentOnlineMatch) {
-            const claimClientEventId = createOnlineVersusClientEventId('claim')
-            void sendOnlineEventWithRecovery('claim', {
-              cellIndex: selectedCell,
-              clientEventId: claimClientEventId,
-              guess: newGuess,
-            })
-          }
         }
 
         setPendingFinalSteal(null)
