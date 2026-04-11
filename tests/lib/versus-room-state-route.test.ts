@@ -17,10 +17,15 @@ vi.mock('@/lib/server-session', () => ({
 import { POST } from '@/app/api/versus/room/[code]/state/route'
 
 function buildSupabaseMock() {
-  const updateEqMock = vi.fn().mockResolvedValue({ error: null })
-  const updateMock = vi.fn(() => ({
-    eq: updateEqMock,
-  }))
+  const updateChainMock = {
+    eq: vi.fn(),
+    select: vi.fn(),
+    single: vi.fn().mockResolvedValue({ data: { id: 'room-1' }, error: null }),
+  }
+  updateChainMock.eq.mockReturnValue(updateChainMock)
+  updateChainMock.select.mockReturnValue(updateChainMock)
+  const updateMock = vi.fn(() => updateChainMock)
+  const updateEqMock = updateChainMock.eq
   const roomSingleMock = vi.fn().mockResolvedValue({
     data: {
       id: 'room-1',
@@ -106,30 +111,33 @@ describe('/api/versus/room/[code]/state route', () => {
 
     expect(response.status).toBe(200)
     expect(payload).toEqual({ ok: true })
-    expect(updateMock).toHaveBeenCalledWith({
-      state_data: {
-        puzzleId: 'puzzle-1',
-        guesses: [
-          {
-            gameId: 7,
-            gameName: 'Test Game',
-            gameImage: null,
-            isCorrect: true,
-            owner: 'x',
-            stealRating: 88,
-            stealRatingCount: 245,
-          },
-          ...Array(8).fill(null),
-        ],
-        guessesRemaining: 8,
-        currentPlayer: 'o',
-        winner: null,
-        stealableCell: 0,
-        pendingFinalSteal: null,
-        objectionsUsed: { x: 0, o: 0 },
-        turnDeadlineAt: null,
-        turnDurationSeconds: null,
-      },
-    })
+    expect(updateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        state_data: {
+          puzzleId: 'puzzle-1',
+          guesses: [
+            {
+              gameId: 7,
+              gameName: 'Test Game',
+              gameImage: null,
+              isCorrect: true,
+              owner: 'x',
+              stealRating: 88,
+              stealRatingCount: 245,
+            },
+            ...Array(8).fill(null),
+          ],
+          guessesRemaining: 8,
+          currentPlayer: 'o',
+          winner: null,
+          stealableCell: 0,
+          pendingFinalSteal: null,
+          objectionsUsed: { x: 0, o: 0 },
+          turnDeadlineAt: null,
+          turnDurationSeconds: null,
+        },
+        expires_at: expect.any(String),
+      })
+    )
   })
 })
