@@ -1302,6 +1302,20 @@ test('objection flow — sustained verdict updates button label in modal', async
     })
   })
 
+  // Silence the objection persistence PATCH so it does not leak to the real
+  // Supabase-backed server and produce noise in the dev-server log.
+  await page.route('**/api/guess', async (route) => {
+    if (route.request().method() === 'PATCH') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true }),
+      })
+      return
+    }
+    await route.fallback()
+  })
+
   await page.goto('/')
 
   // Cell 0 has an incorrect guess — clicking it opens the guess details modal
