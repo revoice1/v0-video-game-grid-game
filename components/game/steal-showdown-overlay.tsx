@@ -130,7 +130,7 @@ export function StealShowdownOverlay({
       <div className="pointer-events-none absolute inset-0 grid place-items-center p-4">
         <div
           className={cn(
-            'showdown-shell w-full max-w-3xl rounded-[2rem] border border-border/80 bg-card/95 p-6 sm:p-7',
+            'showdown-shell w-full max-w-3xl rounded-4xl border border-border/80 bg-card/95 p-6 sm:p-7',
             lowEffects ? 'shadow-2xl' : 'shadow-[0_28px_90px_rgba(0,0,0,0.6)]'
           )}
         >

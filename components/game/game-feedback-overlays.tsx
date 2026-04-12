@@ -20,7 +20,7 @@ export function ObjectionSplash({ burstId }: BurstOverlayProps) {
       className="pointer-events-none fixed inset-0 z-96 grid place-items-center overflow-hidden p-4"
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.24),transparent_22%),linear-gradient(180deg,rgba(9,10,14,0.24),rgba(9,10,14,0.42))]" />
-      <div className="absolute inset-0 opacity-70 [background-image:repeating-linear-gradient(-72deg,transparent_0_14px,rgba(255,185,64,0.13)_14px_22px,transparent_22px_38px)]" />
+      <div className="absolute inset-0 opacity-70 bg-[repeating-linear-gradient(-72deg,transparent_0_14px,rgba(255,185,64,0.13)_14px_22px,transparent_22px_38px)]" />
       <div className="objection-splash select-none px-6 text-center font-black uppercase italic tracking-[0.08em] text-[#ffb44a] drop-shadow-[0_16px_42px_rgba(0,0,0,0.88)]">
         Objection!
       </div>
@@ -66,7 +66,7 @@ export function JudgmentPendingOverlay({ burstId }: JudgmentPendingOverlayProps)
       className="pointer-events-none fixed inset-0 z-95 grid place-items-center overflow-hidden p-4"
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.18),transparent_24%),linear-gradient(180deg,rgba(7,10,16,0.72),rgba(7,10,16,0.84))]" />
-      <div className="absolute inset-0 opacity-60 [background-image:repeating-linear-gradient(-68deg,transparent_0_16px,rgba(245,158,11,0.12)_16px_24px,transparent_24px_40px)]" />
+      <div className="absolute inset-0 opacity-60 bg-[repeating-linear-gradient(-68deg,transparent_0_16px,rgba(245,158,11,0.12)_16px_24px,transparent_24px_40px)]" />
       <div className="relative w-full max-w-xl rounded-[28px] border border-[#f5b94e]/45 bg-[#0f1219]/90 px-6 py-7 text-center shadow-[0_28px_70px_rgba(0,0,0,0.48)] backdrop-blur-md">
         <p className="text-[11px] font-semibold uppercase tracking-[0.42em] text-[#ffd46f]">
           OBJECTION!
