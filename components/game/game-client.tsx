@@ -225,6 +225,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
   const lastSavedOnlineSnapshotRef = useRef<string | null>(null)
   const lastAppliedOnlineSnapshotRef = useRef<string | null>(null)
   const attemptedInviteJoinCodeRef = useRef<string | null>(null)
+  const activeGuessSubmissionIdRef = useRef(0)
   const sanitizeMinimumValidOptions = useCallback(
     (value: number | null | undefined) =>
       sanitizeMinValidOptionsOverride(value, minimumValidOptionsDefault),
@@ -347,6 +348,11 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
   const { enabled: versusAudioEnabled } = useVersusAudioPreference()
   const versusEventLogRef = useRef<VersusEventRecord[]>([])
   const activeStealShowdownRef = useRef<ActiveStealShowdown | null>(null)
+  const currentPlayerRef = useRef(currentPlayer)
+  const selectedCellRef = useRef(selectedCell)
+  const stealableCellRef = useRef(stealableCell)
+  const pendingFinalStealRef = useRef(pendingFinalSteal)
+  const modeRef = useRef(mode)
   const detectConfiguredAnimationQuality = useCallback(
     () => (animationsEnabled ? detectAnimationQuality() : 'low'),
     [animationsEnabled]
@@ -402,6 +408,26 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
   useEffect(() => {
     guessesRef.current = guesses
   }, [guesses])
+
+  useEffect(() => {
+    currentPlayerRef.current = currentPlayer
+  }, [currentPlayer])
+
+  useEffect(() => {
+    selectedCellRef.current = selectedCell
+  }, [selectedCell])
+
+  useEffect(() => {
+    stealableCellRef.current = stealableCell
+  }, [stealableCell])
+
+  useEffect(() => {
+    pendingFinalStealRef.current = pendingFinalSteal
+  }, [pendingFinalSteal])
+
+  useEffect(() => {
+    modeRef.current = mode
+  }, [mode])
 
   const hasActiveOnlineRoom = onlineVersus.room?.status === 'active'
   const isOnlineRoomActive = hasActiveOnlineRoom && onlineVersus.myRole !== null
@@ -667,6 +693,24 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
   const snapshotSaveInFlightRef = useRef(false)
   // Holds the next snapshot to save once the current in-flight save completes.
   const pendingSnapshotQueueRef = useRef<OnlineVersusSnapshot | null>(null)
+
+  const buildSubmissionBoardKey = useCallback((cellIndex: number) => {
+    const existingGuess = guessesRef.current[cellIndex]
+    const pendingFinalSteal = pendingFinalStealRef.current
+    const pendingFinalStealKey = pendingFinalSteal
+      ? `${pendingFinalSteal.defender}:${pendingFinalSteal.cellIndex}`
+      : 'none'
+
+    return JSON.stringify({
+      mode: modeRef.current,
+      selectedCell: selectedCellRef.current,
+      currentPlayer: currentPlayerRef.current,
+      stealableCell: stealableCellRef.current,
+      pendingFinalSteal: pendingFinalStealKey,
+      existingGuessGameId: existingGuess?.gameId ?? null,
+      existingGuessOwner: existingGuess?.owner ?? null,
+    })
+  }, [])
 
   // Shared queued snapshot saver. Serialises saves so concurrent state changes
   // never race on the server. Key behaviours:
@@ -3058,6 +3102,9 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     // In online matches, only the active player may submit
     if (mode === 'versus' && isCurrentOnlineMatch && onlineVersus.myRole !== currentPlayer) return
 
+    const submissionId = activeGuessSubmissionIdRef.current + 1
+    activeGuessSubmissionIdRef.current = submissionId
+    const expectedBoardKey = buildSubmissionBoardKey(selectedCell)
     const existingGuess = guesses[selectedCell]
     const isVersusSteal =
       mode === 'versus' &&
@@ -3091,6 +3138,13 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
         colCategory,
         isDaily: mode === 'daily',
       })
+
+      if (
+        submissionId !== activeGuessSubmissionIdRef.current ||
+        expectedBoardKey !== buildSubmissionBoardKey(selectedCell)
+      ) {
+        return
+      }
 
       if (result.duplicate) {
         toast({
