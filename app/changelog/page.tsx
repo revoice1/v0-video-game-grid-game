@@ -11,6 +11,13 @@ export const metadata: Metadata = {
 
 const CHANGELOG_ENTRIES = [
   {
+    date: 'April 12, 2026',
+    title: 'Submission Race Guard',
+    items: [
+      'Fixed a bug where a slow IGDB validation could apply stale guess results to the wrong cell if the board state changed mid-request.',
+    ],
+  },
+  {
     date: 'April 11, 2026',
     title: 'Online Versus Polish And Objection Improvements',
     items: [
