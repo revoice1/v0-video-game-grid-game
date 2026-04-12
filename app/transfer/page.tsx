@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { clearAllDailyGameStates } from '@/lib/session'
 import { normalizeTransferCode } from '@/lib/session-transfer'
 
 function TransferPageShell({
@@ -127,6 +128,7 @@ function TransferPageContent() {
       })
 
       if (response.ok) {
+        clearAllDailyGameStates()
         setPhase('success')
         return
       }

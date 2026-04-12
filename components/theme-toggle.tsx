@@ -13,6 +13,7 @@ import {
   useVersusAudioPreference,
 } from '@/lib/ui-preferences'
 import { normalizeTransferCode } from '@/lib/session-transfer'
+import { clearAllDailyGameStates } from '@/lib/session'
 
 function FlashbangIcon({ className }: { className?: string }) {
   return (
@@ -161,6 +162,7 @@ export function ThemeToggle({ showVersusAlarms = false }: { showVersusAlarms?: b
       })
 
       if (response.ok) {
+        clearAllDailyGameStates()
         setTransferStatus('success')
         window.setTimeout(() => window.location.reload(), 600)
         return

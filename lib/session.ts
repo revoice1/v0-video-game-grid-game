@@ -338,3 +338,21 @@ export function clearGameState(mode: PersistedMode, dailyDate?: string): void {
   const key = getStateKey(mode, dailyDate)
   localStorage.removeItem(key)
 }
+
+export function clearAllDailyGameStates(): void {
+  if (typeof window === 'undefined') return
+
+  const dailyPrefix = `${DAILY_STATE_KEY}:`
+  const keysToRemove: string[] = []
+
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index)
+    if (key?.startsWith(dailyPrefix)) {
+      keysToRemove.push(key)
+    }
+  }
+
+  for (const key of keysToRemove) {
+    localStorage.removeItem(key)
+  }
+}

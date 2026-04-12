@@ -102,6 +102,14 @@ test('transfer page: warns before importing a scanned link', async ({ page }) =>
   ).toBeVisible()
   await page.getByRole('button', { name: 'Replace history' }).click()
   await expect(page.getByText('Transfer complete')).toBeVisible()
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const todayKey = `gamegrid_daily_state:${new Date().toISOString().slice(0, 10)}`
+        return window.localStorage.getItem(todayKey)
+      })
+    )
+    .toBeNull()
   await page.getByRole('link', { name: 'Open GameGrid' }).click()
   await page.waitForURL('/')
 })
