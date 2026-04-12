@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { validateIGDBGameForCell } from '@/lib/igdb'
-import { logError, logWarn } from '@/lib/logging'
+import { createRequestLogger } from '@/lib/logging'
 import { applyAnonymousSessionCookie, resolveAnonymousSession } from '@/lib/server-session'
 import type { Category } from '@/lib/types'
 
@@ -47,6 +47,7 @@ function serializeSelectedGameDetails(
 }
 
 export async function POST(request: NextRequest) {
+  const logger = createRequestLogger()
   const supabase = await createClient()
   const adminSupabase = createAdminClient()
 
@@ -123,7 +124,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!valid && game) {
-      logWarn('Rejected guess details:', {
+      logger.warn('Rejected guess details:', {
         gameId,
         gameName,
         rowCategory,
@@ -156,7 +157,9 @@ export async function POST(request: NextRequest) {
       })
 
       if (guessInsertError) {
-        logWarn('Guess insert with correctness failed, falling back:', guessInsertError.message)
+        logger.warn('Guess insert with correctness failed, falling back', {
+          message: guessInsertError.message,
+        })
 
         if (valid) {
           const { error: legacyGuessInsertError } = await adminSupabase.from('guesses').insert({
@@ -189,12 +192,13 @@ export async function POST(request: NextRequest) {
       request
     )
   } catch (error) {
-    logError('Guess error:', error)
+    logger.error('Guess error', { error })
     return NextResponse.json({ error: 'Failed to process guess', valid: false }, { status: 500 })
   }
 }
 
 export async function PATCH(request: NextRequest) {
+  const logger = createRequestLogger()
   const supabase = createAdminClient()
 
   try {
@@ -254,7 +258,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (!exactMatch) {
-      logWarn('Guess objection update fell back to puzzle/session/cell match', {
+      logger.warn('Guess objection update fell back to puzzle/session/cell match', {
         puzzleId,
         cellIndex,
         gameId,
@@ -282,7 +286,7 @@ export async function PATCH(request: NextRequest) {
       }
 
       if (fallbackMatch.game_id !== gameId) {
-        logWarn('Guess objection update matched a different game id', {
+        logger.warn('Guess objection update matched a different game id', {
           puzzleId,
           cellIndex,
           requestedGameId: gameId,
@@ -294,7 +298,7 @@ export async function PATCH(request: NextRequest) {
 
     return applyAnonymousSessionCookie(NextResponse.json({ ok: true }), resolvedSession, request)
   } catch (error) {
-    logError('Guess objection update error:', error)
+    logger.error('Guess objection update error', { error })
     return NextResponse.json({ error: 'Failed to persist objection result' }, { status: 500 })
   }
 }

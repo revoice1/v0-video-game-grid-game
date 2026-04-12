@@ -35,6 +35,12 @@ vi.mock('@/lib/igdb', () => ({
 vi.mock('@/lib/logging', () => ({
   logError: logErrorMock,
   logWarn: logWarnMock,
+  createRequestLogger: () => ({
+    requestId: 'test-id',
+    info: vi.fn(),
+    warn: logWarnMock,
+    error: logErrorMock,
+  }),
 }))
 
 vi.mock('@/lib/server-session', () => ({

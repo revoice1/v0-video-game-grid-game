@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { logError } from '@/lib/logging'
+import { createRequestLogger } from '@/lib/logging'
 import { sanitizeMinValidOptionsOverride } from '@/lib/min-valid-options'
 import { getMinValidOptionsDefaultFromEnv } from '@/lib/min-valid-options-server'
 import { resolveAnonymousSession, applyAnonymousSessionCookie } from '@/lib/server-session'
@@ -26,6 +26,7 @@ const RoomSettingsSchema = z.object({
 const MIN_VALID_OPTIONS_PER_CELL = getMinValidOptionsDefaultFromEnv()
 
 export async function POST(request: NextRequest) {
+  const logger = createRequestLogger()
   const supabase = createAdminClient()
   const session = resolveAnonymousSession(request)
 
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json()
   } catch {
-    logError('[versus.room.create] invalid request body', {
+    logger.error('[versus.room.create] invalid request body', {
       sessionId: session.sessionId,
     })
     return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 })
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
 
   const parsed = RoomSettingsSchema.safeParse((body as { settings?: unknown })?.settings)
   if (!parsed.success) {
-    logError('[versus.room.create] invalid settings', {
+    logger.error('[versus.room.create] invalid settings', {
       sessionId: session.sessionId,
       detail: parsed.error.flatten(),
     })
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) {
-    logError('[versus.room.create] insert failed', {
+    logger.error('[versus.room.create] insert failed', {
       sessionId: session.sessionId,
       settings: sanitizedSettings,
       error,

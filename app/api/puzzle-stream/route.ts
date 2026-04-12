@@ -5,7 +5,7 @@ import {
   type PuzzleCategoryFilters,
   type PuzzleProgressCallback,
 } from '@/lib/igdb'
-import { logError } from '@/lib/logging'
+import { createRequestLogger } from '@/lib/logging'
 import {
   computePuzzleCellMetadata,
   getExistingDailyPuzzle,
@@ -95,6 +95,7 @@ function generationProgress(
 }
 
 export async function GET(request: NextRequest) {
+  const logger = createRequestLogger()
   const searchParams = request.nextUrl.searchParams
   const mode = searchParams.get('mode') || 'daily'
   const rawFilters = searchParams.get('filters')
@@ -303,7 +304,7 @@ export async function GET(request: NextRequest) {
         },
       })
     } catch (err) {
-      logError('puzzle-stream error:', err)
+      logger.error('puzzle-stream error', { error: err })
       await send({ type: 'error', message: err instanceof Error ? err.message : 'Unknown error' })
     } finally {
       await writer.close().catch(() => {})

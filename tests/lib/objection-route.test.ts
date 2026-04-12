@@ -16,6 +16,12 @@ vi.mock('@/lib/logging', () => ({
   logError: logErrorMock,
   logInfo: logInfoMock,
   logWarn: logWarnMock,
+  createRequestLogger: () => ({
+    requestId: 'test-id',
+    info: logInfoMock,
+    warn: logWarnMock,
+    error: logErrorMock,
+  }),
 }))
 
 const originalEnv = { ...process.env }

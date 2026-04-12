@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isAuthorizedCronRequest } from '@/lib/cron-auth'
 import { ensureDailyPuzzleForDate } from '@/lib/daily-puzzle'
-import { logError, logInfo, logWarn } from '@/lib/logging'
+import { createRequestLogger } from '@/lib/logging'
 import { getCronDailyTargetDate } from '@/lib/puzzle-api'
 import { createClient } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
+  const logger = createRequestLogger()
+
   if (!isAuthorizedCronRequest(request.headers)) {
-    logWarn('Rejected unauthorized daily puzzle cron request')
+    logger.warn('Rejected unauthorized daily puzzle cron request')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -16,7 +18,7 @@ export async function GET(request: NextRequest) {
     const targetDate = getCronDailyTargetDate()
     const result = await ensureDailyPuzzleForDate(supabase, targetDate)
 
-    logInfo(
+    logger.info(
       `${result.createdNew ? 'Generated' : 'Confirmed existing'} daily puzzle for ${result.targetDate}`
     )
 
@@ -29,7 +31,7 @@ export async function GET(request: NextRequest) {
       validationMessage: result.validationMessage,
     })
   } catch (error) {
-    logError('Failed to generate daily puzzle from cron:', error)
+    logger.error('Failed to generate daily puzzle from cron', { error })
     const message = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json({ error: message }, { status: 500 })
   }

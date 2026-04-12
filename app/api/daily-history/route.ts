@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { logError } from '@/lib/logging'
+import { createRequestLogger } from '@/lib/logging'
 import {
   applyAnonymousSessionCookie,
   getLegacySessionIdFromRequest,
@@ -11,6 +11,7 @@ import type { NextRequest } from 'next/server'
 export const revalidate = 3600
 
 export async function GET(request: NextRequest) {
+  const logger = createRequestLogger()
   const supabase = await createClient()
   const resolvedSession = resolveAnonymousSession(request, getLegacySessionIdFromRequest(request))
 
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
       request
     )
   } catch (error) {
-    logError('Error loading daily archive:', error)
+    logger.error('Error loading daily archive', { error })
     return NextResponse.json({ error: 'Failed to load daily archive' }, { status: 500 })
   }
 }

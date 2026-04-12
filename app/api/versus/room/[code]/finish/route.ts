@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveAnonymousSession } from '@/lib/server-session'
-import { logError } from '@/lib/logging'
+import { createRequestLogger } from '@/lib/logging'
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
+  const logger = createRequestLogger()
   const supabase = createAdminClient()
   const session = resolveAnonymousSession(request)
   const { code } = await params
@@ -31,7 +32,7 @@ export async function POST(
     .single()
 
   if (fetchError || !room) {
-    logError('[versus.room.finish] room lookup failed', {
+    logger.error('[versus.room.finish] room lookup failed', {
       code: upperCode,
       sessionId: session.sessionId,
       error: fetchError,
@@ -43,7 +44,7 @@ export async function POST(
     room.host_session_id === session.sessionId || room.guest_session_id === session.sessionId
 
   if (!isParticipant) {
-    logError('[versus.room.finish] not authorized', {
+    logger.error('[versus.room.finish] not authorized', {
       code: upperCode,
       roomId: room.id,
       sessionId: session.sessionId,
@@ -64,7 +65,7 @@ export async function POST(
     .eq('id', room.id)
 
   if (updateError) {
-    logError('[versus.room.finish] status update failed', {
+    logger.error('[versus.room.finish] status update failed', {
       code: upperCode,
       roomId: room.id,
       sessionId: session.sessionId,

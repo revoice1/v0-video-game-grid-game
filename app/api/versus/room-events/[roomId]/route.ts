@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveAnonymousSession } from '@/lib/server-session'
-import { logError } from '@/lib/logging'
+import { createRequestLogger } from '@/lib/logging'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ roomId: string }> }
 ) {
+  const logger = createRequestLogger()
   const supabase = createAdminClient()
   const session = resolveAnonymousSession(request)
   const { roomId } = await params
@@ -19,7 +20,7 @@ export async function GET(
     .single()
 
   if (roomError || !room) {
-    logError('[versus.room-events] room lookup failed', {
+    logger.error('[versus.room-events] room lookup failed', {
       roomId,
       sessionId: session.sessionId,
       error: roomError,
@@ -31,7 +32,7 @@ export async function GET(
     room.host_session_id === session.sessionId || room.guest_session_id === session.sessionId
 
   if (!isParticipant) {
-    logError('[versus.room-events] not authorized', {
+    logger.error('[versus.room-events] not authorized', {
       roomId,
       sessionId: session.sessionId,
     })
@@ -46,7 +47,7 @@ export async function GET(
     .order('id', { ascending: true })
 
   if (error) {
-    logError('[versus.room-events] fetch failed', {
+    logger.error('[versus.room-events] fetch failed', {
       roomId,
       sessionId: session.sessionId,
       error,

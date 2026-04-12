@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { searchIGDBGames } from '@/lib/igdb'
-import { logError } from '@/lib/logging'
+import { createRequestLogger } from '@/lib/logging'
 import { createClient } from '@/lib/supabase/server'
 import type { Category } from '@/lib/types'
 
@@ -44,6 +44,7 @@ async function getPuzzleCategoryTypes(puzzleId: string | null): Promise<Set<Cate
 }
 
 export async function GET(request: NextRequest) {
+  const logger = createRequestLogger()
   const searchParams = request.nextUrl.searchParams
   const query = searchParams.get('q')
   const puzzleId = searchParams.get('puzzleId')
@@ -96,7 +97,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ results: safeResults })
   } catch (error) {
-    logError('Search error:', error)
+    logger.error('Search error', { error })
     return NextResponse.json({ results: [] })
   }
 }

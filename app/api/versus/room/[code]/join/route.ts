@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveAnonymousSession, applyAnonymousSessionCookie } from '@/lib/server-session'
-import { logError } from '@/lib/logging'
+import { createRequestLogger } from '@/lib/logging'
 
 // Columns safe to return to the client — session IDs are never exposed
 const SAFE_ROOM_COLUMNS =
@@ -11,6 +11,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
+  const logger = createRequestLogger()
   const supabase = createAdminClient()
   const session = resolveAnonymousSession(request)
   const { code } = await params
@@ -27,7 +28,7 @@ export async function POST(
     .single()
 
   if (fetchError || !room) {
-    logError('[versus.room.join] room lookup failed', {
+    logger.error('[versus.room.join] room lookup failed', {
       code: upperCode,
       sessionId: session.sessionId,
       error: fetchError,
@@ -92,7 +93,7 @@ export async function POST(
     .single()
 
   if (updateError || !updated) {
-    logError('[versus.room.join] guest attach failed', {
+    logger.error('[versus.room.join] guest attach failed', {
       code: upperCode,
       roomId: room.id,
       sessionId: session.sessionId,

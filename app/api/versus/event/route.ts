@@ -11,7 +11,7 @@ import {
   type StoredOnlineVersusEvent,
 } from '@/lib/online-versus-event-validation'
 import { resolveAnonymousSession } from '@/lib/server-session'
-import { logError } from '@/lib/logging'
+import { createRequestLogger } from '@/lib/logging'
 import type { CellGuess, Puzzle } from '@/lib/types'
 import type { OnlineVersusEventType, RoomPlayer } from '@/lib/versus-room'
 import { resolveStealOutcome } from '@/hooks/use-versus-steal'
@@ -531,6 +531,7 @@ async function buildAuthoritativeObjectionPayload(options: {
 }
 
 export async function POST(request: NextRequest) {
+  const logger = createRequestLogger()
   const supabase = createAdminClient()
   const session = resolveAnonymousSession(request)
 
@@ -558,7 +559,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (roomError) {
-      logError('Online versus event room lookup failed', {
+      logger.error('Online versus event room lookup failed', {
         roomId,
         player,
         type,
@@ -594,7 +595,7 @@ export async function POST(request: NextRequest) {
       .order('id', { ascending: true })
 
     if (existingEventsError) {
-      logError('Online versus event history lookup failed', {
+      logger.error('Online versus event history lookup failed', {
         roomId,
         player,
         type,
@@ -707,7 +708,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (error) {
-      logError('Online versus event insert failed', {
+      logger.error('Online versus event insert failed', {
         roomId,
         player,
         type,
@@ -720,7 +721,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, type: validation.type, payload: authoritativePayload })
   } catch (error) {
-    logError('Online versus event route crashed', {
+    logger.error('Online versus event route crashed', {
       sessionId: session.sessionId,
       error,
     })

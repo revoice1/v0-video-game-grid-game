@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getIGDBFamilyNames } from '@/lib/igdb'
-import { logError, logInfo, logWarn } from '@/lib/logging'
+import { createRequestLogger } from '@/lib/logging'
 import { checkRateLimit } from '@/lib/rate-limit'
 import {
   buildObjectionDataset,
@@ -111,13 +111,15 @@ function sleep(ms: number) {
 const OBJECTION_RATE_LIMIT = { limit: 10, windowMs: 60_000 }
 
 export async function POST(request: NextRequest) {
+  const logger = createRequestLogger()
+
   if (!GEMINI_KEY) {
     return NextResponse.json({ error: 'Objection review is not configured yet.' }, { status: 503 })
   }
 
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
   if (!checkRateLimit(`objection:${ip}`, OBJECTION_RATE_LIMIT)) {
-    logWarn('Objection rate limit exceeded', { ip })
+    logger.warn('Objection rate limit exceeded', { ip })
     return NextResponse.json({ error: 'Too many requests.' }, { status: 429 })
   }
 
@@ -146,7 +148,7 @@ export async function POST(request: NextRequest) {
         ? dataset.familyNames.length - familyNamesPreview.length
         : 0
 
-    logInfo('Objection review dataset summary', {
+    logger.info('Objection review dataset summary', {
       gameId: body.guess.gameId,
       gameName: body.guess.gameName,
       rowCategory: body.rowCategory.name,
@@ -219,13 +221,13 @@ export async function POST(request: NextRequest) {
     for (const requestVariant of requestVariants) {
       const model = GEMINI_MODEL
       if (IS_DEV) {
-        logInfo('Gemini objection outbound request', {
+        logger.info('Gemini objection outbound request', {
           model,
           variant: requestVariant.label,
           requestBody: requestVariant.body,
         })
       } else {
-        logInfo('Gemini objection request', {
+        logger.info('Gemini objection request', {
           model,
           variant: requestVariant.label,
           gameId: body.guess.gameId,
@@ -240,7 +242,7 @@ export async function POST(request: NextRequest) {
       }
       const requestUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`
       if (IS_DEV) {
-        logInfo('Gemini objection HTTP request', {
+        logger.info('Gemini objection HTTP request', {
           url: requestUrl.replace(/key=[^&]+/, 'key=REDACTED'),
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -270,7 +272,7 @@ export async function POST(request: NextRequest) {
             ? Math.ceil(retryAfterSeconds * 1000)
             : 500
 
-        logWarn('Gemini grounded request rate-limited; retrying request', {
+        logger.warn('Gemini grounded request rate-limited; retrying request', {
           model,
           variant: requestVariant.label,
           attempt,
@@ -290,14 +292,14 @@ export async function POST(request: NextRequest) {
         const extractedText = extractGeminiText(payload)
         const parsedJudgment = extractedText ? normalizeObjectionResponse(extractedText) : null
         if (IS_DEV) {
-          logInfo('Gemini objection raw response', {
+          logger.info('Gemini objection raw response', {
             model,
             variant: requestVariant.label,
             payload: JSON.stringify(payload, null, 2),
             extractedText,
             parsedJudgment,
           })
-          logInfo('Gemini objection verdict', {
+          logger.info('Gemini objection verdict', {
             model,
             variant: requestVariant.label,
             verdict: parsedJudgment?.verdict ?? null,
@@ -306,7 +308,7 @@ export async function POST(request: NextRequest) {
             suspectedMissingMetadata: parsedJudgment?.suspectedMissingMetadata ?? null,
           })
         } else {
-          logInfo('Gemini objection verdict', {
+          logger.info('Gemini objection verdict', {
             model,
             variant: requestVariant.label,
             verdict: parsedJudgment?.verdict ?? null,
@@ -323,7 +325,7 @@ export async function POST(request: NextRequest) {
       }
 
       lastErrorText = await response.text()
-      logWarn('Gemini objection request failed', {
+      logger.warn('Gemini objection request failed', {
         model,
         variant: requestVariant.label,
         status: response.status,
@@ -350,14 +352,10 @@ export async function POST(request: NextRequest) {
     const judgment = text ? normalizeObjectionResponse(text) : null
 
     if (!judgment?.verdict || !judgment.confidence || !judgment.explanation) {
-      logWarn(
-        'Gemini objection response was not parseable',
-        IS_DEV
-          ? payload
-          : {
-              model: GEMINI_MODEL,
-            }
-      )
+      logger.warn('Gemini objection response was not parseable', {
+        model: GEMINI_MODEL,
+        ...(IS_DEV ? { payload } : {}),
+      })
       return NextResponse.json(
         { error: 'Judgment service returned an invalid verdict.' },
         { status: 502 }
@@ -366,7 +364,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(judgment)
   } catch (error) {
-    logError('Objection error:', error)
+    logger.error('Objection error', { error })
     return NextResponse.json({ error: 'Failed to review objection.' }, { status: 500 })
   }
 }

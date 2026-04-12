@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveAnonymousSession } from '@/lib/server-session'
-import { logError } from '@/lib/logging'
+import { createRequestLogger } from '@/lib/logging'
 import type { Puzzle } from '@/lib/types'
 import type { OnlineVersusSnapshot } from '@/lib/versus-room'
 
@@ -9,6 +9,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
+  const logger = createRequestLogger()
   const supabase = createAdminClient()
   const session = resolveAnonymousSession(request)
   const { code } = await params
@@ -22,7 +23,7 @@ export async function POST(
     .single()
 
   if (fetchError || !room) {
-    logError('[versus.room.puzzle] room lookup failed', {
+    logger.error('[versus.room.puzzle] room lookup failed', {
       code: upperCode,
       sessionId: session.sessionId,
       error: fetchError,
@@ -30,7 +31,7 @@ export async function POST(
     return NextResponse.json({ error: 'Room not found.' }, { status: 404 })
   }
   if (room.host_session_id !== session.sessionId) {
-    logError('[versus.room.puzzle] not host', {
+    logger.error('[versus.room.puzzle] not host', {
       code: upperCode,
       roomId: room.id,
       sessionId: session.sessionId,
@@ -55,7 +56,7 @@ export async function POST(
       matchNumber?: number
     })
   } catch {
-    logError('[versus.room.puzzle] invalid request body', {
+    logger.error('[versus.room.puzzle] invalid request body', {
       code: upperCode,
       roomId: room.id,
       sessionId: session.sessionId,
@@ -105,7 +106,7 @@ export async function POST(
     .select('id')
 
   if (updateError) {
-    logError('[versus.room.puzzle] update failed', {
+    logger.error('[versus.room.puzzle] update failed', {
       code: upperCode,
       roomId: room.id,
       sessionId: session.sessionId,

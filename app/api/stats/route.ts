@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { logError, logWarn } from '@/lib/logging'
+import { createRequestLogger } from '@/lib/logging'
 import { applyAnonymousSessionCookie, resolveAnonymousSession } from '@/lib/server-session'
 import { buildDailyStreakSummary } from '@/lib/daily-streaks'
 
@@ -14,6 +14,7 @@ interface GuessStatRow {
 }
 
 export async function GET(request: NextRequest) {
+  const logger = createRequestLogger()
   const supabase = await createClient()
   const searchParams = request.nextUrl.searchParams
   const puzzleId = searchParams.get('puzzleId')
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
       .eq('puzzle_id', puzzleId)
 
     if (guessResponse.error) {
-      logWarn('Guess stats unavailable:', guessResponse.error.message)
+      logger.warn('Guess stats unavailable', { message: guessResponse.error.message })
     } else {
       guessRows = guessResponse.data
     }
@@ -174,12 +175,13 @@ export async function GET(request: NextRequest) {
       request
     )
   } catch (error) {
-    logError('Stats error:', error)
+    logger.error('Stats error', { error })
     return NextResponse.json({ error: 'Failed to get stats' }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
+  const logger = createRequestLogger()
   const supabase = await createClient()
 
   try {
@@ -233,7 +235,7 @@ export async function POST(request: NextRequest) {
       request
     )
   } catch (error) {
-    logError('Stats POST error:', error)
+    logger.error('Stats POST error', { error })
     return NextResponse.json({ error: 'Failed to save completion' }, { status: 500 })
   }
 }

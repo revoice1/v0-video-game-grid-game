@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { ensureDailyPuzzle, generateValidPuzzle } from '@/lib/daily-puzzle'
-import { logError } from '@/lib/logging'
+import { createRequestLogger } from '@/lib/logging'
 import { getExistingDailyPuzzle, sanitizeCategories } from '@/lib/puzzle-api'
 import {
   applyAnonymousSessionCookie,
@@ -14,6 +14,7 @@ import type { CellGuess } from '@/lib/types'
 export const revalidate = 3600
 
 export async function GET(request: NextRequest) {
+  const logger = createRequestLogger()
   const supabase = await createClient()
   const resolvedSession = resolveAnonymousSession(request, getLegacySessionIdFromRequest(request))
   const searchParams = request.nextUrl.searchParams
@@ -153,7 +154,7 @@ export async function GET(request: NextRequest) {
       cell_metadata: categories.cellMetadata,
     })
   } catch (error) {
-    logError('Error in puzzle API:', error)
+    logger.error('Error in puzzle API', { error })
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json({ error: `Failed to get puzzle: ${errorMessage}` }, { status: 500 })
   }
