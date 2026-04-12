@@ -41,7 +41,7 @@ function StandardHowToPlay({
     <div className="space-y-4 py-4">
       <div className="space-y-3">
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20">
             <span className="font-bold text-primary">1</span>
           </div>
           <div>
@@ -54,7 +54,7 @@ function StandardHowToPlay({
         </div>
 
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20">
             <span className="font-bold text-primary">2</span>
           </div>
           <div>
@@ -67,7 +67,7 @@ function StandardHowToPlay({
         </div>
 
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20">
             <span className="font-bold text-primary">3</span>
           </div>
           <div>
@@ -77,7 +77,7 @@ function StandardHowToPlay({
         </div>
 
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20">
             <span className="font-bold text-primary">4</span>
           </div>
           <div>
@@ -90,7 +90,7 @@ function StandardHowToPlay({
         </div>
 
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20">
             <span className="font-bold text-primary">5</span>
           </div>
           <div>
@@ -103,7 +103,7 @@ function StandardHowToPlay({
         </div>
 
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20">
             <span className="font-bold text-primary">6</span>
           </div>
           <div>
@@ -117,7 +117,7 @@ function StandardHowToPlay({
         </div>
 
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20">
             <span className="font-bold text-primary">7</span>
           </div>
           <div>
@@ -127,7 +127,7 @@ function StandardHowToPlay({
         </div>
 
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20">
             <span className="font-bold text-primary">8</span>
           </div>
           <div>
@@ -141,7 +141,7 @@ function StandardHowToPlay({
         </div>
 
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20">
             <span className="font-bold text-primary">9</span>
           </div>
           <div>
@@ -155,7 +155,7 @@ function StandardHowToPlay({
         </div>
 
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20">
             <span className="font-bold text-primary">10</span>
           </div>
           <div>
@@ -175,7 +175,7 @@ function VersusHowToPlay() {
     <div className="space-y-4 py-4">
       <div className="space-y-3">
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20">
             <span className="font-bold text-primary">1</span>
           </div>
           <div>
@@ -188,7 +188,7 @@ function VersusHowToPlay() {
         </div>
 
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20">
             <span className="font-bold text-primary">2</span>
           </div>
           <div>
@@ -201,7 +201,7 @@ function VersusHowToPlay() {
         </div>
 
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20">
             <span className="font-bold text-primary">3</span>
           </div>
           <div>
@@ -214,7 +214,7 @@ function VersusHowToPlay() {
         </div>
 
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20">
             <span className="font-bold text-primary">4</span>
           </div>
           <div>
@@ -227,7 +227,7 @@ function VersusHowToPlay() {
         </div>
 
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20">
             <span className="font-bold text-primary">5</span>
           </div>
           <div>
@@ -240,7 +240,7 @@ function VersusHowToPlay() {
         </div>
 
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20">
             <span className="font-bold text-primary">6</span>
           </div>
           <div>
@@ -255,7 +255,7 @@ function VersusHowToPlay() {
         </div>
 
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20">
             <span className="font-bold text-primary">7</span>
           </div>
           <div>
@@ -268,7 +268,7 @@ function VersusHowToPlay() {
         </div>
 
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20">
             <span className="font-bold text-primary">8</span>
           </div>
           <div>
@@ -281,7 +281,7 @@ function VersusHowToPlay() {
         </div>
 
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20">
             <span className="font-bold text-primary">9</span>
           </div>
           <div>

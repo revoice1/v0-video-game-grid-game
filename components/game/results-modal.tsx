@@ -191,7 +191,7 @@ export function ResultsModal({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-lg bg-card border-border max-h-[90vh] flex flex-col">
-        <DialogHeader className="flex-shrink-0">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="text-center text-2xl font-bold">
             {isDaily ? 'Daily' : 'Practice'} Results
           </DialogTitle>
@@ -201,7 +201,7 @@ export function ResultsModal({
         </DialogHeader>
 
         {isDaily && (
-          <div className="flex border-b border-border flex-shrink-0">
+          <div className="flex border-b border-border shrink-0">
             <button
               onClick={() => setActiveTab('your-results')}
               className={cn(
@@ -510,7 +510,7 @@ export function ResultsModal({
         </div>
 
         {/* Actions - fixed at bottom */}
-        <div className="flex gap-3 pt-4 border-t border-border flex-shrink-0">
+        <div className="flex gap-3 pt-4 border-t border-border shrink-0">
           {isDaily && (
             <Button variant="outline" onClick={handleCopyResults} className="flex-1">
               Copy Results
