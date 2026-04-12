@@ -1,53 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { normalizeTransferCode } from '@/lib/session-transfer'
 
-export default function TransferPage() {
-  const searchParams = useSearchParams()
-  const [phase, setPhase] = useState<'loading' | 'success' | 'invalid' | 'error'>('loading')
-
-  useEffect(() => {
-    const normalizedCode = normalizeTransferCode(searchParams.get('code'))
-    if (!normalizedCode) {
-      setPhase('invalid')
-      return
-    }
-
-    let cancelled = false
-
-    void (async () => {
-      try {
-        const response = await fetch('/api/session/import', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: normalizedCode }),
-        })
-
-        if (cancelled) {
-          return
-        }
-
-        if (response.ok) {
-          setPhase('success')
-          return
-        }
-
-        setPhase(response.status === 400 ? 'invalid' : 'error')
-      } catch {
-        if (!cancelled) {
-          setPhase('error')
-        }
-      }
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [searchParams])
-
+function TransferPageShell({
+  phase = 'loading',
+}: {
+  phase?: 'loading' | 'success' | 'invalid' | 'error'
+}) {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md items-center justify-center px-6">
       <div className="w-full rounded-3xl border border-border bg-card/95 p-6 shadow-xl">
@@ -96,5 +58,59 @@ export default function TransferPage() {
         </div>
       </div>
     </main>
+  )
+}
+
+function TransferPageContent() {
+  const searchParams = useSearchParams()
+  const [phase, setPhase] = useState<'loading' | 'success' | 'invalid' | 'error'>('loading')
+
+  useEffect(() => {
+    const normalizedCode = normalizeTransferCode(searchParams.get('code'))
+    if (!normalizedCode) {
+      setPhase('invalid')
+      return
+    }
+
+    let cancelled = false
+
+    void (async () => {
+      try {
+        const response = await fetch('/api/session/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: normalizedCode }),
+        })
+
+        if (cancelled) {
+          return
+        }
+
+        if (response.ok) {
+          setPhase('success')
+          return
+        }
+
+        setPhase(response.status === 400 ? 'invalid' : 'error')
+      } catch {
+        if (!cancelled) {
+          setPhase('error')
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [searchParams])
+
+  return <TransferPageShell phase={phase} />
+}
+
+export default function TransferPage() {
+  return (
+    <Suspense fallback={<TransferPageShell />}>
+      <TransferPageContent />
+    </Suspense>
   )
 }
