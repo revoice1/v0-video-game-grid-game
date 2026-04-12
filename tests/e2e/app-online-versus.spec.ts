@@ -1240,3 +1240,90 @@ test('versus: server returning duplicateEvent:true does not double-apply the gue
 
   await page.evaluate(() => localStorage.removeItem('gg_online_versus_room'))
 })
+
+test('versus: objection flow — sustained verdict updates button label and marks cell correct', async ({
+  page,
+}) => {
+  /**
+   * Exercises the full client-side objection flow in a local versus game:
+   *
+   *  1. Board starts with an incorrect guess on cell 0.
+   *  2. Player clicks the cell → guess details modal opens.
+   *  3. Player clicks "Objection!" → /api/objection called.
+   *  4. Server returns { verdict: 'sustained' }.
+   *  5. Button label changes to "Objection sustained".
+   *
+   * Local versus — no Supabase Realtime required.
+   */
+  await mockPuzzleStream(page, fakePuzzle)
+
+  const puzzleId = 'versus-objection-test'
+
+  await seedStorageValue(page, 'gamegrid_versus_state', {
+    puzzleId,
+    puzzle: { ...fakePuzzle, id: puzzleId, is_daily: false, date: null },
+    guesses: [
+      {
+        gameId: 99,
+        gameName: 'Wrong Game',
+        gameImage: null,
+        isCorrect: false,
+        matchedRow: false,
+        matchedCol: true,
+        owner: 'x',
+        stealRating: null,
+        stealRatingCount: null,
+        objectionUsed: false,
+        objectionVerdict: null,
+        objectionExplanation: null,
+        objectionOriginalMatchedRow: null,
+        objectionOriginalMatchedCol: null,
+      },
+      ...Array(8).fill(null),
+    ],
+    guessesRemaining: 8,
+    isComplete: false,
+    currentPlayer: 'o',
+    stealableCell: null,
+    winner: null,
+    pendingFinalSteal: null,
+    versusCategoryFilters: {},
+    versusStealRule: 'off',
+    versusTimerOption: 'none',
+    versusObjectionRule: 'one',
+    turnTimeLeft: null,
+  })
+
+  await page.route('**/api/objection', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        verdict: 'sustained',
+        confidence: 'high',
+        explanation: 'The judge agrees this pick fits the intersection.',
+      }),
+    })
+  })
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Versus' }).click()
+
+  // Cell 0 has an incorrect guess — click to open details modal
+  await expect(page.getByTestId('grid-cell-0')).toBeVisible({ timeout: 10_000 })
+  await page.getByTestId('grid-cell-0').click()
+
+  // Guess details modal must open showing the rejected game
+  await expect(page.getByText('Wrong Game')).toBeVisible({ timeout: 5_000 })
+
+  // Objection button must be present and active
+  await expect(page.getByRole('button', { name: 'Objection!' })).toBeVisible()
+
+  // Click it
+  await page.getByRole('button', { name: 'Objection!' }).click()
+
+  // After sustained verdict the button label must change
+  await expect(page.getByRole('button', { name: 'Objection sustained' })).toBeVisible({
+    timeout: 5_000,
+  })
+})
