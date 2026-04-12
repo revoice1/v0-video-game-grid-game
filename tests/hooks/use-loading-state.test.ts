@@ -7,8 +7,10 @@ vi.mock('@/lib/session', () => ({
   getSessionId: vi.fn(() => 'test-session-id'),
 }))
 
+const makeTimeResult = (label: string) => ({ hours: 3, minutes: 22, seconds: 0, label })
+
 vi.mock('@/lib/utils', () => ({
-  getTimeUntilNextUtcMidnight: vi.fn(() => ({ label: '3h 22m' })),
+  getTimeUntilNextUtcMidnight: vi.fn(() => makeTimeResult('3h 22m')),
 }))
 
 describe('useLoadingState', () => {
@@ -50,12 +52,12 @@ describe('useLoadingState', () => {
     // The hook calls getTimeUntilNextUtcMidnight twice before the interval fires:
     // once for the useState initializer and once in the effect's updateResetCountdown().
     // The default mock returns '3h 22m' for both of those, then we stage '3h 21m' for the interval tick.
-    getTimeUntilNextUtcMidnight.mockReturnValue({ label: '3h 22m' })
+    getTimeUntilNextUtcMidnight.mockReturnValue(makeTimeResult('3h 22m'))
 
     const { result } = renderHook(() => useLoadingState())
     expect(result.current.dailyResetLabel).toBe('3h 22m')
 
-    getTimeUntilNextUtcMidnight.mockReturnValue({ label: '3h 21m' })
+    getTimeUntilNextUtcMidnight.mockReturnValue(makeTimeResult('3h 21m'))
     act(() => {
       vi.advanceTimersByTime(1000)
     })

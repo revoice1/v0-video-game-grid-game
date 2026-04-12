@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { useAnimationQuality } from '@/hooks/use-animation-quality'
+import { useAnimationQuality, type AnimationQuality } from '@/hooks/use-animation-quality'
 
 type MediaQueryListener = (event: { matches: boolean }) => void
 
@@ -87,11 +87,11 @@ describe('useAnimationQuality', () => {
   })
 
   it('re-runs effect and re-registers listener when detect reference changes', () => {
-    const detect1 = vi.fn(() => 'high' as const)
-    const detect2 = vi.fn(() => 'medium' as const)
+    const detect1: () => AnimationQuality = vi.fn(() => 'high' as AnimationQuality)
+    const detect2: () => AnimationQuality = vi.fn(() => 'medium' as AnimationQuality)
 
     const { result, rerender } = renderHook(
-      ({ detect }: { detect: () => 'high' | 'medium' | 'low' }) => useAnimationQuality(detect),
+      ({ detect }: { detect: () => AnimationQuality }) => useAnimationQuality(detect),
       { initialProps: { detect: detect1 } }
     )
 
