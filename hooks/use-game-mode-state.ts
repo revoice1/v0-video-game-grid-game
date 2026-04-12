@@ -1,13 +1,9 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 type GameMode = 'daily' | 'practice' | 'versus'
 const ACTIVE_MODE_KEY = 'gamegrid_active_mode'
 
-function readInitialMode(): GameMode {
-  if (typeof window === 'undefined') {
-    return 'daily'
-  }
-
+function readStoredMode(): GameMode {
   const savedMode = window.sessionStorage.getItem(ACTIVE_MODE_KEY)
   return savedMode === 'practice' || savedMode === 'versus' || savedMode === 'daily'
     ? savedMode
@@ -15,16 +11,17 @@ function readInitialMode(): GameMode {
 }
 
 export function useGameModeState() {
-  const [mode, setModeState] = useState<GameMode>(readInitialMode)
+  // Always start with 'daily' to match SSR output, then sync from sessionStorage
+  // after hydration to avoid server/client mismatch.
+  const [mode, setModeState] = useState<GameMode>('daily')
   const [loadedPuzzleMode, setLoadedPuzzleMode] = useState<GameMode | null>(null)
+
+  useEffect(() => {
+    setModeState(readStoredMode())
+  }, [])
 
   const setMode = useCallback((nextMode: GameMode) => {
     setModeState(nextMode)
-
-    if (typeof window === 'undefined') {
-      return
-    }
-
     window.sessionStorage.setItem(ACTIVE_MODE_KEY, nextMode)
   }, [])
 

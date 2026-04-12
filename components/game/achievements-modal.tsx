@@ -1,6 +1,12 @@
 'use client'
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
@@ -83,6 +89,9 @@ export function AchievementsModal({ isOpen, onClose }: AchievementsModalProps) {
       <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto bg-card border-border">
         <DialogHeader>
           <DialogTitle className="text-center text-xl font-bold">Achievements</DialogTitle>
+          <DialogDescription className="sr-only">
+            Your unlocked achievements and progress
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
