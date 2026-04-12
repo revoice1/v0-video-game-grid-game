@@ -141,7 +141,7 @@ export function AchievementsModal({ isOpen, onClose }: AchievementsModalProps) {
                         ) : isSecretRouteAchievement && !isUnlocked ? (
                           <div
                             className={cn(
-                              'flex h-9 min-w-[38px] items-center justify-center rounded-md border px-1 font-mono text-[15px] font-black uppercase tracking-[0.08em]',
+                              'flex h-9 min-w-9.5 items-center justify-center rounded-md border px-1 font-mono text-[15px] font-black uppercase tracking-[0.08em]',
                               isUnlocked
                                 ? 'border-primary/35 bg-primary/14 text-primary'
                                 : 'border-border/80 bg-background/75 text-muted-foreground'

@@ -97,7 +97,7 @@ export function PuzzleLoadingScreen({
                           {failedIntersections.map((intersection) => (
                             <p
                               key={`${attempt.attempt}-${intersection.label}`}
-                              className="break-words"
+                              className="wrap-break-word"
                             >
                               {intersection.label}
                               {typeof intersection.validOptionCount === 'number'

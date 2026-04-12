@@ -533,7 +533,7 @@ export function GameSearch({
                           event.stopPropagation()
                           setPreviewGame(game)
                         }}
-                        className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded bg-secondary transition-transform hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-card"
+                        className="relative h-10 w-10 shrink-0 overflow-hidden rounded bg-secondary transition-transform hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-card"
                         title={`Preview cover for ${game.name}`}
                       >
                         {game.background_image ? (
