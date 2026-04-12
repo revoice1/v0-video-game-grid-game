@@ -92,16 +92,9 @@ import {
 } from '@/lib/ui-preferences'
 import { unlockAchievement } from '@/lib/achievements'
 import {
-  ActiveEasterEgg,
-  ActivePerfectCelebration,
   EasterEggCelebration,
   PerfectGridCelebration,
-  createFallingParticles,
   getEasterEggDefinition,
-  getEasterEggLifetimeMs,
-  parseMs,
-  renderRealStinkerPiece,
-  scaleParticleDensity,
 } from './easter-egg-celebrations'
 import { ROUTE_ACHIEVEMENT_ID, ROUTE_PENDING_TOAST_KEY } from '@/lib/route-index'
 import type { Puzzle, CellGuess, Game, Category } from '@/lib/types'
@@ -116,6 +109,11 @@ import { usePracticeSetupState } from '@/hooks/use-practice-setup-state'
 import { useOnlineVersusRoom } from '@/hooks/use-online-versus-room'
 import { usePuzzleState } from '@/hooks/use-puzzle-state'
 import { useTimedOverlayDismiss } from '@/hooks/use-timed-overlay-dismiss'
+import {
+  useGameCelebrations,
+  type ActiveStealShowdown,
+  STEAL_SHOWDOWN_DURATION_MS,
+} from '@/hooks/use-game-celebrations'
 import { useVersusMatchState } from '@/hooks/use-versus-match-state'
 import { useVersusSetupState } from '@/hooks/use-versus-setup-state'
 import { useVersusTurnTimer } from '@/hooks/use-versus-turn-timer'
@@ -162,44 +160,10 @@ const DEFAULT_VERSUS_DISABLE_DRAWS = true
 const DEFAULT_VERSUS_OBJECTION_RULE: VersusObjectionRule = 'one'
 type GameMode = 'daily' | 'practice' | 'versus'
 
-interface ActiveStealShowdown {
-  burstId: number
-  durationMs: number
-  defenderName: string
-  defenderScore: number
-  attackerName: string
-  attackerScore: number
-  rule: Exclude<VersusStealRule, 'off'>
-  successful: boolean
-  lowEffects?: boolean
-}
-
-interface ActiveStealMissSplash {
-  burstId: number
-  durationMs: number
-}
-
-interface ActiveDoubleKoSplash {
-  burstId: number
-  durationMs: number
-}
-
-interface ActiveJudgmentPending {
-  burstId: number
-}
-
 interface ActiveObjectionSplash {
   burstId: number
   durationMs: number
 }
-
-interface ActiveJudgmentVerdict {
-  burstId: number
-  durationMs: number
-  verdict: 'sustained' | 'overruled'
-}
-
-const STEAL_SHOWDOWN_DURATION_MS = 3400
 
 function createOnlineVersusClientEventId(prefix: string) {
   if (typeof globalThis.crypto?.randomUUID === 'function') {
@@ -347,23 +311,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     setLoadingAttempts,
     dailyResetLabel,
   } = useLoadingState<LoadingAttempt>()
-  const [activeEasterEgg, setActiveEasterEgg] = useState<ActiveEasterEgg | null>(null)
-  const [activePerfectCelebration, setActivePerfectCelebration] =
-    useState<ActivePerfectCelebration | null>(null)
-  const [activeStealShowdown, setActiveStealShowdown] = useState<ActiveStealShowdown | null>(null)
-  const [activeStealMissSplash, setActiveStealMissSplash] = useState<ActiveStealMissSplash | null>(
-    null
-  )
-  const [activeDoubleKoSplash, setActiveDoubleKoSplash] = useState<ActiveDoubleKoSplash | null>(
-    null
-  )
-  const [activeJudgmentPending, setActiveJudgmentPending] = useState<ActiveJudgmentPending | null>(
-    null
-  )
   const [activeObjectionSplash, setActiveObjectionSplash] = useState<ActiveObjectionSplash | null>(
-    null
-  )
-  const [activeJudgmentVerdict, setActiveJudgmentVerdict] = useState<ActiveJudgmentVerdict | null>(
     null
   )
   const [objectionPending, setObjectionPending] = useState(false)
@@ -410,6 +358,26 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     [animationsEnabled]
   )
   const animationQuality = useAnimationQuality(detectConfiguredAnimationQuality)
+  const {
+    activeEasterEgg,
+    activePerfectCelebration,
+    activeStealShowdown,
+    activeStealMissSplash,
+    activeDoubleKoSplash,
+    activeJudgmentPending,
+    activeJudgmentVerdict,
+    setActiveStealShowdown,
+    setActiveStealMissSplash,
+    setActiveDoubleKoSplash,
+    setActiveJudgmentPending,
+    setActiveJudgmentVerdict,
+    triggerEasterEggCelebration,
+    triggerPerfectCelebration,
+    triggerRealStinkerCelebration,
+    triggerStealShowdownPreview,
+    triggerStealMissPreview,
+    clearAll: clearAllCelebrations,
+  } = useGameCelebrations({ animationsEnabled, animationQuality, versusStealRule })
   const { enabled: confirmBeforeSelect } = useSearchConfirmPreference()
   const { toast } = useToast()
   const versusStealRuleRef = useRef(versusStealRule)
@@ -500,12 +468,8 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
   const resetOnlineVersusSession = useCallback(() => {
     onlineVersus.reset()
     setShowOnlineLobby(false)
-    setActiveStealShowdown(null)
-    setActiveStealMissSplash(null)
-    setActiveDoubleKoSplash(null)
+    clearAllCelebrations()
     setActiveObjectionSplash(null)
-    setActiveJudgmentPending(null)
-    setActiveJudgmentVerdict(null)
     publishedPuzzleRoomIdRef.current = null
     appliedOnlineEventIdsRef.current = new Set()
     shownOnlineStealShowdownIdsRef.current = new Set()
@@ -533,7 +497,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     url.searchParams.delete('join')
     const query = url.searchParams.toString()
     window.history.replaceState({}, '', `${url.pathname}${query ? `?${query}` : ''}${url.hash}`)
-  }, [onlineVersus])
+  }, [onlineVersus, clearAllCelebrations])
 
   // Open the online lobby when arriving via an invite link (?join=CODE).
   // isResuming is derived synchronously from localStorage before this effect
@@ -1370,132 +1334,12 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     ]
   )
 
-  const triggerEasterEggCelebration = useCallback(
-    (gameId: number) => {
-      const easterEggDefinition = getEasterEggDefinition(gameId)
-
-      if (!easterEggDefinition || !animationsEnabled) {
-        return false
-      }
-
-      const burstId = Date.now()
-      const particles = createFallingParticles(
-        scaleParticleDensity(easterEggDefinition.density, animationQuality),
-        easterEggDefinition.pieceKinds,
-        burstId
-      )
-
-      setActiveEasterEgg({
-        burstId,
-        durationMs: getEasterEggLifetimeMs(easterEggDefinition, particles),
-        renderPiece: easterEggDefinition.renderPiece,
-        particles,
-      })
-
-      return true
-    },
-    [animationQuality, animationsEnabled]
-  )
-
-  const triggerPerfectCelebration = useCallback(() => {
-    if (!animationsEnabled) {
-      return
-    }
-
-    const burstId = Date.now()
-    const particles = createFallingParticles(3, ['chex'], burstId).map((particle, index) => ({
-      ...particle,
-      left: ['18%', '50%', '82%'][index] ?? particle.left,
-      delay: `${index * 160}ms`,
-      size: `${32 + index * 6}px`,
-      duration: `${2600 + index * 180}ms`,
-      drift: `${index === 1 ? 0 : index === 0 ? -12 : 12}px`,
-      rotate: `${index === 1 ? -6 : index === 0 ? -14 : 10}deg`,
-      variant: index === 1 ? ('g-white' as const) : ('g-green' as const),
-    }))
-
-    setActivePerfectCelebration({
-      burstId,
-      durationMs: 2800,
-      particles,
-    })
-  }, [animationsEnabled])
-
-  const triggerRealStinkerCelebration = useCallback(() => {
-    if (!animationsEnabled) {
-      return
-    }
-
-    const burstId = Date.now()
-    const particles = createFallingParticles(
-      scaleParticleDensity(28, animationQuality),
-      ['dust'],
-      burstId
-    )
-
-    setActiveEasterEgg({
-      burstId,
-      durationMs: Math.max(
-        4200,
-        particles.reduce((longest, particle) => {
-          return Math.max(longest, parseMs(particle.delay) + parseMs(particle.duration))
-        }, 0)
-      ),
-      renderPiece: renderRealStinkerPiece,
-      particles,
-    })
-  }, [animationQuality, animationsEnabled])
-
-  const triggerStealShowdownPreview = useCallback(
-    (options?: { successful?: boolean; attackerScore?: number; defenderScore?: number }) => {
-      if (!animationsEnabled) {
-        return
-      }
-
-      setActiveStealShowdown({
-        burstId: Date.now(),
-        durationMs: STEAL_SHOWDOWN_DURATION_MS,
-        defenderName: 'Defender',
-        defenderScore: options?.defenderScore ?? 82,
-        attackerName: 'Challenger',
-        attackerScore: options?.attackerScore ?? 76,
-        rule: versusStealRule === 'off' ? 'lower' : versusStealRule,
-        successful: options?.successful ?? true,
-        lowEffects: animationQuality === 'low',
-      })
-    },
-    [animationQuality, animationsEnabled, versusStealRule]
-  )
-
-  const triggerStealMissPreview = useCallback(() => {
-    if (!animationsEnabled) {
-      return
-    }
-
-    setActiveStealMissSplash({
-      burstId: Date.now(),
-      durationMs: 900,
-    })
-  }, [animationsEnabled])
-
   useGameGridDevTools({
     triggerEasterEgg: triggerEasterEggCelebration,
     triggerPerfectCelebration,
     triggerStealShowdown: triggerStealShowdownPreview,
     triggerStealMiss: triggerStealMissPreview,
   })
-
-  useEffect(() => {
-    if (animationsEnabled) {
-      return
-    }
-
-    setActiveEasterEgg(null)
-    setActivePerfectCelebration(null)
-    setActiveStealShowdown(null)
-    setActiveStealMissSplash(null)
-    setActiveDoubleKoSplash(null)
-  }, [animationsEnabled])
 
   const unlockAchievementWithToast = useCallback(
     (achievementId: string, options?: { imageUrl?: string | null }) => {
@@ -1564,30 +1408,6 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       description: result.achievement.description,
     })
   }, [toast])
-
-  useEffect(() => {
-    if (!activeEasterEgg) {
-      return
-    }
-
-    const timer = setTimeout(() => {
-      setActiveEasterEgg(null)
-    }, activeEasterEgg.durationMs)
-
-    return () => clearTimeout(timer)
-  }, [activeEasterEgg])
-
-  useEffect(() => {
-    if (!activePerfectCelebration) {
-      return
-    }
-
-    const timer = setTimeout(() => {
-      setActivePerfectCelebration(null)
-    }, activePerfectCelebration.durationMs)
-
-    return () => clearTimeout(timer)
-  }, [activePerfectCelebration])
 
   useEffect(() => {
     setShowVersusWinnerBanner(winner !== null)
@@ -1703,11 +1523,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     ]
   )
 
-  useTimedOverlayDismiss(activeStealShowdown, () => setActiveStealShowdown(null))
-  useTimedOverlayDismiss(activeStealMissSplash, () => setActiveStealMissSplash(null))
-  useTimedOverlayDismiss(activeDoubleKoSplash, () => setActiveDoubleKoSplash(null))
   useTimedOverlayDismiss(activeObjectionSplash, () => setActiveObjectionSplash(null))
-  useTimedOverlayDismiss(activeJudgmentVerdict, () => setActiveJudgmentVerdict(null))
 
   const activeDetailCell = pendingVersusObjectionReview?.cellIndex ?? detailCell
   const detailGuess =
@@ -3789,17 +3605,13 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
           : 'Waiting for the host to finish preparing the board...'
       )
       setPendingVersusObjectionReview(null)
-      setActiveStealShowdown(null)
-      setActiveStealMissSplash(null)
-      setActiveDoubleKoSplash(null)
+      clearAllCelebrations()
       setActiveObjectionSplash(null)
-      setActiveJudgmentPending(null)
-      setActiveJudgmentVerdict(null)
       setObjectionPending(false)
       setObjectionVerdict(null)
       setObjectionExplanation(null)
     })()
-  }, [commitVersusEventLog, onlineVersus, toast])
+  }, [clearAllCelebrations, commitVersusEventLog, onlineVersus, toast])
 
   const handleStartFreshOnlineMatch = useCallback(() => {
     activePuzzleLoadControllerRef.current?.abort()
