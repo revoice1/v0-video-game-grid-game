@@ -219,67 +219,6 @@ export function StealShowdownOverlay({
           </div>
         </div>
       </div>
-      <style jsx>{`
-        .showdown-shell {
-          animation: showdown-shell-in 320ms var(--ease-spring);
-        }
-
-        .showdown-panel-left {
-          animation: showdown-panel-left 520ms var(--ease-spring);
-        }
-
-        .showdown-panel-right {
-          animation: showdown-panel-right 520ms var(--ease-spring);
-        }
-
-        .showdown-vs {
-          animation: showdown-vs-pop 420ms var(--ease-spring);
-        }
-
-        @keyframes showdown-shell-in {
-          0% {
-            transform: scale(0.96);
-            opacity: 0;
-          }
-          100% {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-
-        @keyframes showdown-panel-left {
-          0% {
-            transform: translateX(-22px) scale(0.96);
-            opacity: 0;
-          }
-          100% {
-            transform: translateX(0) scale(1);
-            opacity: 1;
-          }
-        }
-
-        @keyframes showdown-panel-right {
-          0% {
-            transform: translateX(22px) scale(0.96);
-            opacity: 0;
-          }
-          100% {
-            transform: translateX(0) scale(1);
-            opacity: 1;
-          }
-        }
-
-        @keyframes showdown-vs-pop {
-          0% {
-            transform: scale(0.8);
-            opacity: 0;
-          }
-          100% {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-      `}</style>
     </div>
   )
 }

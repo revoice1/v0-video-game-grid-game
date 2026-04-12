@@ -24,36 +24,6 @@ export function ObjectionSplash({ burstId }: BurstOverlayProps) {
       <div className="objection-splash select-none px-6 text-center font-black uppercase italic tracking-[0.08em] text-[#ffb44a] drop-shadow-[0_16px_42px_rgba(0,0,0,0.88)]">
         Objection!
       </div>
-      <style jsx>{`
-        .objection-splash {
-          font-size: clamp(3rem, 11vw, 7.4rem);
-          line-height: 0.92;
-          text-shadow:
-            0 0 18px rgba(255, 180, 74, 0.22),
-            0 0 34px rgba(245, 158, 11, 0.14);
-          animation: objection-hit 860ms var(--ease-bounce);
-        }
-
-        @keyframes objection-hit {
-          0% {
-            transform: scale(1.22) rotate(-2deg);
-            letter-spacing: 0.18em;
-            opacity: 0;
-            filter: blur(12px);
-          }
-          44% {
-            transform: scale(0.96) rotate(0.8deg);
-            opacity: 1;
-            filter: blur(0);
-          }
-          100% {
-            transform: scale(1) rotate(0deg);
-            letter-spacing: 0.08em;
-            opacity: 1;
-            filter: blur(0);
-          }
-        }
-      `}</style>
     </div>
   )
 }
@@ -69,33 +39,6 @@ export function StealMissSplash({ burstId }: BurstOverlayProps) {
       <div className="steal-miss-splash select-none px-6 text-center font-black uppercase italic tracking-[0.08em] text-[#ff6262] drop-shadow-[0_10px_28px_rgba(0,0,0,0.78)]">
         Wasted
       </div>
-      <style jsx>{`
-        .steal-miss-splash {
-          font-size: clamp(2.8rem, 10vw, 6.5rem);
-          line-height: 1;
-          animation: steal-miss-hit 700ms var(--ease-bounce);
-        }
-
-        @keyframes steal-miss-hit {
-          0% {
-            transform: scale(1.16);
-            letter-spacing: 0.14em;
-            opacity: 0;
-            filter: blur(10px);
-          }
-          52% {
-            transform: scale(0.95);
-            opacity: 1;
-            filter: blur(0);
-          }
-          100% {
-            transform: scale(1);
-            letter-spacing: 0.08em;
-            opacity: 1;
-            filter: blur(0);
-          }
-        }
-      `}</style>
     </div>
   )
 }
@@ -111,36 +54,6 @@ export function DoubleKoSplash({ burstId }: BurstOverlayProps) {
       <div className="double-ko-splash select-none px-6 text-center font-black uppercase italic tracking-[0.08em] text-[#ffcf5a] drop-shadow-[0_10px_28px_rgba(0,0,0,0.82)]">
         DOUBLE KO
       </div>
-      <style jsx>{`
-        .double-ko-splash {
-          font-size: clamp(2.5rem, 8.8vw, 6rem);
-          line-height: 0.9;
-          text-shadow:
-            0 0 18px rgba(245, 158, 11, 0.28),
-            0 0 30px rgba(239, 68, 68, 0.18);
-          animation: double-ko-hit 820ms var(--ease-bounce);
-        }
-
-        @keyframes double-ko-hit {
-          0% {
-            transform: scale(1.22) rotate(-2deg);
-            letter-spacing: 0.16em;
-            opacity: 0;
-            filter: blur(12px);
-          }
-          48% {
-            transform: scale(0.94) rotate(1deg);
-            opacity: 1;
-            filter: blur(0);
-          }
-          100% {
-            transform: scale(1) rotate(0deg);
-            letter-spacing: 0.08em;
-            opacity: 1;
-            filter: blur(0);
-          }
-        }
-      `}</style>
     </div>
   )
 }
@@ -215,81 +128,6 @@ export function JudgmentPendingOverlay({ burstId }: JudgmentPendingOverlayProps)
           </div>
         </div>
       </div>
-      <style jsx>{`
-        .judgment-gavel {
-          height: 76px;
-          width: 96px;
-          transform-origin: 72% 78%;
-          animation: judgment-swing 1.15s ease-in-out infinite;
-        }
-
-        .judgment-block {
-          height: 18px;
-          width: 54px;
-          border-radius: 999px;
-          background: linear-gradient(180deg, rgba(255, 212, 111, 0.95), rgba(204, 128, 30, 0.95));
-          box-shadow:
-            inset 0 1px 0 rgba(255, 241, 214, 0.3),
-            0 8px 18px rgba(0, 0, 0, 0.26);
-        }
-
-        .judgment-impact {
-          height: 24px;
-          width: 24px;
-          border-radius: 999px;
-          border: 2px solid rgba(255, 212, 111, 0.85);
-          opacity: 0;
-          transform: scale(0.45);
-          animation: judgment-impact 1.15s ease-in-out infinite;
-        }
-
-        .judgment-impact::before,
-        .judgment-impact::after {
-          content: '';
-          position: absolute;
-          inset: -8px;
-          border-radius: 999px;
-          border: 2px solid rgba(255, 180, 74, 0.34);
-        }
-
-        .judgment-impact::after {
-          inset: -14px;
-          border-color: rgba(255, 240, 198, 0.18);
-        }
-
-        @keyframes judgment-swing {
-          0%,
-          100% {
-            transform: rotate(-28deg) translateY(-3px);
-          }
-          40% {
-            transform: rotate(18deg) translateY(0);
-          }
-          52% {
-            transform: rotate(28deg) translateY(5px);
-          }
-          66% {
-            transform: rotate(-8deg) translateY(-1px);
-          }
-        }
-
-        @keyframes judgment-impact {
-          0%,
-          38%,
-          100% {
-            opacity: 0;
-            transform: scale(0.45);
-          }
-          52% {
-            opacity: 1;
-            transform: scale(1);
-          }
-          66% {
-            opacity: 0.22;
-            transform: scale(1.24);
-          }
-        }
-      `}</style>
     </div>
   )
 }
@@ -312,42 +150,13 @@ export function JudgmentVerdictSplash({ burstId, verdict }: JudgmentVerdictSplas
       />
       <div
         className={`verdict-splash select-none px-6 text-center font-black uppercase italic drop-shadow-[0_14px_38px_rgba(0,0,0,0.82)] ${
-          isSustained ? 'text-[#8df3a8]' : 'text-[#ff8a8a]'
+          isSustained
+            ? 'verdict-splash-sustained text-[#8df3a8]'
+            : 'verdict-splash-overruled text-[#ff8a8a]'
         }`}
       >
         {isSustained ? 'Sustained' : 'Overruled'}
       </div>
-      <style jsx>{`
-        .verdict-splash {
-          font-size: clamp(2.8rem, 10vw, 6.8rem);
-          line-height: 0.92;
-          letter-spacing: 0.08em;
-          animation: verdict-hit 1100ms var(--ease-bounce);
-          text-shadow:
-            0 0 24px ${isSustained ? 'rgba(34,197,94,0.22)' : 'rgba(239,68,68,0.22)'},
-            0 0 36px ${isSustained ? 'rgba(134,239,172,0.12)' : 'rgba(248,113,113,0.12)'};
-        }
-
-        @keyframes verdict-hit {
-          0% {
-            transform: scale(1.18) rotate(-1deg);
-            letter-spacing: 0.16em;
-            opacity: 0;
-            filter: blur(12px);
-          }
-          46% {
-            transform: scale(0.95) rotate(0.6deg);
-            opacity: 1;
-            filter: blur(0);
-          }
-          100% {
-            transform: scale(1) rotate(0deg);
-            letter-spacing: 0.08em;
-            opacity: 1;
-            filter: blur(0);
-          }
-        }
-      `}</style>
     </div>
   )
 }
