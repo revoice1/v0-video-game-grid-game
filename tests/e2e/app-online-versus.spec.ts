@@ -1241,7 +1241,7 @@ test('versus: server returning duplicateEvent:true does not double-apply the gue
   await page.evaluate(() => localStorage.removeItem('gg_online_versus_room'))
 })
 
-test('versus: objection flow — sustained verdict updates button label and marks cell correct', async ({
+test('versus: objection flow — sustained verdict updates button label in modal', async ({
   page,
 }) => {
   /**
@@ -1251,7 +1251,7 @@ test('versus: objection flow — sustained verdict updates button label and mark
    *  2. Player clicks the cell → guess details modal opens.
    *  3. Player clicks "Objection!" → /api/objection called.
    *  4. Server returns { verdict: 'sustained' }.
-   *  5. Button label changes to "Objection sustained".
+   *  5. Button label inside the modal changes to "Objection sustained".
    *
    * Local versus — no Supabase Realtime required.
    */
@@ -1313,17 +1313,19 @@ test('versus: objection flow — sustained verdict updates button label and mark
   await expect(page.getByTestId('grid-cell-0')).toBeVisible({ timeout: 10_000 })
   await page.getByTestId('grid-cell-0').click()
 
-  // Guess details modal must open showing the rejected game
-  await expect(page.getByText('Wrong Game')).toBeVisible({ timeout: 5_000 })
+  // Scope to the dialog to avoid ambiguous matches with cell text on the board
+  const modal = page.getByRole('dialog')
+  await expect(modal).toBeVisible({ timeout: 5_000 })
+  // Dialog title is the game name
+  await expect(modal.getByRole('heading', { name: 'Wrong Game' })).toBeVisible()
 
-  // Objection button must be present and active
-  await expect(page.getByRole('button', { name: 'Objection!' })).toBeVisible()
-
-  // Click it
-  await page.getByRole('button', { name: 'Objection!' }).click()
+  // Objection button must be present inside the modal
+  const objectionBtn = modal.getByRole('button', { name: 'Objection!' })
+  await expect(objectionBtn).toBeVisible()
+  await objectionBtn.click()
 
   // After sustained verdict the button label must change
-  await expect(page.getByRole('button', { name: 'Objection sustained' })).toBeVisible({
+  await expect(modal.getByRole('button', { name: 'Objection sustained' })).toBeVisible({
     timeout: 5_000,
   })
 })
