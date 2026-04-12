@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveAnonymousSession } from '@/lib/server-session'
+import { logError } from '@/lib/logging'
 
 export async function POST(
   request: NextRequest,
@@ -30,7 +31,7 @@ export async function POST(
     .single()
 
   if (fetchError || !room) {
-    console.error('[versus.room.finish] room lookup failed', {
+    logError('[versus.room.finish] room lookup failed', {
       code: upperCode,
       sessionId: session.sessionId,
       error: fetchError,
@@ -42,7 +43,7 @@ export async function POST(
     room.host_session_id === session.sessionId || room.guest_session_id === session.sessionId
 
   if (!isParticipant) {
-    console.error('[versus.room.finish] not authorized', {
+    logError('[versus.room.finish] not authorized', {
       code: upperCode,
       roomId: room.id,
       sessionId: session.sessionId,
@@ -63,7 +64,7 @@ export async function POST(
     .eq('id', room.id)
 
   if (updateError) {
-    console.error('[versus.room.finish] status update failed', {
+    logError('[versus.room.finish] status update failed', {
       code: upperCode,
       roomId: room.id,
       sessionId: session.sessionId,

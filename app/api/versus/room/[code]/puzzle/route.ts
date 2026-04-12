@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveAnonymousSession } from '@/lib/server-session'
+import { logError } from '@/lib/logging'
 import type { Puzzle } from '@/lib/types'
 import type { OnlineVersusSnapshot } from '@/lib/versus-room'
 
@@ -21,7 +22,7 @@ export async function POST(
     .single()
 
   if (fetchError || !room) {
-    console.error('[versus.room.puzzle] room lookup failed', {
+    logError('[versus.room.puzzle] room lookup failed', {
       code: upperCode,
       sessionId: session.sessionId,
       error: fetchError,
@@ -29,7 +30,7 @@ export async function POST(
     return NextResponse.json({ error: 'Room not found.' }, { status: 404 })
   }
   if (room.host_session_id !== session.sessionId) {
-    console.error('[versus.room.puzzle] not host', {
+    logError('[versus.room.puzzle] not host', {
       code: upperCode,
       roomId: room.id,
       sessionId: session.sessionId,
@@ -54,7 +55,7 @@ export async function POST(
       matchNumber?: number
     })
   } catch {
-    console.error('[versus.room.puzzle] invalid request body', {
+    logError('[versus.room.puzzle] invalid request body', {
       code: upperCode,
       roomId: room.id,
       sessionId: session.sessionId,
@@ -104,7 +105,7 @@ export async function POST(
     .select('id')
 
   if (updateError) {
-    console.error('[versus.room.puzzle] update failed', {
+    logError('[versus.room.puzzle] update failed', {
       code: upperCode,
       roomId: room.id,
       sessionId: session.sessionId,

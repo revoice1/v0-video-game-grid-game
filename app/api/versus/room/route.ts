@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { logError } from '@/lib/logging'
 import { sanitizeMinValidOptionsOverride } from '@/lib/min-valid-options'
 import { getMinValidOptionsDefaultFromEnv } from '@/lib/min-valid-options-server'
 import { resolveAnonymousSession, applyAnonymousSessionCookie } from '@/lib/server-session'
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json()
   } catch {
-    console.error('[versus.room.create] invalid request body', {
+    logError('[versus.room.create] invalid request body', {
       sessionId: session.sessionId,
     })
     return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 })
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
 
   const parsed = RoomSettingsSchema.safeParse((body as { settings?: unknown })?.settings)
   if (!parsed.success) {
-    console.error('[versus.room.create] invalid settings', {
+    logError('[versus.room.create] invalid settings', {
       sessionId: session.sessionId,
       detail: parsed.error.flatten(),
     })
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) {
-    console.error('[versus.room.create] insert failed', {
+    logError('[versus.room.create] insert failed', {
       sessionId: session.sessionId,
       settings: sanitizedSettings,
       error,

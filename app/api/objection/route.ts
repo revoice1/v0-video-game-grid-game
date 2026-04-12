@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getIGDBFamilyNames } from '@/lib/igdb'
 import { logError, logInfo, logWarn } from '@/lib/logging'
+import { checkRateLimit } from '@/lib/rate-limit'
 import {
   buildObjectionDataset,
   extractGeminiText,
@@ -106,9 +107,18 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+// 10 objection requests per IP per minute
+const OBJECTION_RATE_LIMIT = { limit: 10, windowMs: 60_000 }
+
 export async function POST(request: NextRequest) {
   if (!GEMINI_KEY) {
     return NextResponse.json({ error: 'Objection review is not configured yet.' }, { status: 503 })
+  }
+
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+  if (!checkRateLimit(`objection:${ip}`, OBJECTION_RATE_LIMIT)) {
+    logWarn('Objection rate limit exceeded', { ip })
+    return NextResponse.json({ error: 'Too many requests.' }, { status: 429 })
   }
 
   try {

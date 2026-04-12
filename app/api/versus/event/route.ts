@@ -11,6 +11,7 @@ import {
   type StoredOnlineVersusEvent,
 } from '@/lib/online-versus-event-validation'
 import { resolveAnonymousSession } from '@/lib/server-session'
+import { logError } from '@/lib/logging'
 import type { CellGuess, Puzzle } from '@/lib/types'
 import type { OnlineVersusEventType, RoomPlayer } from '@/lib/versus-room'
 import { resolveStealOutcome } from '@/hooks/use-versus-steal'
@@ -557,7 +558,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (roomError) {
-      console.error('Online versus event room lookup failed', {
+      logError('Online versus event room lookup failed', {
         roomId,
         player,
         type,
@@ -593,7 +594,7 @@ export async function POST(request: NextRequest) {
       .order('id', { ascending: true })
 
     if (existingEventsError) {
-      console.error('Online versus event history lookup failed', {
+      logError('Online versus event history lookup failed', {
         roomId,
         player,
         type,
@@ -706,7 +707,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (error) {
-      console.error('Online versus event insert failed', {
+      logError('Online versus event insert failed', {
         roomId,
         player,
         type,
@@ -719,7 +720,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, type: validation.type, payload: authoritativePayload })
   } catch (error) {
-    console.error('Online versus event route crashed', {
+    logError('Online versus event route crashed', {
       sessionId: session.sessionId,
       error,
     })

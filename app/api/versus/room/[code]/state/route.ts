@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveAnonymousSession } from '@/lib/server-session'
+import { logError } from '@/lib/logging'
 
 const CategoryMatchExplanationSchema = z.object({
   matched: z.boolean(),
@@ -114,7 +115,7 @@ export async function POST(
     .single()
 
   if (fetchError || !room) {
-    console.error('[versus.room.state] room lookup failed', {
+    logError('[versus.room.state] room lookup failed', {
       code: upperCode,
       sessionId: session.sessionId,
       error: fetchError,
@@ -126,7 +127,7 @@ export async function POST(
     room.host_session_id === session.sessionId || room.guest_session_id === session.sessionId
 
   if (!isParticipant) {
-    console.error('[versus.room.state] not authorized', {
+    logError('[versus.room.state] not authorized', {
       code: upperCode,
       roomId: room.id,
       sessionId: session.sessionId,
@@ -142,7 +143,7 @@ export async function POST(
   try {
     body = await request.json()
   } catch {
-    console.error('[versus.room.state] invalid request body', {
+    logError('[versus.room.state] invalid request body', {
       code: upperCode,
       roomId: room.id,
       sessionId: session.sessionId,
@@ -152,7 +153,7 @@ export async function POST(
 
   const parsed = SnapshotSchema.safeParse((body as { snapshot?: unknown })?.snapshot)
   if (!parsed.success) {
-    console.error('[versus.room.state] invalid snapshot', {
+    logError('[versus.room.state] invalid snapshot', {
       code: upperCode,
       roomId: room.id,
       sessionId: session.sessionId,
@@ -193,7 +194,7 @@ export async function POST(
     .single()
 
   if (error || !updated) {
-    console.error('[versus.room.state] update failed or room no longer active', {
+    logError('[versus.room.state] update failed or room no longer active', {
       code: upperCode,
       roomId: room.id,
       sessionId: session.sessionId,

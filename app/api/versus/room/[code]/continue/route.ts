@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveAnonymousSession } from '@/lib/server-session'
+import { logError } from '@/lib/logging'
 
 export async function POST(
   request: NextRequest,
@@ -20,7 +21,7 @@ export async function POST(
     .single()
 
   if (fetchError || !room) {
-    console.error('[versus.room.continue] room lookup failed', {
+    logError('[versus.room.continue] room lookup failed', {
       code: upperCode,
       sessionId: session.sessionId,
       error: fetchError,
@@ -29,7 +30,7 @@ export async function POST(
   }
 
   if (room.host_session_id !== session.sessionId) {
-    console.error('[versus.room.continue] not host', {
+    logError('[versus.room.continue] not host', {
       code: upperCode,
       roomId: room.id,
       sessionId: session.sessionId,
@@ -70,7 +71,7 @@ export async function POST(
     .single()
 
   if (updateError || !updated) {
-    console.error('[versus.room.continue] room reset failed', {
+    logError('[versus.room.continue] room reset failed', {
       code: upperCode,
       roomId: room.id,
       sessionId: session.sessionId,
