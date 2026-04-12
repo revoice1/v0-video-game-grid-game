@@ -114,6 +114,7 @@ import {
   type ActiveStealShowdown,
   STEAL_SHOWDOWN_DURATION_MS,
 } from '@/hooks/use-game-celebrations'
+import { useDailyArchive } from '@/hooks/use-daily-archive'
 import { useVersusMatchState } from '@/hooks/use-versus-match-state'
 import { useVersusSetupState } from '@/hooks/use-versus-setup-state'
 import { useVersusTurnTimer } from '@/hooks/use-versus-turn-timer'
@@ -191,16 +192,6 @@ interface PendingVersusObjectionReview {
   rowCategory: Category
   colCategory: Category
   invalidGuessResolution: ReturnType<typeof getVersusInvalidGuessResolution>
-}
-
-interface DailyArchiveResponse {
-  entries?: Array<{
-    id: string
-    date: string
-    is_completed?: boolean
-    guess_count?: number
-  }>
-  error?: string
 }
 
 interface PuzzleStreamMessage {
@@ -328,12 +319,15 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
   const [showVersusSummaryDetails, setShowVersusSummaryDetails] = useState(false)
   const [searchQueryDraft, setSearchQueryDraft] = useState('')
   const [showDailyHistory, setShowDailyHistory] = useState(false)
-  const [dailyArchiveEntries, setDailyArchiveEntries] = useState<DailyArchiveEntry[]>([])
-  const [dailyArchiveLoading, setDailyArchiveLoading] = useState(false)
-  const [dailyArchiveError, setDailyArchiveError] = useState<string | null>(null)
   const [activeDailyDate, setActiveDailyDate] = useState(
     () => new Date().toISOString().split('T')[0]
   )
+  const {
+    entries: dailyArchiveEntries,
+    isLoading: dailyArchiveLoading,
+    error: dailyArchiveError,
+    fetchDailyArchive,
+  } = useDailyArchive(sessionId)
   const {
     turnTimeLeft,
     setTurnTimeLeft,
@@ -1233,36 +1227,6 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       : mode === 'versus'
         ? hasActiveVersusCustomSetup
         : false
-
-  const fetchDailyArchive = useCallback(async () => {
-    setDailyArchiveLoading(true)
-    setDailyArchiveError(null)
-
-    try {
-      const response = await fetch('/api/daily-history', {
-        headers: buildLegacySessionHeaders(sessionId),
-      })
-      const data = (await response.json()) as DailyArchiveResponse
-
-      if (!response.ok) {
-        throw new Error(data.error ?? 'Failed to load daily archive')
-      }
-
-      setDailyArchiveEntries(
-        (data.entries ?? []).map((entry) => ({
-          id: entry.id,
-          date: entry.date,
-          isCompleted: entry.is_completed ?? false,
-          guessCount: entry.guess_count ?? 0,
-        }))
-      )
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to load daily archive'
-      setDailyArchiveError(message)
-    } finally {
-      setDailyArchiveLoading(false)
-    }
-  }, [sessionId])
 
   const openDailyHistory = useCallback(() => {
     setShowDailyHistory(true)
