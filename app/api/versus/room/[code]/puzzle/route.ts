@@ -93,7 +93,12 @@ export async function POST(
 
   const { data: updated, error: updateError } = await supabase
     .from('versus_rooms')
-    .update({ puzzle_id: puzzleId, puzzle_data: puzzle, state_data: initialSnapshot })
+    .update({
+      puzzle_id: puzzleId,
+      puzzle_data: puzzle,
+      state_data: initialSnapshot,
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    })
     .eq('id', room.id)
     .is('puzzle_id', null) // DB-level idempotency — only matches when puzzle is not yet set
     .select('id')

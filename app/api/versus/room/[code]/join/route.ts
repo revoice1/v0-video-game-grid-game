@@ -80,7 +80,11 @@ export async function POST(
 
   const { data: updated, error: updateError } = await supabase
     .from('versus_rooms')
-    .update({ guest_session_id: session.sessionId, status: 'active' })
+    .update({
+      guest_session_id: session.sessionId,
+      status: 'active',
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    })
     .eq('id', room.id)
     .eq('status', 'waiting') // optimistic lock — prevents race-condition double joins
     .select(SAFE_ROOM_COLUMNS)

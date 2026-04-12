@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/generate-daily-puzzle",
       "schedule": "0 23 * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-versus-rooms",
+      "schedule": "0 0 * * *"
     }
   ]
 }

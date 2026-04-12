@@ -180,20 +180,27 @@ export async function POST(
     )
   }
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from('versus_rooms')
-    .update({ state_data: parsed.data })
+    .update({
+      state_data: parsed.data,
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    })
     .eq('id', room.id)
+    .eq('status', 'active')
+    .eq('match_number', matchNumber as number)
+    .select('id')
+    .single()
 
-  if (error) {
-    console.error('[versus.room.state] update failed', {
+  if (error || !updated) {
+    console.error('[versus.room.state] update failed or room no longer active', {
       code: upperCode,
       roomId: room.id,
       sessionId: session.sessionId,
       snapshotPuzzleId: parsed.data.puzzleId,
       error,
     })
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Room is no longer active.' }, { status: 409 })
   }
 
   return NextResponse.json({ ok: true })

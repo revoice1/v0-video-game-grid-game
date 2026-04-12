@@ -56,7 +56,10 @@ export async function POST(
 
   const { error: updateError } = await supabase
     .from('versus_rooms')
-    .update({ status: 'finished' })
+    .update({
+      status: 'finished',
+      expires_at: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+    })
     .eq('id', room.id)
 
   if (updateError) {

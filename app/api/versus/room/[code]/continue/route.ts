@@ -61,7 +61,7 @@ export async function POST(
       puzzle_id: null,
       puzzle_data: null,
       state_data: null,
-      expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     })
     .eq('id', room.id)
     .select(
