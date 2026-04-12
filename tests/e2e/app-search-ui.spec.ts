@@ -15,7 +15,17 @@ test('search confirm flow can pick a correct answer onto the board', async ({ pa
   })
 
   await page.route('**/api/guess', async (route) => {
-    const requestBody = route.request().postDataJSON()
+    // Only intercept POST guess submissions — fall through for PATCH (objection
+    // persistence) and lookupOnly requests so the beforeEach mockGuessApi handles them.
+    if (route.request().method() !== 'POST') {
+      await route.fallback()
+      return
+    }
+    const requestBody = route.request().postDataJSON() as Record<string, unknown>
+    if (requestBody.lookupOnly === true) {
+      await route.fallback()
+      return
+    }
 
     await route.fulfill({
       status: 200,
@@ -145,6 +155,15 @@ test('toast appears for duplicate guess rejection', async ({ page }) => {
   })
 
   await page.route('**/api/guess', async (route) => {
+    if (route.request().method() !== 'POST') {
+      await route.fallback()
+      return
+    }
+    const requestBody = route.request().postDataJSON() as Record<string, unknown>
+    if (requestBody.lookupOnly === true) {
+      await route.fallback()
+      return
+    }
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
