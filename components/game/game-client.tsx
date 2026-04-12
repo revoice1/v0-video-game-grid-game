@@ -538,6 +538,16 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     }
   }, [])
 
+  // When auto-resume resolves to error or finished, open the lobby so the user
+  // sees feedback rather than a silent no-op. Manual joins already open the
+  // lobby before calling joinRoom, so this only fires for the localStorage
+  // resume path where showOnlineLobby starts false.
+  useEffect(() => {
+    if ((onlineVersus.phase === 'error' || onlineVersus.phase === 'finished') && !showOnlineLobby) {
+      setShowOnlineLobby(true)
+    }
+  }, [onlineVersus.phase, showOnlineLobby])
+
   // When the online room becomes active, apply authoritative settings and reset board state
   useEffect(() => {
     const { room, myRole } = onlineVersus
@@ -3347,7 +3357,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
           guess: newGuess,
         })
 
-        if (!onlineResult.ok) {
+        if (!onlineResult.ok || onlineResult.duplicateEvent) {
           return
         }
 

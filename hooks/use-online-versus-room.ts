@@ -28,6 +28,8 @@ export interface SendEventResult {
   code?: string | null
   payload?: Record<string, unknown> | null
   type?: OnlineVersusEventType | null
+  /** Server confirmed this clientEventId was already processed — no-op, do not re-apply. */
+  duplicateEvent?: boolean
 }
 
 export interface UseOnlineVersusRoomReturn {
@@ -317,13 +319,19 @@ export function useOnlineVersusRoom(): UseOnlineVersusRoomReturn {
         isResumingRef.current = false
         if (json.error || !json.room) {
           clearRoomEntry()
-          setPhase('idle')
+          setErrorMessage(json.error ?? 'Failed to rejoin match.')
+          setPhase('error')
           return
         }
         const rejoined = json.room as VersusRoom
         const role = json.role as RoomPlayer
         setRoom(rejoined)
         setMyRole(role)
+        if (rejoined.status === 'finished') {
+          clearRoomEntry()
+          setPhase('finished')
+          return
+        }
         setOpponentReady(rejoined.status === 'active')
         setPhase(rejoined.status === 'active' ? 'active' : 'lobby')
         subscribeToRoom(rejoined)
@@ -334,7 +342,8 @@ export function useOnlineVersusRoom(): UseOnlineVersusRoomReturn {
       .catch(() => {
         isResumingRef.current = false
         clearRoomEntry()
-        setPhase('idle')
+        setErrorMessage('Network error. Please try again.')
+        setPhase('error')
       })
   }, [])
 
@@ -481,6 +490,7 @@ export function useOnlineVersusRoom(): UseOnlineVersusRoomReturn {
           ok: true,
           error: null,
           code: null,
+          duplicateEvent: json?.duplicateEvent === true,
           payload:
             json && typeof json === 'object' && json.payload && typeof json.payload === 'object'
               ? (json.payload as Record<string, unknown>)

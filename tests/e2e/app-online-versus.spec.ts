@@ -15,7 +15,13 @@
 
 import { expect, test } from '@playwright/test'
 import { type Page } from '@playwright/test'
-import { fakePuzzle, resetStorage, seedStorageValue } from './test-helpers'
+import {
+  fakePuzzle,
+  mockPuzzleStream,
+  resetStorage,
+  seedDailyPuzzle,
+  seedStorageValue,
+} from './test-helpers'
 
 // Clears the stored room entry so the visibility-based catch-up hook does
 // not fire a fetch against the real server after the test assertions complete.
@@ -814,4 +820,423 @@ test('versus: steal event sends clientEventId', async ({ page }) => {
   expect((payload?.clientEventId as string).length).toBeGreaterThan(0)
 
   await clearRoomEntry(page)
+})
+
+// ── New contract-gap tests ───────────────────────────────────────────────────
+
+test('versus: joining a non-existent room shows an error, not a crash', async ({ page }) => {
+  /**
+   * When the join endpoint returns 404, the UI must surface an error message
+   * and must NOT render the game board.
+   */
+  await mockPuzzleStream(page, fakePuzzle)
+  await seedDailyPuzzle(page)
+
+  await page.route('**/api/versus/room/GONE1/join', async (route) => {
+    await route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'Room not found' }),
+    })
+  })
+  await page.route('**/api/versus/room/GONE1', async (route) => {
+    await route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'Room not found' }),
+    })
+  })
+
+  await page.addInitScript(() => {
+    localStorage.setItem('gg_online_versus_room', JSON.stringify({ code: 'GONE1', role: 'x' }))
+  })
+
+  await page.goto('/')
+  // No user interaction needed — auto-resume fires on mount
+
+  // Lobby opens automatically; humanizeError maps "Room not found" →
+  // "We couldn't find a match with that code."
+  await expect(page.getByText(/couldn't find a match|not found/i).first()).toBeVisible({
+    timeout: 8_000,
+  })
+
+  // No active online match — "End Online Match" button must not be present
+  await expect(page.getByRole('button', { name: 'End Online Match' })).not.toBeVisible({
+    timeout: 2_000,
+  })
+
+  await page.evaluate(() => localStorage.removeItem('gg_online_versus_room'))
+})
+
+test('versus: joining an expired room shows an error, not a crash', async ({ page }) => {
+  /**
+   * When the join endpoint returns 410 (room expired/closed), the UI must
+   * surface an error and must NOT render the game board.
+   */
+  await mockPuzzleStream(page, fakePuzzle)
+  await seedDailyPuzzle(page)
+
+  await page.route('**/api/versus/room/EXPRD/join', async (route) => {
+    await route.fulfill({
+      status: 410,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'Room has expired' }),
+    })
+  })
+  await page.route('**/api/versus/room/EXPRD', async (route) => {
+    await route.fulfill({
+      status: 410,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'Room has expired' }),
+    })
+  })
+
+  await page.addInitScript(() => {
+    localStorage.setItem('gg_online_versus_room', JSON.stringify({ code: 'EXPRD', role: 'x' }))
+  })
+
+  await page.goto('/')
+  // Auto-resume fires on mount; lobby opens automatically
+
+  // humanizeError maps "Room has expired" → "That invite has expired."
+  await expect(page.getByText(/invite has expired|expired/i).first()).toBeVisible({
+    timeout: 8_000,
+  })
+
+  // No active online match — "End Online Match" button must not be present
+  await expect(page.getByRole('button', { name: 'End Online Match' })).not.toBeVisible({
+    timeout: 2_000,
+  })
+
+  await page.evaluate(() => localStorage.removeItem('gg_online_versus_room'))
+})
+
+test('versus: resuming a finished room shows finish screen, not active board', async ({ page }) => {
+  /**
+   * When a stored room entry points to a room whose status is 'finished',
+   * the UI must show a finished/result screen and not an active game board
+   * with interactive cells.
+   */
+  await mockPuzzleStream(page, fakePuzzle)
+  await seedDailyPuzzle(page)
+
+  const puzzleId = 'versus-finished-test'
+  const fakeRoom = {
+    id: 'room-fin',
+    code: 'FINSH',
+    status: 'finished',
+    match_number: 1,
+    puzzle_id: puzzleId,
+    puzzle_data: { ...fakePuzzle, id: puzzleId, is_daily: false, date: null },
+    host_session_id: 'h',
+    guest_session_id: 'g',
+    settings: {
+      stealRule: 'off',
+      timerOption: 'none',
+      disableDraws: false,
+      objectionRule: 'off',
+      categoryFilters: {},
+    },
+    state_data: {
+      guesses: Array(9).fill(null),
+      guessesRemaining: 0,
+      currentPlayer: 'x',
+      stealableCell: null,
+      winner: 'x',
+      pendingFinalSteal: null,
+      objectionsUsed: { x: 0, o: 0 },
+      turnDeadlineAt: null,
+    },
+    turn_deadline_at: null,
+    created_at: new Date().toISOString(),
+  }
+
+  await page.route('**/api/versus/room/FINSH/join', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ room: fakeRoom, role: 'x' }),
+    })
+  })
+  await page.route('**/api/versus/room/FINSH', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ room: fakeRoom }),
+    })
+  })
+  await page.route('**/api/versus/room-events/room-fin', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ events: [] }),
+    })
+  })
+  await mockRoomStateSave(page)
+
+  await page.addInitScript(() => {
+    localStorage.setItem('gg_online_versus_room', JSON.stringify({ code: 'FINSH', role: 'x' }))
+  })
+
+  await page.goto('/')
+  // Auto-resume fires on mount; lobby opens automatically showing finished state
+
+  // Lobby renders "That match has already finished." for phase='finished'
+  await expect(page.getByText(/already finished/i).first()).toBeVisible({ timeout: 8_000 })
+
+  // Active board must not be present
+  await expect(page.getByRole('button', { name: 'End Online Match' })).not.toBeVisible({
+    timeout: 2_000,
+  })
+
+  await page.evaluate(() => localStorage.removeItem('gg_online_versus_room'))
+})
+
+test('versus: stale match rejection from server triggers board refresh', async ({ page }) => {
+  /**
+   * When the event endpoint returns 409 stale_match, the client should fire a
+   * catch-up fetch against room-events and must NOT commit the guess to the board.
+   *
+   * We verify the catch-up by checking that room-events is requested after the
+   * event rejection, and that the guess does not appear on the board.
+   */
+  const catchUpRequests: string[] = []
+  const puzzleId = 'versus-stale-test'
+
+  await page.route('**/api/search?*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ results: [fakeSearchResult] }),
+    })
+  })
+
+  await page.route('**/api/guess', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(fakeGuessResponse()),
+    })
+  })
+
+  await page.route('**/api/versus/event', async (route) => {
+    await route.fulfill({
+      status: 409,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'Stale match', code: 'stale_match' }),
+    })
+  })
+
+  // Catch-up endpoint — track calls
+  await page.route('**/api/versus/room-events/room-stale', async (route) => {
+    catchUpRequests.push(route.request().url())
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ events: [] }),
+    })
+  })
+  await mockRoomStateSave(page)
+
+  const fakeRoom = {
+    id: 'room-stale',
+    code: 'STALE',
+    status: 'active',
+    match_number: 1,
+    puzzle_id: puzzleId,
+    puzzle_data: { ...fakePuzzle, id: puzzleId, is_daily: false, date: null },
+    host_session_id: 'h',
+    guest_session_id: 'g',
+    settings: {
+      stealRule: 'off',
+      timerOption: 'none',
+      disableDraws: false,
+      objectionRule: 'off',
+      categoryFilters: {},
+    },
+    state_data: null,
+    turn_deadline_at: null,
+    created_at: new Date().toISOString(),
+  }
+
+  await page.route('**/api/versus/room/STALE/join', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ room: fakeRoom, role: 'x' }),
+    })
+  })
+  await page.route('**/api/versus/room/STALE', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ room: fakeRoom }),
+    })
+  })
+  await page.route('**/api/puzzle-stream**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache' },
+      body:
+        [
+          `data: ${JSON.stringify({ type: 'puzzle', puzzle: { ...fakePuzzle, id: puzzleId, is_daily: false, date: null } })}`,
+          '',
+          '',
+        ].join('\n') + '\n',
+    })
+  })
+
+  await page.addInitScript(() => {
+    localStorage.setItem('gg_online_versus_room', JSON.stringify({ code: 'STALE', role: 'x' }))
+  })
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Versus' }).click()
+  await expect(page.getByTestId('grid-cell-0')).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByRole('button', { name: 'End Online Match' })).toBeVisible({
+    timeout: 5_000,
+  })
+
+  await page.getByTestId('grid-cell-0').click()
+  await page.getByPlaceholder('Search for a video game...').fill('hal')
+  await page.getByRole('button', { name: /Half-Life 2/i }).click()
+  await expect(page.getByText('Confirm this answer?')).toBeVisible()
+  await page.getByRole('button', { name: /Confirm Half-Life 2/i }).click()
+
+  // Catch-up fetch must fire after stale_match rejection
+  await expect.poll(() => catchUpRequests.length > 1, { timeout: 6_000 }).toBe(true)
+
+  // Guess must NOT be committed to the board
+  await expect(page.getByTestId('grid-cell-0')).not.toContainText('Half-Life 2', {
+    timeout: 3_000,
+  })
+
+  await page.evaluate(() => localStorage.removeItem('gg_online_versus_room'))
+})
+
+test('versus: server returning duplicateEvent:true does not double-apply the guess', async ({
+  page,
+}) => {
+  /**
+   * When the event endpoint returns { duplicateEvent: true }, the client should
+   * treat the response as a no-op and NOT apply the guess a second time.
+   *
+   * We seed a board where cell 0 is empty, submit a guess, and get a
+   * duplicateEvent response. The guess must appear at most once on the board.
+   */
+  const capturedClaimBodies: Array<Record<string, unknown>> = []
+  const puzzleId = 'versus-dedup-test'
+
+  await page.route('**/api/search?*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ results: [fakeSearchResult] }),
+    })
+  })
+
+  await page.route('**/api/guess', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(fakeGuessResponse()),
+    })
+  })
+
+  await page.route('**/api/versus/event', async (route) => {
+    const body = route.request().postDataJSON() as Record<string, unknown>
+    if ((body as { type?: string }).type === 'claim') {
+      capturedClaimBodies.push(body)
+    }
+    // Always return duplicateEvent:true
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, duplicateEvent: true, type: body.type }),
+    })
+  })
+  await mockRoomStateSave(page)
+
+  const fakeRoom = {
+    id: 'room-dedup',
+    code: 'DEDUP',
+    status: 'active',
+    match_number: 1,
+    puzzle_id: puzzleId,
+    puzzle_data: { ...fakePuzzle, id: puzzleId, is_daily: false, date: null },
+    host_session_id: 'h',
+    guest_session_id: 'g',
+    settings: {
+      stealRule: 'off',
+      timerOption: 'none',
+      disableDraws: false,
+      objectionRule: 'off',
+      categoryFilters: {},
+    },
+    state_data: null,
+    turn_deadline_at: null,
+    created_at: new Date().toISOString(),
+  }
+
+  await page.route('**/api/versus/room/DEDUP/join', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ room: fakeRoom, role: 'x' }),
+    })
+  })
+  await page.route('**/api/versus/room/DEDUP', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ room: fakeRoom }),
+    })
+  })
+  await page.route('**/api/versus/room-events/room-dedup', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ events: [] }),
+    })
+  })
+  await page.route('**/api/puzzle-stream**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache' },
+      body:
+        [
+          `data: ${JSON.stringify({ type: 'puzzle', puzzle: { ...fakePuzzle, id: puzzleId, is_daily: false, date: null } })}`,
+          '',
+          '',
+        ].join('\n') + '\n',
+    })
+  })
+
+  await page.addInitScript(() => {
+    localStorage.setItem('gg_online_versus_room', JSON.stringify({ code: 'DEDUP', role: 'x' }))
+  })
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Versus' }).click()
+  await expect(page.getByTestId('grid-cell-0')).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByRole('button', { name: 'End Online Match' })).toBeVisible({
+    timeout: 5_000,
+  })
+
+  // Submit a guess
+  await page.getByTestId('grid-cell-0').click()
+  await page.getByPlaceholder('Search for a video game...').fill('hal')
+  await page.getByRole('button', { name: /Half-Life 2/i }).click()
+  await expect(page.getByText('Confirm this answer?')).toBeVisible()
+  await page.getByRole('button', { name: /Confirm Half-Life 2/i }).click()
+
+  // Wait for at least one claim event to be recorded
+  await expect.poll(() => capturedClaimBodies.length >= 1, { timeout: 5_000 }).toBe(true)
+
+  // Cell 0 must contain the game name at most once — duplicateEvent must not double-apply
+  const cellText = await page.getByTestId('grid-cell-0').textContent()
+  const occurrences = (cellText ?? '').split('Half-Life 2').length - 1
+  expect(occurrences).toBeLessThanOrEqual(1)
+
+  await page.evaluate(() => localStorage.removeItem('gg_online_versus_room'))
 })

@@ -250,6 +250,13 @@ export function OnlineVersusLobby({
           </div>
         )}
 
+        {/* ── Finished — match already over ────────────────────────────── */}
+        {phase === 'finished' && (
+          <div className="rounded-xl border border-border bg-secondary/20 px-4 py-3 text-sm text-muted-foreground">
+            That match has already finished.
+          </div>
+        )}
+
         {/* ── Active — both players present ─────────────────────────────── */}
         {phase === 'active' && (
           <div className="space-y-3 pt-1">
@@ -269,7 +276,10 @@ export function OnlineVersusLobby({
         )}
 
         {/* ── Cancel / dismiss ──────────────────────────────────────────── */}
-        {(phase === 'lobby' || phase === 'error' || phase === 'creating') && (
+        {(phase === 'lobby' ||
+          phase === 'error' ||
+          phase === 'creating' ||
+          phase === 'finished') && (
           <Button
             variant="ghost"
             size="sm"
