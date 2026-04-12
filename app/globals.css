@@ -207,3 +207,122 @@ html[data-gamegrid-animations='off'] .game-cell:hover:not(.filled) {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted-foreground);
 }
+
+/* GridCell animations */
+.final-steal-focus {
+  animation: final-steal-heartbeat 1.5s cubic-bezier(0.22, 0.68, 0.2, 1) infinite;
+}
+
+.correct-sustained::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(251, 146, 60, 0.1),
+    rgba(251, 146, 60, 0.02) 42%,
+    rgba(0, 0, 0, 0)
+  );
+  z-index: 1;
+}
+
+.final-steal-dim-heart {
+  animation: final-steal-dim-heartbeat 1.5s cubic-bezier(0.22, 0.68, 0.2, 1) infinite;
+}
+
+@keyframes final-steal-heartbeat {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(34, 197, 94, 0.26),
+      0 0 14px rgba(34, 197, 94, 0.1),
+      0 0 24px rgba(34, 197, 94, 0.05);
+    transform: scale(1);
+  }
+  14% {
+    box-shadow:
+      0 0 0 1px rgba(34, 197, 94, 0.44),
+      0 0 28px rgba(34, 197, 94, 0.24),
+      0 0 50px rgba(34, 197, 94, 0.14);
+    transform: scale(1.018);
+  }
+  26% {
+    box-shadow:
+      0 0 0 1px rgba(34, 197, 94, 0.34),
+      0 0 18px rgba(34, 197, 94, 0.16),
+      0 0 34px rgba(34, 197, 94, 0.08);
+    transform: scale(1.004);
+  }
+  38% {
+    box-shadow:
+      0 0 0 1px rgba(34, 197, 94, 0.56),
+      0 0 34px rgba(34, 197, 94, 0.3),
+      0 0 60px rgba(34, 197, 94, 0.2);
+    transform: scale(1.032);
+  }
+  52% {
+    box-shadow:
+      0 0 0 1px rgba(34, 197, 94, 0.32),
+      0 0 16px rgba(34, 197, 94, 0.12),
+      0 0 28px rgba(34, 197, 94, 0.07);
+    transform: scale(1.002);
+  }
+}
+
+@keyframes final-steal-dim-heartbeat {
+  0%,
+  100% {
+    opacity: 0.35;
+    filter: saturate(0.5) brightness(0.94);
+  }
+  14% {
+    opacity: 0.26;
+    filter: saturate(0.42) brightness(0.88);
+  }
+  26% {
+    opacity: 0.32;
+    filter: saturate(0.46) brightness(0.91);
+  }
+  38% {
+    opacity: 0.22;
+    filter: saturate(0.38) brightness(0.84);
+  }
+  52% {
+    opacity: 0.34;
+    filter: saturate(0.48) brightness(0.92);
+  }
+}
+
+.lock-impact {
+  animation: lock-slam 620ms var(--ease-spring);
+}
+
+@keyframes lock-slam {
+  0% {
+    transform: translateY(-18px) scale(0.66) rotate(-10deg);
+    opacity: 0;
+  }
+  48% {
+    transform: translateY(4px) scale(1.14) rotate(3deg);
+    opacity: 1;
+  }
+  68% {
+    transform: translateY(-2px) scale(0.94) rotate(-2deg);
+  }
+  84% {
+    transform: translateY(1px) scale(1.02) rotate(1deg);
+  }
+  100% {
+    transform: translateY(0) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .final-steal-focus,
+  .final-steal-dim-heart,
+  .lock-impact {
+    animation: none;
+  }
+}
