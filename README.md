@@ -75,6 +75,7 @@ to `ALLOWED_DEV_ORIGINS` in `.env.local`.
 | `PUZZLE_MIN_VALID_OPTIONS`                 | No       | Minimum valid answers per cell, default `3`                                                                                   |
 | `PUZZLE_GENERATION_MAX_ATTEMPTS`           | No       | Max candidate grids to try before failing, default `12`                                                                       |
 | `PUZZLE_VALIDATION_SAMPLE_SIZE`            | No       | IGDB matches sampled when validating each cell, default `40`                                                                  |
+| `CRON_SECRET`                              | No       | Bearer token Vercel sends with cron requests. Required in production; without it, cron routes reject all requests.            |
 | `ALLOWED_DEV_ORIGINS`                      | No       | Comma-separated extra dev origins for remote local testing, for example `http://your-hostname:3000,http://your-local-ip:3000` |
 
 ## Devcontainer LAN Access
