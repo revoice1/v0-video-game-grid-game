@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Moon, Settings2 } from 'lucide-react'
 import { useTheme } from 'next-themes'
+import { QRCodeCanvas } from 'qrcode.react'
 import { IndexBadge } from '@/components/index-badge'
 import { cn } from '@/lib/utils'
 import {
@@ -11,6 +12,7 @@ import {
   useVersusAlarmPreference,
   useVersusAudioPreference,
 } from '@/lib/ui-preferences'
+import { normalizeTransferCode } from '@/lib/session-transfer'
 
 function FlashbangIcon({ className }: { className?: string }) {
   return (
@@ -43,6 +45,14 @@ export function ThemeToggle({ showVersusAlarms = false }: { showVersusAlarms?: b
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [transferMode, setTransferMode] = useState<'export' | 'import'>('export')
+  const [transferStatus, setTransferStatus] = useState<
+    'idle' | 'loading' | 'copied' | 'success' | 'error' | 'invalid' | 'ratelimit'
+  >('idle')
+  const [importCode, setImportCode] = useState('')
+  const [exportCode, setExportCode] = useState('')
+  const [exportExpiresAt, setExportExpiresAt] = useState('')
+  const [exportUrl, setExportUrl] = useState('')
   const wrapperRef = useRef<HTMLDivElement>(null)
   const {
     mounted: preferencesMounted,
@@ -61,6 +71,12 @@ export function ThemeToggle({ showVersusAlarms = false }: { showVersusAlarms?: b
 
   useEffect(() => {
     if (!isSettingsOpen) {
+      setTransferMode('export')
+      setTransferStatus('idle')
+      setImportCode('')
+      setExportCode('')
+      setExportExpiresAt('')
+      setExportUrl('')
       return
     }
 
@@ -78,6 +94,112 @@ export function ThemeToggle({ showVersusAlarms = false }: { showVersusAlarms?: b
   }, [isSettingsOpen])
 
   const isDark = !mounted || resolvedTheme !== 'light'
+
+  const handleCopyTransferCode = async () => {
+    setTransferStatus('loading')
+    setExportCode('')
+    setExportExpiresAt('')
+    setExportUrl('')
+
+    try {
+      const response = await fetch('/api/session/export')
+      const payload = (await response.json()) as {
+        code?: string
+        expiresAt?: string
+        error?: string
+      }
+
+      const normalizedCode = normalizeTransferCode(payload.code)
+      if (!response.ok || !normalizedCode || !payload.expiresAt) {
+        throw new Error(payload.error ?? 'Failed to export session')
+      }
+
+      const nextExportUrl =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/transfer?code=${encodeURIComponent(normalizedCode)}`
+          : ''
+
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        setExportCode(normalizedCode)
+        setExportExpiresAt(payload.expiresAt)
+        setExportUrl(nextExportUrl)
+        try {
+          await navigator.clipboard.writeText(normalizedCode)
+          setTransferStatus('copied')
+          window.setTimeout(() => {
+            setTransferStatus((current) => (current === 'copied' ? 'idle' : current))
+          }, 2000)
+        } catch {
+          setTransferStatus('success')
+        }
+      } else {
+        setExportCode(normalizedCode)
+        setExportExpiresAt(payload.expiresAt)
+        setExportUrl(nextExportUrl)
+        setTransferStatus('success')
+      }
+    } catch {
+      setTransferStatus('error')
+    }
+  }
+
+  const handleConfirmImport = async () => {
+    const normalizedCode = normalizeTransferCode(importCode)
+
+    if (!normalizedCode) {
+      setTransferStatus('invalid')
+      return
+    }
+
+    setTransferStatus('loading')
+
+    try {
+      const response = await fetch('/api/session/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: normalizedCode }),
+      })
+
+      if (response.ok) {
+        setTransferStatus('success')
+        window.setTimeout(() => window.location.reload(), 600)
+        return
+      }
+
+      if (response.status === 400) {
+        setTransferStatus('invalid')
+        return
+      }
+
+      if (response.status === 429) {
+        setTransferStatus('ratelimit')
+        return
+      }
+
+      setTransferStatus('error')
+    } catch {
+      setTransferStatus('error')
+    }
+  }
+
+  const transferMessage =
+    transferMode === 'export'
+      ? transferStatus === 'copied'
+        ? 'Copied!'
+        : transferStatus === 'success'
+          ? 'Clipboard unavailable. Copy the code below.'
+          : transferStatus === 'error'
+            ? 'Something went wrong. Please try again.'
+            : null
+      : transferStatus === 'invalid'
+        ? "That code doesn't look right. Check it and try again."
+        : transferStatus === 'ratelimit'
+          ? 'Too many attempts. Please wait a moment.'
+          : transferStatus === 'success'
+            ? 'History transferred! Reloading...'
+            : transferStatus === 'error'
+              ? 'Something went wrong. Please try again.'
+              : null
 
   return (
     <div ref={wrapperRef} className="relative flex flex-col items-end gap-2">
@@ -99,7 +221,7 @@ export function ThemeToggle({ showVersusAlarms = false }: { showVersusAlarms?: b
       </button>
 
       {isSettingsOpen && (
-        <div className="absolute right-0 top-full z-20 mt-2 w-56 rounded-2xl border border-border bg-card/95 p-3 shadow-xl backdrop-blur-sm">
+        <div className="absolute right-0 top-full z-20 mt-2 w-80 max-w-[calc(100vw-1rem)] rounded-2xl border border-border bg-card/95 p-3 shadow-xl backdrop-blur-sm">
           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
             Settings
           </p>
@@ -271,6 +393,142 @@ export function ThemeToggle({ showVersusAlarms = false }: { showVersusAlarms?: b
               </div>
             </>
           )}
+          <div className="mt-3 rounded-xl border border-border/70 bg-secondary/20 px-3 py-2.5">
+            <p className="text-sm font-medium text-foreground">Transfer History</p>
+            {transferMode === 'export' ? (
+              <>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Create a temporary code on this device, then paste it on another. Only completed
+                  puzzles transfer — boards in progress stay on this device.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleCopyTransferCode}
+                  disabled={transferStatus === 'loading'}
+                  className={cn(
+                    'mt-2 inline-flex items-center rounded-full border border-border bg-background/80 px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors',
+                    'hover:bg-secondary/50 hover:text-foreground disabled:pointer-events-none disabled:opacity-60'
+                  )}
+                >
+                  {transferStatus === 'loading' ? 'Creating...' : 'Create transfer code'}
+                </button>
+                {exportExpiresAt && (
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    This code expires in about 10 minutes.
+                  </p>
+                )}
+                {transferMessage && (
+                  <p className="mt-2 text-[11px] text-muted-foreground">{transferMessage}</p>
+                )}
+                {exportCode && (
+                  <>
+                    <div className="mt-3 rounded-xl border border-border/70 bg-background/50 p-3">
+                      <div className="flex flex-col items-center text-center">
+                        <div
+                          aria-label="Transfer QR code"
+                          className="inline-flex w-fit shrink-0 rounded-xl border border-border bg-white p-2 shadow-sm"
+                        >
+                          {exportUrl ? (
+                            <QRCodeCanvas
+                              value={exportUrl}
+                              size={112}
+                              marginSize={2}
+                              level="M"
+                              className="block shrink-0"
+                            />
+                          ) : null}
+                        </div>
+                        <p className="mt-3 text-[11px] font-medium text-foreground">
+                          Scan on your phone, or copy the code below.
+                        </p>
+                        <input
+                          readOnly
+                          value={exportCode}
+                          aria-label="Transfer code"
+                          onFocus={(event) => event.currentTarget.select()}
+                          onClick={(event) => event.currentTarget.select()}
+                          className="mt-2.5 w-full rounded-lg border border-border bg-background/80 px-3 py-2 text-center text-[13px] font-medium tracking-[0.18em] text-foreground outline-none"
+                        />
+                        {exportUrl && (
+                          <a
+                            href={exportUrl}
+                            className="mt-2 inline-flex items-center text-[11px] text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground"
+                          >
+                            Open transfer link
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTransferMode('import')
+                      setTransferStatus('idle')
+                    }}
+                    className="text-[11px] text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground"
+                  >
+                    Import on this device
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Paste the temporary code from your other device. Your current history on this
+                  device will be replaced.
+                </p>
+                <p className="mt-2 rounded-lg border border-amber-400/25 bg-amber-500/8 px-2.5 py-2 text-[11px] text-amber-100/90">
+                  Import replaces completed puzzle history on this device. Boards in progress stay
+                  local.
+                </p>
+                <input
+                  type="text"
+                  value={importCode}
+                  onChange={(event) => {
+                    setImportCode(event.target.value.toUpperCase())
+                    if (transferStatus !== 'idle') {
+                      setTransferStatus('idle')
+                    }
+                  }}
+                  placeholder="Paste code here..."
+                  className="mt-2 w-full rounded-lg border border-border bg-background/80 px-2.5 py-2 text-[11px] text-foreground outline-none placeholder:text-muted-foreground"
+                />
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleConfirmImport}
+                    disabled={transferStatus === 'loading'}
+                    className={cn(
+                      'inline-flex items-center rounded-full border border-border bg-background/80 px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors',
+                      'hover:bg-secondary/50 hover:text-foreground disabled:pointer-events-none disabled:opacity-60'
+                    )}
+                  >
+                    {transferStatus === 'loading' ? 'Importing...' : 'Confirm import'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTransferMode('export')
+                      setImportCode('')
+                      setTransferStatus('idle')
+                    }}
+                    className={cn(
+                      'inline-flex items-center rounded-full border border-border bg-background/80 px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors',
+                      'hover:bg-secondary/50 hover:text-foreground'
+                    )}
+                  >
+                    Cancel
+                  </button>
+                </div>
+                {transferMessage && (
+                  <p className="mt-2 text-[11px] text-muted-foreground">{transferMessage}</p>
+                )}
+              </>
+            )}
+          </div>
           <div className="mt-3 rounded-xl border border-border/70 bg-secondary/20 px-3 py-2.5">
             <p className="text-sm font-medium text-foreground">Feedback</p>
             <p className="mt-1 text-[11px] text-muted-foreground">
