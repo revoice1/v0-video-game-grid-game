@@ -262,7 +262,7 @@ export function GameGrid({
             </div>
           ) : (
             <div className="flex h-full flex-col justify-center rounded-lg border border-border/40 bg-secondary/20 px-1.5 py-2 text-center sm:px-3">
-              <div className="grid hidden grid-cols-2 gap-1.5 sm:grid sm:gap-2">
+              <div className="hidden grid-cols-2 gap-1.5 sm:grid sm:gap-2">
                 <div className="text-center">
                   <p className="text-[1.7rem] font-bold text-foreground sm:text-3xl">{score}</p>
                   <p className="mt-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground sm:text-xs sm:normal-case sm:tracking-normal">
