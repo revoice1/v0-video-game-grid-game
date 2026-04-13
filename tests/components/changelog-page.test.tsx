@@ -21,7 +21,7 @@ describe('ChangelogPage', () => {
     expect(screen.getByText('Jump to update')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'March 28, 2026' })).toHaveAttribute(
       'href',
-      '#march-28-2026'
+      '#2026-03-28-daily-archive-streaks'
     )
     expect(screen.getByRole('link', { name: 'Report a bug' })).toHaveAttribute(
       'href',
