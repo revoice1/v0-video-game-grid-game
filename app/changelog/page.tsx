@@ -11,6 +11,7 @@ export const metadata: Metadata = {
 
 const CHANGELOG_ENTRIES = [
   {
+    id: '2026-04-12-history-transfer',
     date: 'April 12, 2026',
     title: 'History Transfer',
     items: [
@@ -20,6 +21,7 @@ const CHANGELOG_ENTRIES = [
     ],
   },
   {
+    id: '2026-04-12-submission-race-guard',
     date: 'April 12, 2026',
     title: 'Submission Race Guard',
     items: [
@@ -27,6 +29,7 @@ const CHANGELOG_ENTRIES = [
     ],
   },
   {
+    id: '2026-04-11-online-versus-polish',
     date: 'April 11, 2026',
     title: 'Online Versus Polish And Objection Improvements',
     items: [
@@ -39,6 +42,7 @@ const CHANGELOG_ENTRIES = [
     ],
   },
   {
+    id: '2026-03-28-daily-archive-streaks',
     date: 'March 28, 2026',
     title: 'Daily Archive, Streaks, And Versus Summary',
     items: [
@@ -52,6 +56,7 @@ const CHANGELOG_ENTRIES = [
     ],
   },
   {
+    id: '2026-03-27-versus-objections',
     date: 'March 27, 2026',
     title: 'Versus Objections And Custom Rules',
     items: [
@@ -64,6 +69,7 @@ const CHANGELOG_ENTRIES = [
     ],
   },
   {
+    id: '2026-03-26-category-pool-cleanup',
     date: 'March 26, 2026',
     title: 'Category Pool Cleanup',
     items: [
@@ -78,8 +84,8 @@ const CHANGELOG_ENTRIES = [
   },
 ]
 
-function getEntryAnchorId(date: string) {
-  return date.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+function getEntryAnchorId(id: string) {
+  return id.toLowerCase().replace(/[^a-z0-9]+/g, '-')
 }
 
 export default function ChangelogPage() {
@@ -136,8 +142,8 @@ export default function ChangelogPage() {
           <div className="mt-2 flex flex-wrap gap-2">
             {CHANGELOG_ENTRIES.map((entry) => (
               <a
-                key={entry.date}
-                href={`#${getEntryAnchorId(entry.date)}`}
+                key={entry.id}
+                href={`#${getEntryAnchorId(entry.id)}`}
                 className="inline-flex items-center rounded-full border border-border bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
               >
                 {entry.date}
@@ -149,8 +155,8 @@ export default function ChangelogPage() {
         <div className="mt-10 space-y-6" aria-label="Changelog entries">
           {CHANGELOG_ENTRIES.map((entry) => (
             <section
-              key={entry.date}
-              id={getEntryAnchorId(entry.date)}
+              key={entry.id}
+              id={getEntryAnchorId(entry.id)}
               className="scroll-mt-24 rounded-2xl border border-border/80 bg-secondary/20 p-5 shadow-sm transition-colors target:border-primary/35 target:bg-primary/8"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
