@@ -62,7 +62,9 @@ test('changelog jump links update the page hash', async ({ page }) => {
   ).toBeVisible()
   await expect
     .poll(async () => {
-      return page.evaluate(() => document.getElementById('march-27-2026')?.matches(':target'))
+      return page.evaluate(() =>
+        document.getElementById('2026-03-27-versus-objections')?.matches(':target')
+      )
     })
     .toBe(true)
 })
