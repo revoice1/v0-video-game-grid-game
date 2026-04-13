@@ -26,6 +26,7 @@ export default defineConfig({
       SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? 'test-service-role-key',
       TWITCH_IGDB_CLIENT_ID: process.env.TWITCH_IGDB_CLIENT_ID ?? 'test-client-id',
       TWITCH_IGDB_CLIENT_SECRET: process.env.TWITCH_IGDB_CLIENT_SECRET ?? 'test-client-secret',
+      NEXT_PUBLIC_E2E: '1',
     },
   },
   projects: [

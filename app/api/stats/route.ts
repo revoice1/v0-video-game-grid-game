@@ -49,7 +49,16 @@ export async function GET(request: NextRequest) {
         )
     )
 
-    let guessRows:
+    const { data: correctAnswerRows, error: correctAnswerError } = await supabase
+      .from('answer_stats')
+      .select('puzzle_id,cell_index,game_id,game_name,game_image,count')
+      .eq('puzzle_id', puzzleId)
+
+    if (correctAnswerError) {
+      logger.warn('Answer stats unavailable', { message: correctAnswerError.message })
+    }
+
+    let incorrectGuessRows:
       | {
           cell_index: number
           game_id: number
@@ -60,33 +69,40 @@ export async function GET(request: NextRequest) {
         }[]
       | null = null
 
-    const guessResponse = await supabase
+    const incorrectGuessResponse = await supabase
       .from('guesses')
       .select('cell_index,game_id,game_name,game_image,is_correct,session_id')
       .eq('puzzle_id', puzzleId)
+      .eq('is_correct', false)
 
-    if (guessResponse.error) {
-      logger.warn('Guess stats unavailable', { message: guessResponse.error.message })
+    if (incorrectGuessResponse.error) {
+      logger.warn('Incorrect guess stats unavailable', {
+        message: incorrectGuessResponse.error.message,
+      })
     } else {
-      guessRows = guessResponse.data
+      incorrectGuessRows = incorrectGuessResponse.data
     }
 
-    const completedGuessRows = (guessRows ?? []).filter((guess) =>
+    const completedIncorrectGuessRows = (incorrectGuessRows ?? []).filter((guess) =>
       guess.session_id ? completedSessionIds.has(guess.session_id) : false
     )
 
-    const correctStatsMap = new Map<string, GuessStatRow>()
+    const correctStatsMap = new Map<number, GuessStatRow[]>()
     const incorrectStatsMap = new Map<string, GuessStatRow>()
-    for (const guess of completedGuessRows) {
+    for (const stat of correctAnswerRows ?? []) {
+      const current = correctStatsMap.get(stat.cell_index) ?? []
+      current.push(stat)
+      correctStatsMap.set(stat.cell_index, current)
+    }
+    for (const guess of completedIncorrectGuessRows) {
       const key = `${guess.cell_index}:${guess.game_id}`
 
-      const targetMap = guess.is_correct ? correctStatsMap : incorrectStatsMap
-      const existing = targetMap.get(key)
+      const existing = incorrectStatsMap.get(key)
 
       if (existing) {
         existing.count += 1
       } else {
-        targetMap.set(key, {
+        incorrectStatsMap.set(key, {
           puzzle_id: puzzleId,
           cell_index: guess.cell_index,
           game_id: guess.game_id,
@@ -101,9 +117,9 @@ export async function GET(request: NextRequest) {
     const cellStats: Record<number, { correct: GuessStatRow[]; incorrect: GuessStatRow[] }> = {}
     for (let i = 0; i < 9; i++) {
       cellStats[i] = {
-        correct: Array.from(correctStatsMap.values())
-          .filter((s) => s.cell_index === i)
-          .sort((left, right) => right.count - left.count),
+        correct: [...(correctStatsMap.get(i) ?? [])].sort(
+          (left, right) => right.count - left.count
+        ),
         incorrect: Array.from(incorrectStatsMap.values())
           .filter((s) => s.cell_index === i)
           .sort((left, right) => right.count - left.count),

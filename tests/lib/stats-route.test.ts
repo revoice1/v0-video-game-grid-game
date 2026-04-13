@@ -74,6 +74,7 @@ function makeGetSupabase({
   puzzleError = null as unknown,
   completionRows = [{ session_id: 'sess-1' }] as { session_id: string }[],
   completionError = null as unknown,
+  answerRows = [] as GuessRow[],
   guessRows = [] as GuessRow[],
   guessError = null as unknown,
 } = {}) {
@@ -82,6 +83,7 @@ function makeGetSupabase({
       if (table === 'puzzles') return makeChain({ data: puzzle, error: puzzleError })
       if (table === 'puzzle_completions')
         return makeChain({ data: completionRows, error: completionError })
+      if (table === 'answer_stats') return makeChain({ data: answerRows, error: null })
       if (table === 'guesses') return makeChain({ data: guessRows, error: guessError })
       throw new Error(`Unexpected table: ${table}`)
     }),
@@ -114,7 +116,7 @@ describe('GET /api/stats', () => {
     createClientMock.mockResolvedValue(
       makeGetSupabase({
         completionRows: [{ session_id: 'sess-1' }, { session_id: 'sess-2' }],
-        guessRows: [
+        answerRows: [
           {
             puzzle_id: 'p1',
             cell_index: 0,
@@ -124,6 +126,8 @@ describe('GET /api/stats', () => {
             is_correct: true,
             session_id: 'sess-1',
           },
+        ],
+        guessRows: [
           {
             puzzle_id: 'p1',
             cell_index: 0,

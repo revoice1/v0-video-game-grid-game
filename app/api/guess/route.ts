@@ -243,57 +243,47 @@ export async function PATCH(request: NextRequest) {
       objection_original_matched_col: objectionOriginalMatchedCol ?? null,
     }
 
-    const { data: exactMatch, error: exactMatchError } = await supabase
+    const { data: matchingRows, error: matchingRowsError } = await supabase
       .from('guesses')
-      .update(updatePayload)
+      .select('id,game_id,created_at')
       .eq('puzzle_id', puzzleId)
       .eq('cell_index', cellIndex)
-      .eq('game_id', gameId)
       .eq('session_id', resolvedSession.sessionId)
+      .order('created_at', { ascending: false })
+
+    if (matchingRowsError) {
+      throw matchingRowsError
+    }
+
+    const targetRow =
+      matchingRows?.find((row) => row.game_id === gameId) ?? matchingRows?.[0] ?? null
+
+    if (!targetRow) {
+      return NextResponse.json(
+        { error: 'No matching guess found for objection persistence' },
+        { status: 404 }
+      )
+    }
+
+    const { error: updateError } = await supabase
+      .from('guesses')
+      .update(updatePayload)
+      .eq('id', targetRow.id)
       .select('id')
       .maybeSingle()
 
-    if (exactMatchError) {
-      throw exactMatchError
+    if (updateError) {
+      throw updateError
     }
 
-    if (!exactMatch) {
-      logger.warn('Guess objection update fell back to puzzle/session/cell match', {
+    if (targetRow.game_id !== gameId) {
+      logger.warn('Guess objection update fell back to newest guess for cell', {
         puzzleId,
         cellIndex,
-        gameId,
+        requestedGameId: gameId,
+        matchedGameId: targetRow.game_id,
         sessionId: resolvedSession.sessionId,
       })
-
-      const { data: fallbackMatch, error: fallbackMatchError } = await supabase
-        .from('guesses')
-        .update(updatePayload)
-        .eq('puzzle_id', puzzleId)
-        .eq('cell_index', cellIndex)
-        .eq('session_id', resolvedSession.sessionId)
-        .select('id,game_id')
-        .maybeSingle()
-
-      if (fallbackMatchError) {
-        throw fallbackMatchError
-      }
-
-      if (!fallbackMatch) {
-        return NextResponse.json(
-          { error: 'No matching guess found for objection persistence' },
-          { status: 404 }
-        )
-      }
-
-      if (fallbackMatch.game_id !== gameId) {
-        logger.warn('Guess objection update matched a different game id', {
-          puzzleId,
-          cellIndex,
-          requestedGameId: gameId,
-          matchedGameId: fallbackMatch.game_id,
-          sessionId: resolvedSession.sessionId,
-        })
-      }
     }
 
     return applyAnonymousSessionCookie(NextResponse.json({ ok: true }), resolvedSession, request)

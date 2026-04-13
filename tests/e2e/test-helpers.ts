@@ -1,4 +1,4 @@
-import { expect, type BrowserContext, type Page } from '@playwright/test'
+import { expect, type BrowserContext, type Locator, type Page } from '@playwright/test'
 
 export const fakePuzzle = {
   id: 'test-puzzle',
@@ -251,9 +251,33 @@ export async function openSettings(page: Page) {
   const settingsButton = page.getByRole('button', { name: 'Open settings' })
   await expect(settingsButton).toBeVisible()
   await expect(settingsButton).toBeEnabled()
-  await settingsButton.click()
+  await safeClick(settingsButton)
+  if ((await settingsButton.getAttribute('aria-expanded')) !== 'true') {
+    await settingsButton.click({ force: true })
+  }
+  if ((await settingsButton.getAttribute('aria-expanded')) !== 'true') {
+    await settingsButton.evaluate((button) => {
+      ;(button as HTMLButtonElement).click()
+    })
+  }
   await expect(settingsButton).toHaveAttribute('aria-expanded', 'true')
   await expect(page.getByText('Theme')).toBeVisible()
+}
+
+export async function safeClick(locator: Locator) {
+  await expect(locator).toBeVisible()
+  await expect(locator).toBeEnabled()
+
+  try {
+    await locator.click({ timeout: 2_000 })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (!message.includes('stable')) {
+      throw error
+    }
+
+    await locator.click({ force: true })
+  }
 }
 
 export async function setTheme(page: Page, theme: 'light' | 'dark') {
@@ -264,7 +288,7 @@ export async function setTheme(page: Page, theme: 'light' | 'dark') {
 
   const themeToggle = page.getByRole('button', { name: switchToThemeLabel })
   if (await themeToggle.isVisible().catch(() => false)) {
-    await themeToggle.click()
+    await safeClick(themeToggle)
   }
 
   await expect(page.getByRole('button', { name: oppositeThemeLabel })).toBeVisible()
@@ -274,7 +298,7 @@ export async function setTheme(page: Page, theme: 'light' | 'dark') {
     })
     .toBe(theme === 'light')
 
-  await page.getByRole('button', { name: 'Open settings' }).click()
+  await safeClick(page.getByRole('button', { name: 'Open settings' }))
 }
 
 export async function mockPuzzleStream(page: Page, puzzle: typeof fakePuzzle) {

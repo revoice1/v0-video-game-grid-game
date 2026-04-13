@@ -12,6 +12,7 @@ import {
   getTodayDate,
   sanitizeCategories,
 } from '@/lib/puzzle-api'
+import { loadPuzzleUserState } from '@/lib/puzzle-user-state'
 import {
   getAnonymousSessionCookieHeader,
   getLegacySessionIdFromRequest,
@@ -134,6 +135,11 @@ export async function GET(request: NextRequest) {
         const existingPuzzle = await getExistingDailyPuzzle(supabase, today)
 
         if (existingPuzzle) {
+          const userState = await loadPuzzleUserState(
+            supabase,
+            existingPuzzle,
+            resolvedSession.sessionId
+          )
           let cellMetadata: PuzzleCellMetadata[] = existingPuzzle.cell_metadata
 
           if (!cellMetadata) {
@@ -166,6 +172,7 @@ export async function GET(request: NextRequest) {
               col_categories: sanitizeCategories(existingPuzzle.col_categories),
               cell_metadata: cellMetadata,
             },
+            user_state: userState,
           })
           return
         }

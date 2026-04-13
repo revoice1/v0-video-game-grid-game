@@ -4,6 +4,7 @@ import {
   fakeSearchResult,
   mockGuessApi,
   resetStorage,
+  safeClick,
   seedStorageValue,
   mockPuzzleStream,
   seedDailyPuzzle,
@@ -17,13 +18,13 @@ test('practice mode shows start options and opens custom setup', async ({ page }
   await resetStorage(page)
   await page.goto('/')
 
-  await page.getByRole('button', { name: 'Practice' }).click()
+  await safeClick(page.getByRole('button', { name: 'Practice' }))
 
   await expect(page.getByText('Practice Mode')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Standard Puzzle' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Custom Puzzle' })).toBeVisible()
 
-  await page.getByRole('button', { name: 'Custom Puzzle' }).click()
+  await safeClick(page.getByRole('button', { name: 'Custom Puzzle' }))
 
   await expect(page.getByRole('heading', { name: 'Practice Setup' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Reset to Default' })).toBeVisible()
@@ -34,13 +35,13 @@ test('versus mode shows start options and opens setup controls', async ({ page }
   await resetStorage(page)
   await page.goto('/')
 
-  await page.getByRole('button', { name: 'Versus' }).click()
+  await safeClick(page.getByRole('button', { name: 'Versus' }))
 
   await expect(page.getByText('Versus Mode')).toBeVisible()
   await expect(page.getByRole('button', { name: /^Local\b/i })).toBeVisible()
   await expect(page.getByRole('button', { name: /^Online\b/i })).toBeVisible()
 
-  await page.getByRole('button', { name: /^Local\b/i }).click()
+  await safeClick(page.getByRole('button', { name: /^Local\b/i }))
 
   await expect(
     page.locator('button').filter({ hasText: 'Standard Local Match' }).first()
@@ -49,12 +50,12 @@ test('versus mode shows start options and opens setup controls', async ({ page }
     page.locator('button').filter({ hasText: 'Custom Local Match' }).first()
   ).toBeVisible()
 
-  await page.locator('button').filter({ hasText: 'Custom Local Match' }).first().click()
+  await safeClick(page.locator('button').filter({ hasText: 'Custom Local Match' }).first())
 
   await expect(page.getByRole('heading', { name: 'Versus Setup' })).toBeVisible()
   await expect(page.getByRole('button', { name: /Rules/i })).toBeVisible()
   await expect(page.getByRole('button', { name: /Categories/i })).toBeVisible()
-  await page.getByRole('button', { name: /Rules/i }).click()
+  await safeClick(page.getByRole('button', { name: /Rules/i }))
   await expect(page.getByRole('heading', { name: 'Steals' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Objections' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Turn Timer' })).toBeVisible()
@@ -69,16 +70,16 @@ test('mode switching across daily practice and versus stays responsive', async (
 
   await expect(page.getByRole('heading', { name: 'GameGrid' })).toBeVisible()
 
-  await page.getByRole('button', { name: 'Practice' }).click()
+  await safeClick(page.getByRole('button', { name: 'Practice' }))
   await expect(page.getByText('Practice Mode')).toBeVisible()
 
-  await page.getByRole('button', { name: 'Daily' }).click()
+  await safeClick(page.getByRole('button', { name: 'Daily' }))
   await expect(page.getByRole('button', { name: 'How to Play' })).toBeVisible()
 
-  await page.getByRole('button', { name: 'Versus' }).click()
+  await safeClick(page.getByRole('button', { name: 'Versus' }))
   await expect(page.getByText('Versus Mode')).toBeVisible()
 
-  await page.getByRole('button', { name: 'Daily' }).click()
+  await safeClick(page.getByRole('button', { name: 'Daily' }))
   await expect(page.getByRole('heading', { name: 'GameGrid' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'How to Play' })).toBeVisible()
 })
@@ -89,8 +90,8 @@ test('practice standard puzzle generates a board from the setup screen', async (
   await seedDailyPuzzle(page)
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'Practice' }).click()
-  await page.getByRole('button', { name: 'Standard Puzzle' }).click()
+  await safeClick(page.getByRole('button', { name: 'Practice' }))
+  await safeClick(page.getByRole('button', { name: 'Standard Puzzle' }))
 
   await expect(page.getByTestId('grid-cell-0')).toBeVisible()
   await expect(page.getByText('RPG')).toBeVisible()
@@ -104,9 +105,9 @@ test('local versus refresh restores the versus board instead of booting daily', 
   await seedDailyPuzzle(page)
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'Versus' }).click()
-  await page.getByRole('button', { name: /^Local\b/i }).click()
-  await page.locator('button').filter({ hasText: 'Standard Local Match' }).first().click()
+  await safeClick(page.getByRole('button', { name: 'Versus' }))
+  await safeClick(page.getByRole('button', { name: /^Local\b/i }))
+  await safeClick(page.locator('button').filter({ hasText: 'Standard Local Match' }).first())
 
   await expect(page.getByTestId('grid-cell-0')).toBeVisible()
   await expect(page.getByText(/Turn: \d+:\d{2}/)).toBeVisible()
@@ -131,12 +132,12 @@ test('local versus refresh restores an open search with the typed query', async 
   })
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'Versus' }).click()
-  await page.getByRole('button', { name: /^Local\b/i }).click()
-  await page.locator('button').filter({ hasText: 'Standard Local Match' }).first().click()
+  await safeClick(page.getByRole('button', { name: 'Versus' }))
+  await safeClick(page.getByRole('button', { name: /^Local\b/i }))
+  await safeClick(page.locator('button').filter({ hasText: 'Standard Local Match' }).first())
 
   await expect(page.getByTestId('grid-cell-0')).toBeVisible()
-  await page.getByTestId('grid-cell-0').click()
+  await safeClick(page.getByTestId('grid-cell-0'))
 
   const searchInput = page.getByPlaceholder('Search for a video game...')
   await expect(searchInput).toBeVisible()
@@ -154,34 +155,36 @@ test('how to play modal stays available for daily and versus modes', async ({ pa
   await resetStorage(page)
   await page.goto('/')
 
-  await page.getByRole('button', { name: 'How to Play' }).click()
-  await expect(page.getByRole('heading', { name: 'How to Play' })).toBeVisible()
+  await safeClick(page.getByRole('button', { name: 'How to Play' }))
+  const dailyHowToDialog = page.getByRole('dialog')
+  await expect(dailyHowToDialog.getByRole('heading', { name: 'How to Play' })).toBeVisible()
   await expect(page.getByText('Fill the Grid')).toBeVisible()
   await expect(page.getByText('Release Tags')).toBeVisible()
   await expect(page.getByText('Rarity Score')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Changelog' })).toBeVisible()
-  await page.getByRole('button', { name: 'Got it!' }).click()
-  await expect(page.getByRole('heading', { name: 'How to Play' })).toHaveCount(0)
+  await safeClick(dailyHowToDialog.getByRole('button', { name: 'Got it!' }))
+  await expect(dailyHowToDialog).not.toBeVisible()
 
-  await page.getByRole('button', { name: 'Versus' }).click()
+  await safeClick(page.getByRole('button', { name: 'Versus' }))
   await expect(page.getByText('Versus Mode')).toBeVisible()
-  await page.getByRole('button', { name: 'How to Play' }).click()
-  await expect(page.getByRole('heading', { name: 'How to Play Versus' })).toBeVisible()
+  await safeClick(page.getByRole('button', { name: 'How to Play' }))
+  const versusHowToDialog = page.getByRole('dialog')
+  await expect(versusHowToDialog.getByRole('heading', { name: 'How to Play Versus' })).toBeVisible()
   await expect(page.getByText('Take Turns Claiming Squares')).toBeVisible()
   await expect(page.getByText('Steal Rating Rules')).toBeVisible()
   await expect(page.getByText('Final Square Tiebreak')).toBeVisible()
-  await page.getByRole('button', { name: 'Got it!' }).click()
-  await expect(page.getByRole('heading', { name: 'How to Play Versus' })).toHaveCount(0)
+  await safeClick(versusHowToDialog.getByRole('button', { name: 'Got it!' }))
+  await expect(versusHowToDialog).not.toBeVisible()
 })
 
 test('how to play modal can navigate to the changelog', async ({ page }) => {
   await resetStorage(page)
   await page.goto('/')
 
-  await page.getByRole('button', { name: 'How to Play' }).click()
+  await safeClick(page.getByRole('button', { name: 'How to Play' }))
   await expect(page.getByRole('heading', { name: 'How to Play' })).toBeVisible()
 
-  await page.getByRole('link', { name: 'Changelog' }).click()
+  await safeClick(page.getByRole('link', { name: 'Changelog' }))
 
   await page.waitForURL('**/changelog')
   await expect(page.getByRole('heading', { name: "What's new in GameGrid" })).toBeVisible()
@@ -220,10 +223,10 @@ test('practice and versus restore in-progress boards from local storage', async 
   })
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'Practice' }).click()
+  await safeClick(page.getByRole('button', { name: 'Practice' }))
   await expect(page.getByTestId('grid-cell-0')).toContainText('Restored Practice Game')
 
-  await page.getByRole('button', { name: 'Versus' }).click()
+  await safeClick(page.getByRole('button', { name: 'Versus' }))
   await expect(page.getByTestId('grid-cell-0')).toContainText('Restored Versus Game')
 })
 
@@ -279,7 +282,7 @@ test('daily archive calendar can open an older board and reflects the open day',
 
   await page.goto('/')
 
-  await page.getByRole('button', { name: 'Daily Archive' }).click()
+  await safeClick(page.getByRole('button', { name: 'Daily Archive' }))
   await expect(page.getByRole('heading', { name: 'Daily Archive' })).toBeVisible()
   await expect(page.getByText(/Open marks the board you have loaded right now\./i)).toBeVisible()
   const archiveLoad = page.waitForResponse((response) => {
@@ -291,10 +294,61 @@ test('daily archive calendar can open an older board and reflects the open day',
       url.searchParams.get('date') === archiveDate
     )
   })
-  await page.getByRole('button', { name: `${archiveDate}, Completed` }).click()
+  await safeClick(page.getByRole('button', { name: `${archiveDate}, Completed` }))
   await archiveLoad
 
   await expect(page.getByTestId('grid-cell-0')).toBeVisible()
-  await page.getByRole('button', { name: 'Daily Archive' }).first().click()
+  await safeClick(page.getByRole('button', { name: 'Daily Archive' }).first())
   await expect(page.getByRole('button', { name: `${archiveDate}, Current board` })).toBeVisible()
+})
+
+test('daily boot hydrates today progress from streamed session state', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.clear()
+    window.sessionStorage.clear()
+  })
+  await page.route('**/api/puzzle-stream?*', async (route) => {
+    const url = route.request().url()
+    const mode = new URL(url).searchParams.get('mode')
+
+    if (mode !== 'daily') {
+      await route.fallback()
+      return
+    }
+
+    await route.fulfill({
+      status: 200,
+      headers: {
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache',
+      },
+      body:
+        [
+          `data: ${JSON.stringify({ type: 'progress', pct: 20, message: 'Preparing daily board...' })}`,
+          '',
+          `data: ${JSON.stringify({
+            type: 'puzzle',
+            puzzle: fakePuzzle,
+            user_state: {
+              guesses: [
+                {
+                  gameId: 1,
+                  gameName: 'Transferred Progress Game',
+                  gameImage: null,
+                  isCorrect: true,
+                },
+                ...Array(8).fill(null),
+              ],
+              guessesRemaining: 8,
+              isComplete: false,
+            },
+          })}`,
+          '',
+        ].join('\n') + '\n',
+    })
+  })
+
+  await page.goto('/')
+
+  await expect(page.getByTestId('grid-cell-0')).toContainText('Transferred Progress Game')
 })

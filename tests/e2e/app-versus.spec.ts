@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import {
   fakePuzzle,
   resetStorage,
+  safeClick,
   seedDailyPuzzle,
   seedSessionValue,
   seedStorageValue,
@@ -116,10 +117,10 @@ test('mobile failed steal closes search and shows the showdown overlay', async (
   })
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'Versus' }).click()
+  await safeClick(page.getByRole('button', { name: 'Versus' }))
   await page.getByTestId('grid-cell-0').click({ force: true })
   await page.getByPlaceholder('Search for a video game...').fill('ti')
-  await page.getByRole('button', { name: /tie breaker game/i }).click()
+  await safeClick(page.getByRole('button', { name: /tie breaker game/i }))
 
   await expect(page.getByTestId('steal-showdown-overlay')).toBeVisible()
   await expect(page.getByPlaceholder('Search for a video game...')).toHaveCount(0)
@@ -156,7 +157,7 @@ test('final steal locks interaction to the target cell and dims the rest of the 
   })
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'Versus' }).click()
+  await safeClick(page.getByRole('button', { name: 'Versus' }))
 
   const nonTargetCell = page.getByTestId('grid-cell-0')
   const targetCell = page.getByTestId('grid-cell-2')
@@ -164,7 +165,7 @@ test('final steal locks interaction to the target cell and dims the rest of the 
   await expect(nonTargetCell).toHaveClass(/opacity-35/)
   await expect(targetCell).toHaveClass(/final-steal-focus/)
 
-  await nonTargetCell.click()
+  await safeClick(nonTargetCell)
   await expect(page.getByPlaceholder('Search for a video game...')).toHaveCount(0)
 
   await targetCell.click({ force: true })
@@ -225,21 +226,21 @@ test('versus winner panel can be dismissed while keeping the board visible', asy
   })
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'Versus' }).click()
+  await safeClick(page.getByRole('button', { name: 'Versus' }))
 
   const winnerDialog = page.getByRole('dialog')
   await expect(winnerDialog.getByText('X wins', { exact: true }).first()).toBeVisible()
   await expect(winnerDialog.getByRole('button', { name: 'View Summary' })).toBeVisible()
   await expect(winnerDialog.getByText('Match Summary')).toHaveCount(0)
   await expect(winnerDialog.getByText('All Picks')).toHaveCount(0)
-  await winnerDialog.getByRole('button', { name: 'View Summary' }).click()
+  await safeClick(winnerDialog.getByRole('button', { name: 'View Summary' }))
   await expect(winnerDialog.getByText('Match Summary')).toBeVisible()
   await expect(winnerDialog.getByText('Steals: Lower score')).toBeVisible()
   await expect(winnerDialog.getByText('Steal attempts: 1')).toBeVisible()
   await expect(winnerDialog.getByText('Failed steals: 1')).toBeVisible()
   await expect(winnerDialog.getByText('All Picks')).toBeVisible()
   await expect(page.getByTestId('grid-cell-0')).toContainText('X1')
-  await winnerDialog.getByRole('button', { name: 'Hide', exact: true }).click()
+  await safeClick(winnerDialog.getByRole('button', { name: 'Hide', exact: true }))
   await expect(page.getByText('Match Over')).toHaveCount(0)
   await expect(page.getByTestId('grid-cell-0')).toContainText('X1')
 })
@@ -273,14 +274,14 @@ test('versus draw restore renders tie state without a winner', async ({ page }) 
   })
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'Versus' }).click()
+  await safeClick(page.getByRole('button', { name: 'Versus' }))
 
   const drawDialog = page.getByRole('dialog')
   await expect(drawDialog.getByText('Draw game').first()).toBeVisible()
   await expect(
     drawDialog.getByText('No line was completed before the board filled up.')
   ).toBeVisible()
-  await drawDialog.getByRole('button', { name: 'View Summary' }).click()
+  await safeClick(drawDialog.getByRole('button', { name: 'View Summary' }))
   await expect(drawDialog.getByText('Match Summary')).toBeVisible()
   await expect(page.locator('header').getByText('Result', { exact: true })).toBeVisible()
   await expect(page.locator('header').getByText('Tie', { exact: true })).toBeVisible()
@@ -372,14 +373,14 @@ test('disable draws gives O a final steal chance before an X 5-4 claims win reso
   })
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'Versus' }).click()
+  await safeClick(page.getByRole('button', { name: 'Versus' }))
 
-  await page.getByTestId('grid-cell-8').click()
+  await safeClick(page.getByTestId('grid-cell-8'))
   await page.getByPlaceholder('Search for a video game...').fill('ti')
   await expect(page.getByText('Tie Breaker Game')).toBeVisible()
-  await page.getByRole('button', { name: /Tie Breaker Game/i }).click()
+  await safeClick(page.getByRole('button', { name: /Tie Breaker Game/i }))
   await expect(page.getByText('Confirm this answer?')).toBeVisible()
-  await page.getByRole('button', { name: 'Confirm Tie Breaker Game' }).click()
+  await safeClick(page.getByRole('button', { name: 'Confirm Tie Breaker Game' }))
 
   await expect(page.getByText('X wins', { exact: true })).toHaveCount(0)
   await expect(page.getByText('Draw game')).toHaveCount(0)
@@ -419,20 +420,22 @@ test('double alarm cells alternate between steal and game point only', async ({ 
   })
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'Versus' }).click()
+  await safeClick(page.getByRole('button', { name: 'Versus' }))
 
   const doubleAlarmCell = page.getByTestId('grid-cell-2')
   await expect(doubleAlarmCell).toBeVisible()
 
   const initialBorderColor = await doubleAlarmCell.evaluate(
-    (element) => (element as HTMLElement).style.borderColor
+    (element) => window.getComputedStyle(element as HTMLElement).borderColor
   )
   expect(initialBorderColor).not.toBe('')
 
   await expect
     .poll(
       async () => {
-        return doubleAlarmCell.evaluate((element) => (element as HTMLElement).style.borderColor)
+        return doubleAlarmCell.evaluate(
+          (element) => window.getComputedStyle(element as HTMLElement).borderColor
+        )
       },
       { timeout: 5000 }
     )
@@ -458,7 +461,7 @@ test('versus timer enters danger state in the last 10 seconds', async ({ page })
   })
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'Versus' }).click()
+  await safeClick(page.getByRole('button', { name: 'Versus' }))
 
   await expect(page.getByText('Turn', { exact: true })).toBeVisible()
   await expect(page.getByText('X', { exact: true })).toBeVisible()
@@ -495,7 +498,7 @@ test('local versus timer expiry closes an open search and passes the turn', asyn
   })
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'Versus' }).click()
+  await safeClick(page.getByRole('button', { name: 'Versus' }))
 
   await expect(page.getByText('Turn expired', { exact: true })).toBeVisible({ timeout: 4000 })
   await expect(page.getByText('O is up.', { exact: true })).toBeVisible()

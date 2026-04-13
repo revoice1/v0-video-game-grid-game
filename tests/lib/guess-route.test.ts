@@ -48,7 +48,7 @@ vi.mock('@/lib/server-session', () => ({
   resolveAnonymousSession: resolveAnonymousSessionMock,
 }))
 
-import { POST } from '@/app/api/guess/route'
+import { PATCH, POST } from '@/app/api/guess/route'
 
 const validationExplanation: GuessValidationExplanation = {
   row: {
@@ -171,5 +171,104 @@ describe('/api/guess route', () => {
       })
     )
     expect(applyAnonymousSessionCookieMock).toHaveBeenCalledOnce()
+  })
+
+  it('persists daily objection results by exact game match when available', async () => {
+    const selectChain = {
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockResolvedValue({
+        data: [
+          { id: 'guess-1', game_id: 7, created_at: '2026-04-13T00:00:00.000Z' },
+          { id: 'guess-2', game_id: 99, created_at: '2026-04-12T00:00:00.000Z' },
+        ],
+        error: null,
+      }),
+    }
+    const updateChain = {
+      eq: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'guess-1' }, error: null }),
+    }
+    const fromMock = vi.fn((table: string) => {
+      if (table !== 'guesses') throw new Error(`Unexpected table: ${table}`)
+      return {
+        select: vi.fn(() => selectChain),
+        update: vi.fn(() => updateChain),
+      }
+    })
+    createAdminClientMock.mockReturnValue({ from: fromMock })
+
+    const request = new NextRequest('http://localhost/api/guess', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        puzzleId: 'p1',
+        cellIndex: 4,
+        gameId: 7,
+        verdict: 'overruled',
+        explanation: 'Still wrong.',
+        isCorrect: false,
+      }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    const response = await PATCH(request)
+    const payload = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(payload).toEqual({ ok: true })
+    expect(updateChain.eq).toHaveBeenCalledWith('id', 'guess-1')
+  })
+
+  it('falls back to the newest guess on the cell when the stored game id differs', async () => {
+    const selectChain = {
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockResolvedValue({
+        data: [
+          { id: 'guess-newest', game_id: 42, created_at: '2026-04-13T00:00:00.000Z' },
+          { id: 'guess-older', game_id: 7, created_at: '2026-04-12T00:00:00.000Z' },
+        ],
+        error: null,
+      }),
+    }
+    const updateChain = {
+      eq: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'guess-newest' }, error: null }),
+    }
+    const fromMock = vi.fn((table: string) => {
+      if (table !== 'guesses') throw new Error(`Unexpected table: ${table}`)
+      return {
+        select: vi.fn(() => selectChain),
+        update: vi.fn(() => updateChain),
+      }
+    })
+    createAdminClientMock.mockReturnValue({ from: fromMock })
+
+    const request = new NextRequest('http://localhost/api/guess', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        puzzleId: 'p1',
+        cellIndex: 4,
+        gameId: 700,
+        verdict: 'overruled',
+        explanation: 'Still wrong.',
+        isCorrect: false,
+      }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    const response = await PATCH(request)
+    const payload = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(payload).toEqual({ ok: true })
+    expect(updateChain.eq).toHaveBeenCalledWith('id', 'guess-newest')
+    expect(logWarnMock).toHaveBeenCalledWith(
+      'Guess objection update fell back to newest guess for cell',
+      expect.objectContaining({
+        requestedGameId: 700,
+        matchedGameId: 42,
+      })
+    )
   })
 })

@@ -5,6 +5,7 @@ import {
   buildCompletedGuesses,
   fakePuzzle,
   resetStorage,
+  safeClick,
   seedAchievements,
   seedStorageValue,
 } from './test-helpers'
@@ -14,7 +15,7 @@ test('achievements modal shows locked and unlocked states correctly', async ({ p
   await seedAchievements(page, ['perfect-grid'])
   await page.goto('/')
 
-  await page.getByRole('button', { name: 'Achievements' }).click()
+  await safeClick(page.getByRole('button', { name: 'Achievements' }))
   const achievementsDialog = page.getByRole('dialog')
   await expect(achievementsDialog.getByRole('heading', { name: 'Achievements' })).toBeVisible()
   await expect(achievementsDialog.getByText(`1/${ACHIEVEMENTS.length}`)).toBeVisible()
@@ -25,18 +26,18 @@ test('achievements modal shows locked and unlocked states correctly', async ({ p
   await expect(
     achievementsDialog.getByText('Unlocked by using its hidden trigger game as a correct answer.')
   ).toHaveCount(0)
-  await achievementsDialog.getByRole('button', { name: 'Close' }).first().click()
+  await safeClick(achievementsDialog.getByRole('button', { name: 'Close' }).first())
 })
 
 test('indexed route unlocks the hidden route achievement', async ({ page }) => {
   await resetStorage(page)
   await page.goto('/')
 
-  await page.getByRole('button', { name: 'Achievements' }).click()
+  await safeClick(page.getByRole('button', { name: 'Achievements' }))
   const achievementsDialog = page.getByRole('dialog')
   await expect(achievementsDialog.getByText(ROUTE_SLUG, { exact: true })).toHaveCount(0)
   await expect(achievementsDialog.getByText('???', { exact: true })).toBeVisible()
-  await achievementsDialog.getByRole('button', { name: 'Close' }).first().click()
+  await safeClick(achievementsDialog.getByRole('button', { name: 'Close' }).first())
 
   await page.goto(`/${ROUTE_SLUG}`)
   await expect(page.getByText(ROUTE_SLUG, { exact: true })).toBeVisible()
@@ -46,7 +47,7 @@ test('indexed route unlocks the hidden route achievement', async ({ page }) => {
   await expect(notifications.getByText(`Achievement Unlocked: ${ROUTE_SLUG}`)).toBeVisible()
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'Achievements' }).click()
+  await safeClick(page.getByRole('button', { name: 'Achievements' }))
   await expect(achievementsDialog.getByText(ROUTE_SLUG, { exact: true })).toBeVisible()
   await expect(
     achievementsDialog.getByText('Found the hidden route and slipped back out through the glitch.')
@@ -62,7 +63,7 @@ test('indexed route gives a near-miss hint without unlocking on wrong casing', a
   await expect(page).toHaveURL(`/${ROUTE_SLUG.toLowerCase()}`)
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'Achievements' }).click()
+  await safeClick(page.getByRole('button', { name: 'Achievements' }))
   const achievementsDialog = page.getByRole('dialog')
   await expect(achievementsDialog.getByText(ROUTE_SLUG, { exact: true })).toHaveCount(0)
   await expect(achievementsDialog.getByText('???', { exact: true })).toBeVisible()
@@ -155,12 +156,12 @@ test('correct easter egg answer unlocks achievement toast and collection entry',
   )
 
   await page.goto('/')
-  await page.getByTestId('grid-cell-0').click()
+  await safeClick(page.getByTestId('grid-cell-0'))
   await page.getByPlaceholder('Search for a video game...').fill('ha')
   await expect(page.getByText('Halo 2')).toBeVisible()
-  await page.getByRole('button', { name: /Halo 2/i }).click()
+  await safeClick(page.getByRole('button', { name: /Halo 2/i }))
   await expect(page.getByText('Confirm this answer?')).toBeVisible()
-  await page.getByRole('button', { name: 'Confirm Halo 2' }).click()
+  await safeClick(page.getByRole('button', { name: 'Confirm Halo 2' }))
 
   const notifications = page.getByRole('region', { name: 'Notifications (F8)' })
   await expect(notifications.getByText('Achievement Unlocked: Finish the Fight')).toBeVisible()
@@ -168,7 +169,7 @@ test('correct easter egg answer unlocks achievement toast and collection entry',
     notifications.getByText('Unlocked by using its hidden trigger game as a correct answer.')
   ).toBeVisible()
 
-  await page.getByRole('button', { name: 'Achievements' }).click()
+  await safeClick(page.getByRole('button', { name: 'Achievements' }))
   const achievementsDialog = page.getByRole('dialog')
   await expect(achievementsDialog.getByText(`1/${ACHIEVEMENTS.length}`)).toBeVisible()
   await expect(achievementsDialog.getByText('Finish the Fight', { exact: true })).toBeVisible()
@@ -265,17 +266,17 @@ test('wrong easter egg answer does not unlock the hidden achievement', async ({ 
   )
 
   await page.goto('/')
-  await page.getByTestId('grid-cell-0').click()
+  await safeClick(page.getByTestId('grid-cell-0'))
   await page.getByPlaceholder('Search for a video game...').fill('ha')
   await expect(page.getByText('Halo 2')).toBeVisible()
-  await page.getByRole('button', { name: /Halo 2/i }).click()
+  await safeClick(page.getByRole('button', { name: /Halo 2/i }))
   await expect(page.getByText('Confirm this answer?')).toBeVisible()
-  await page.getByRole('button', { name: 'Confirm Halo 2' }).click()
+  await safeClick(page.getByRole('button', { name: 'Confirm Halo 2' }))
 
   const notifications = page.getByRole('region', { name: 'Notifications (F8)' })
   await expect(notifications.getByText('Achievement Unlocked: Finish the Fight')).toHaveCount(0)
 
-  await page.getByRole('button', { name: 'Achievements' }).click()
+  await safeClick(page.getByRole('button', { name: 'Achievements' }))
   const achievementsDialog = page.getByRole('dialog')
   await expect(achievementsDialog.getByText(`0/${ACHIEVEMENTS.length}`)).toBeVisible()
   await expect(achievementsDialog.getByText('???', { exact: true })).toBeVisible()
@@ -366,12 +367,12 @@ test('real stinker unlock plays the poop-fall celebration', async ({ page }) => 
   )
 
   await page.goto('/')
-  await page.getByTestId('grid-cell-0').click()
+  await safeClick(page.getByTestId('grid-cell-0'))
   await page.getByPlaceholder('Search for a video game...').fill('sti')
   await expect(page.getByText('Stinker Quest')).toBeVisible()
-  await page.getByRole('button', { name: /Stinker Quest/i }).click()
+  await safeClick(page.getByRole('button', { name: /Stinker Quest/i }))
   await expect(page.getByText('Confirm this answer?')).toBeVisible()
-  await page.getByRole('button', { name: 'Confirm Stinker Quest' }).click()
+  await safeClick(page.getByRole('button', { name: 'Confirm Stinker Quest' }))
 
   const notifications = page.getByRole('region', { name: 'Notifications (F8)' })
   await expect(notifications.getByText('Achievement Unlocked: Real Stinker')).toBeVisible()
@@ -429,7 +430,7 @@ test('practice results modal omits copy and playerbase features', async ({ page 
   })
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'Practice' }).click()
+  await safeClick(page.getByRole('button', { name: 'Practice' }))
 
   const resultsDialog = page.getByRole('dialog')
   await expect(resultsDialog.getByRole('heading', { name: 'Practice Results' })).toBeVisible()

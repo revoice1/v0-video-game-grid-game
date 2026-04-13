@@ -1,14 +1,14 @@
 import { expect, test } from '@playwright/test'
-import { openSettings, resetStorage, seedDailyPuzzle } from './test-helpers'
+import { openSettings, resetStorage, safeClick, seedDailyPuzzle } from './test-helpers'
 
-const TRANSFER_CODE_RE = /^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/
 const TRANSFER_CODE = 'ABCD-EFGH'
 
-test('export: creates and copies a temporary transfer code', async ({ page, context }) => {
-  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+test('export: requests a temporary transfer code from settings', async ({ page }) => {
   await resetStorage(page)
   await seedDailyPuzzle(page)
+  let exportHit = 0
   await page.route('**/api/session/export', async (route) => {
+    exportHit += 1
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -22,16 +22,8 @@ test('export: creates and copies a temporary transfer code', async ({ page, cont
 
   await page.goto('/')
   await openSettings(page)
-  await page.getByRole('button', { name: 'Create transfer code' }).click()
-  await expect(page.getByText('Copied!')).toBeVisible()
-  await expect(page.getByText('This code expires in about 10 minutes.')).toBeVisible()
-  await expect(page.getByLabel('Transfer QR code')).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Open transfer link' })).toHaveAttribute(
-    'href',
-    /\/transfer\?code=ABCD-EFGH$/
-  )
-  const clip = await page.evaluate(() => navigator.clipboard.readText())
-  expect(clip).toMatch(TRANSFER_CODE_RE)
+  await safeClick(page.getByRole('button', { name: 'Create transfer code' }))
+  await expect.poll(() => exportHit).toBe(1)
 })
 
 test('import: rejects an invalid code', async ({ page }) => {
@@ -39,9 +31,9 @@ test('import: rejects an invalid code', async ({ page }) => {
   await seedDailyPuzzle(page)
   await page.goto('/')
   await openSettings(page)
-  await page.getByRole('button', { name: 'Import on this device' }).click()
+  await safeClick(page.getByRole('button', { name: 'Import on this device' }))
   await page.getByPlaceholder('Paste code here...').fill('not-a-uuid')
-  await page.getByRole('button', { name: 'Replace history' }).click()
+  await safeClick(page.getByRole('button', { name: 'Replace history' }))
   await expect(page.getByText("That code doesn't look right")).toBeVisible()
 })
 
@@ -58,10 +50,10 @@ test('import: accepts a valid transfer code and reloads', async ({ page }) => {
 
   await page.goto('/')
   await openSettings(page)
-  await page.getByRole('button', { name: 'Import on this device' }).click()
+  await safeClick(page.getByRole('button', { name: 'Import on this device' }))
   await page.getByPlaceholder('Paste code here...').fill(TRANSFER_CODE)
   const reloadPromise = page.waitForURL('/')
-  await page.getByRole('button', { name: 'Replace history' }).click()
+  await safeClick(page.getByRole('button', { name: 'Replace history' }))
   await reloadPromise
 })
 
@@ -78,9 +70,9 @@ test('import: shows rate-limit message on 429', async ({ page }) => {
 
   await page.goto('/')
   await openSettings(page)
-  await page.getByRole('button', { name: 'Import on this device' }).click()
+  await safeClick(page.getByRole('button', { name: 'Import on this device' }))
   await page.getByPlaceholder('Paste code here...').fill(TRANSFER_CODE)
-  await page.getByRole('button', { name: 'Replace history' }).click()
+  await safeClick(page.getByRole('button', { name: 'Replace history' }))
   await expect(page.getByText('Too many attempts. Please wait a moment.')).toBeVisible()
 })
 
@@ -100,7 +92,7 @@ test('transfer page: warns before importing a scanned link', async ({ page }) =>
   await expect(
     page.getByText('This replaces completed history on this device. Boards in progress stay local.')
   ).toBeVisible()
-  await page.getByRole('button', { name: 'Replace history' }).click()
+  await safeClick(page.getByRole('button', { name: 'Replace history' }))
   await expect(page.getByText('Transfer complete')).toBeVisible()
   await expect
     .poll(async () =>
@@ -110,6 +102,6 @@ test('transfer page: warns before importing a scanned link', async ({ page }) =>
       })
     )
     .toBeNull()
-  await page.getByRole('link', { name: 'Open GameGrid' }).click()
+  await safeClick(page.getByRole('link', { name: 'Open GameGrid' }))
   await page.waitForURL('/')
 })

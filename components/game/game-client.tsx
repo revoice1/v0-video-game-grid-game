@@ -199,6 +199,11 @@ interface PuzzleStreamMessage {
   pct?: number
   message?: string
   puzzle?: Puzzle
+  user_state?: {
+    guesses: (CellGuess | null)[]
+    guessesRemaining: number
+    isComplete: boolean
+  }
   stage?: 'families' | 'attempt' | 'cell' | 'metadata' | 'rejected' | 'done'
   attempt?: number
   rows?: string[]
@@ -1820,7 +1825,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
         }
       }
 
-      const shouldCommitGuessToBoard = mode !== 'versus' && payload.verdict === 'sustained'
+      const shouldCommitGuessToBoard = mode !== 'versus'
 
       if (shouldCommitGuessToBoard) {
         setGuesses(nextGuesses)
@@ -2443,9 +2448,18 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       setShowResults(false)
       setDetailCell(null)
 
+      const isArchivedDaily =
+        gameMode === 'daily' &&
+        typeof resolvedDailyDate === 'string' &&
+        resolvedDailyDate !== new Date().toISOString().split('T')[0]
+
       setLoadingProgress(8)
       setLoadingStage(
-        gameMode === 'daily' ? "Loading today's board..." : 'Warming up the puzzle generator...'
+        gameMode === 'daily'
+          ? isArchivedDaily
+            ? `Loading board from ${resolvedDailyDate}...`
+            : "Loading today's board..."
+          : 'Warming up the puzzle generator...'
       )
       setLoadingAttempts([])
       const controller = new AbortController()
@@ -2454,16 +2468,11 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
 
       try {
         let puzzleData: Puzzle | null = null
-        let archivedUserState: {
+        let authoritativeUserState: {
           guesses: (CellGuess | null)[]
           guessesRemaining: number
           isComplete: boolean
         } | null = null
-
-        const isArchivedDaily =
-          gameMode === 'daily' &&
-          typeof resolvedDailyDate === 'string' &&
-          resolvedDailyDate !== new Date().toISOString().split('T')[0]
 
         if (isArchivedDaily) {
           const archiveParams = new URLSearchParams({ mode: 'daily', date: resolvedDailyDate! })
@@ -2481,14 +2490,14 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
           setLoadingStage(`Loading archived board from ${resolvedDailyDate}...`)
           puzzleData = archivePayload as Puzzle
           if (archivePayload.user_state) {
-            archivedUserState = {
+            authoritativeUserState = {
               guesses: archivePayload.user_state.guesses ?? Array(9).fill(null),
               guessesRemaining: archivePayload.user_state.guessesRemaining ?? MAX_GUESSES,
               isComplete: Boolean(archivePayload.user_state.isComplete),
             }
-            setGuesses(archivedUserState.guesses)
-            setGuessesRemaining(archivedUserState.guessesRemaining)
-            setShowResults(archivedUserState.isComplete)
+            setGuesses(authoritativeUserState.guesses)
+            setGuessesRemaining(authoritativeUserState.guessesRemaining)
+            setShowResults(authoritativeUserState.isComplete)
           }
         } else {
           const params = new URLSearchParams({ mode: streamMode })
@@ -2612,6 +2621,13 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
                 }
               } else if (event.type === 'puzzle' && event.puzzle) {
                 puzzleData = event.puzzle
+                if (event.user_state) {
+                  authoritativeUserState = {
+                    guesses: event.user_state.guesses ?? Array(9).fill(null),
+                    guessesRemaining: event.user_state.guessesRemaining ?? MAX_GUESSES,
+                    isComplete: Boolean(event.user_state.isComplete),
+                  }
+                }
               } else if (event.type === 'error') {
                 throw new Error(event.message ?? 'Failed to generate puzzle')
               }
@@ -2633,15 +2649,20 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
         if (gameMode === 'daily' && puzzleData.date) {
           setActiveDailyDate(puzzleData.date)
         }
+        if (authoritativeUserState) {
+          setGuesses(authoritativeUserState.guesses)
+          setGuessesRemaining(authoritativeUserState.guessesRemaining)
+          setShowResults(authoritativeUserState.isComplete)
+        }
 
         if (shouldPersist) {
           saveGameState(
             {
               puzzleId: puzzleData.id,
               puzzle: puzzleData,
-              guesses: archivedUserState?.guesses ?? Array(9).fill(null),
-              guessesRemaining: archivedUserState?.guessesRemaining ?? MAX_GUESSES,
-              isComplete: archivedUserState?.isComplete ?? false,
+              guesses: authoritativeUserState?.guesses ?? Array(9).fill(null),
+              guessesRemaining: authoritativeUserState?.guessesRemaining ?? MAX_GUESSES,
+              isComplete: authoritativeUserState?.isComplete ?? false,
               ...(gameMode === 'versus'
                 ? {
                     currentPlayer: 'x' as const,
@@ -2669,7 +2690,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
           )
         }
 
-        if (savedState && savedState.puzzleId === puzzleData.id) {
+        if (!authoritativeUserState && savedState && savedState.puzzleId === puzzleData.id) {
           setGuesses(savedState.guesses as (CellGuess | null)[])
           setGuessesRemaining(savedState.guessesRemaining)
           setTurnDeadlineAt(savedState.turnDeadlineAt ?? null)

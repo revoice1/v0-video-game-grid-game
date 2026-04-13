@@ -1,5 +1,11 @@
 import { expect, test } from '@playwright/test'
-import { fakeSearchResult, mockGuessApi, seedDailyPuzzle, setTheme } from './test-helpers'
+import {
+  fakeSearchResult,
+  mockGuessApi,
+  safeClick,
+  seedDailyPuzzle,
+  setTheme,
+} from './test-helpers'
 
 test.beforeEach(async ({ context }) => {
   await mockGuessApi(context)
@@ -61,13 +67,13 @@ test('search confirm flow can pick a correct answer onto the board', async ({ pa
   await seedDailyPuzzle(page)
   await page.goto('/')
 
-  await page.getByTestId('grid-cell-0').click()
+  await safeClick(page.getByTestId('grid-cell-0'))
   await page.getByPlaceholder('Search for a video game...').fill('wo')
   await expect(page.getByText('World of Warcraft')).toBeVisible()
 
-  await page.getByRole('button', { name: /World of Warcraft/i }).click()
+  await safeClick(page.getByRole('button', { name: /World of Warcraft/i }))
   await expect(page.getByText('Confirm this answer?')).toBeVisible()
-  await page.getByRole('button', { name: 'Confirm World of Warcraft' }).click()
+  await safeClick(page.getByRole('button', { name: 'Confirm World of Warcraft' }))
 
   await expect(page.getByTestId('grid-cell-0')).toContainText('World of Warcraft')
 })
@@ -89,11 +95,11 @@ test('search cover preview opens a larger image dialog', async ({ page }) => {
   await seedDailyPuzzle(page)
   await page.goto('/')
 
-  await page.getByTestId('grid-cell-0').click()
+  await safeClick(page.getByTestId('grid-cell-0'))
   await page.getByPlaceholder('Search for a video game...').fill('wo')
   await expect(page.getByText('World of Warcraft')).toBeVisible()
 
-  await page.getByTitle('Preview cover for World of Warcraft').click()
+  await safeClick(page.getByTitle('Preview cover for World of Warcraft'))
   const previewDialog = page.getByRole('dialog')
   await expect(previewDialog).toBeVisible()
   await expect(previewDialog.getByAltText('World of Warcraft')).toBeVisible()
@@ -106,7 +112,7 @@ test('category definition dialog shows local guide copy without loading for non-
   await seedDailyPuzzle(page)
   await page.goto('/')
 
-  await page.getByRole('button', { name: /RPG/i }).click()
+  await safeClick(page.getByRole('button', { name: /RPG/i }))
   const definitionDialog = page.getByRole('dialog')
   await expect(definitionDialog.getByText('GameGrid guide')).toBeVisible()
   await expect(definitionDialog.getByText('Loading')).toHaveCount(0)
@@ -131,14 +137,14 @@ test('confirm flow renders cleanly in both light and dark themes', async ({ page
 
   for (const theme of ['light', 'dark'] as const) {
     await setTheme(page, theme)
-    await page.getByTestId('grid-cell-0').click()
+    await safeClick(page.getByTestId('grid-cell-0'))
     await page.getByPlaceholder('Search for a video game...').fill('wo')
     await expect(page.getByText('World of Warcraft')).toBeVisible()
-    await page.getByRole('button', { name: /World of Warcraft/i }).click()
+    await safeClick(page.getByRole('button', { name: /World of Warcraft/i }))
     await expect(page.getByText('Confirm this answer?')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Cancel World of Warcraft' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Confirm World of Warcraft' })).toBeVisible()
-    await page.getByRole('button', { name: 'Cancel World of Warcraft' }).click()
+    await safeClick(page.getByRole('button', { name: 'Cancel World of Warcraft' }))
     await expect(page.getByText('Confirm this answer?')).toHaveCount(0)
     await page.mouse.click(8, 8)
     await expect(page.getByPlaceholder('Search for a video game...')).toHaveCount(0)
@@ -180,12 +186,12 @@ test('toast appears for duplicate guess rejection', async ({ page }) => {
   await seedDailyPuzzle(page)
   await page.goto('/')
 
-  await page.getByTestId('grid-cell-0').click()
+  await safeClick(page.getByTestId('grid-cell-0'))
   await page.getByPlaceholder('Search for a video game...').fill('wo')
   await expect(page.getByText('World of Warcraft')).toBeVisible()
-  await page.getByRole('button', { name: /World of Warcraft/i }).click()
+  await safeClick(page.getByRole('button', { name: /World of Warcraft/i }))
   await expect(page.getByText('Confirm this answer?')).toBeVisible()
-  await page.getByRole('button', { name: 'Confirm World of Warcraft' }).click()
+  await safeClick(page.getByRole('button', { name: 'Confirm World of Warcraft' }))
 
   const notifications = page.getByRole('region', { name: 'Notifications (F8)' })
   await expect(notifications.getByText('Game already used', { exact: true })).toBeVisible()
@@ -233,7 +239,7 @@ test('search disambiguation surfaces port-family representative labels', async (
   await seedDailyPuzzle(page)
   await page.goto('/')
 
-  await page.getByTestId('grid-cell-0').click()
+  await safeClick(page.getByTestId('grid-cell-0'))
   await page.getByPlaceholder('Search for a video game...').fill('don')
   await expect(page.getByText('Donkey Kong (ARC+Ports)', { exact: true })).toBeVisible()
   await expect(page.getByText('Donkey Kong (GB)', { exact: true })).toBeVisible()

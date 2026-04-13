@@ -19,6 +19,7 @@ import {
   fakePuzzle,
   mockPuzzleStream,
   resetStorage,
+  safeClick,
   seedDailyPuzzle,
   seedStorageValue,
 } from './test-helpers'
@@ -189,16 +190,16 @@ test('versus: claim sends clientEventId to the event endpoint', async ({ page })
   })
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'Versus' }).click()
+  await safeClick(page.getByRole('button', { name: 'Versus' }))
   await expect(page.getByTestId('grid-cell-0')).toBeVisible({ timeout: 10_000 })
   await expect(page.getByRole('button', { name: 'End Online Match' })).toBeVisible({
     timeout: 5_000,
   })
-  await page.getByTestId('grid-cell-0').click()
+  await safeClick(page.getByTestId('grid-cell-0'))
   await page.getByPlaceholder('Search for a video game...').fill('hal')
-  await page.getByRole('button', { name: /Half-Life 2/i }).click()
+  await safeClick(page.getByRole('button', { name: /Half-Life 2/i }))
   await expect(page.getByText('Confirm this answer?')).toBeVisible()
-  await page.getByRole('button', { name: /Confirm Half-Life 2/i }).click()
+  await safeClick(page.getByRole('button', { name: /Confirm Half-Life 2/i }))
 
   await expect
     .poll(() => capturedEventBodies.some((b) => b.type === 'claim'), { timeout: 5_000 })
@@ -350,16 +351,16 @@ test('versus: duplicate game rejection from server leaves board unchanged', asyn
   })
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'Versus' }).click()
+  await safeClick(page.getByRole('button', { name: 'Versus' }))
   await expect(page.getByTestId('grid-cell-0')).toBeVisible({ timeout: 10_000 })
   await expect(page.getByRole('button', { name: 'End Online Match' })).toBeVisible({
     timeout: 5_000,
   })
-  await page.getByTestId('grid-cell-0').click()
+  await safeClick(page.getByTestId('grid-cell-0'))
   await page.getByPlaceholder('Search for a video game...').fill('por')
-  await page.getByRole('button', { name: /Portal 2/i }).click()
+  await safeClick(page.getByRole('button', { name: /Portal 2/i }))
   await expect(page.getByText('Confirm this answer?')).toBeVisible()
-  await page.getByRole('button', { name: /Confirm Portal 2/i }).click()
+  await safeClick(page.getByRole('button', { name: /Confirm Portal 2/i }))
 
   // After server rejects with duplicate_game, cell stays empty
   await expect(page.getByTestId('grid-cell-0')).not.toContainText('Portal 2', { timeout: 3_000 })
@@ -477,16 +478,16 @@ test('versus: miss event sends clientEventId', async ({ page }) => {
   })
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'Versus' }).click()
+  await safeClick(page.getByRole('button', { name: 'Versus' }))
   await expect(page.getByTestId('grid-cell-0')).toBeVisible({ timeout: 10_000 })
   await expect(page.getByRole('button', { name: 'End Online Match' })).toBeVisible({
     timeout: 5_000,
   })
-  await page.getByTestId('grid-cell-0').click()
+  await safeClick(page.getByTestId('grid-cell-0'))
   await page.getByPlaceholder('Search for a video game...').fill('hal')
-  await page.getByRole('button', { name: /Half-Life 2/i }).click()
+  await safeClick(page.getByRole('button', { name: /Half-Life 2/i }))
   await expect(page.getByText('Confirm this answer?')).toBeVisible()
-  await page.getByRole('button', { name: /Confirm Half-Life 2/i }).click()
+  await safeClick(page.getByRole('button', { name: /Confirm Half-Life 2/i }))
 
   await expect
     .poll(() => capturedEventBodies.some((b) => b.type === 'miss'), { timeout: 5_000 })
@@ -538,7 +539,7 @@ test('versus: failed steal showdown overlay shows with server-provided scores', 
   })
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'Versus' }).click()
+  await safeClick(page.getByRole('button', { name: 'Versus' }))
 
   await expect.poll(async () => page.evaluate(() => Boolean(window.__gameGridDev))).toBe(true)
 
@@ -791,7 +792,7 @@ test('versus: steal event sends clientEventId', async ({ page }) => {
   })
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'Versus' }).click()
+  await safeClick(page.getByRole('button', { name: 'Versus' }))
   // Defender Game must be present — it comes from the seeded local state which mirrors
   // state_data. This confirms the board loaded; the authoritative turn/steal fields
   // (currentPlayer=o, stealableCell=0) come from the room prep effect.
@@ -803,12 +804,12 @@ test('versus: steal event sends clientEventId', async ({ page }) => {
   // Click the stealable cell
   await page.getByTestId('grid-cell-0').click({ force: true })
   await page.getByPlaceholder('Search for a video game...').fill('hal')
-  await page.getByRole('button', { name: /Half-Life 2/i }).click()
+  await safeClick(page.getByRole('button', { name: /Half-Life 2/i }))
   // Confirm the selection (same confirm dialog as claims)
   await expect(page.getByRole('button', { name: /Confirm Half-Life 2/i })).toBeVisible({
     timeout: 3_000,
   })
-  await page.getByRole('button', { name: /Confirm Half-Life 2/i }).click()
+  await safeClick(page.getByRole('button', { name: /Confirm Half-Life 2/i }))
 
   await expect
     .poll(() => capturedEventBodies.some((b) => b.type === 'steal'), { timeout: 5_000 })
@@ -1091,17 +1092,17 @@ test('versus: stale match rejection from server triggers board refresh', async (
   })
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'Versus' }).click()
+  await safeClick(page.getByRole('button', { name: 'Versus' }))
   await expect(page.getByTestId('grid-cell-0')).toBeVisible({ timeout: 10_000 })
   await expect(page.getByRole('button', { name: 'End Online Match' })).toBeVisible({
     timeout: 5_000,
   })
 
-  await page.getByTestId('grid-cell-0').click()
+  await safeClick(page.getByTestId('grid-cell-0'))
   await page.getByPlaceholder('Search for a video game...').fill('hal')
-  await page.getByRole('button', { name: /Half-Life 2/i }).click()
+  await safeClick(page.getByRole('button', { name: /Half-Life 2/i }))
   await expect(page.getByText('Confirm this answer?')).toBeVisible()
-  await page.getByRole('button', { name: /Confirm Half-Life 2/i }).click()
+  await safeClick(page.getByRole('button', { name: /Confirm Half-Life 2/i }))
 
   // Catch-up fetch must fire after stale_match rejection
   await expect.poll(() => catchUpRequests.length > 1, { timeout: 6_000 }).toBe(true)
@@ -1217,18 +1218,18 @@ test('versus: server returning duplicateEvent:true does not double-apply the gue
   })
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'Versus' }).click()
+  await safeClick(page.getByRole('button', { name: 'Versus' }))
   await expect(page.getByTestId('grid-cell-0')).toBeVisible({ timeout: 10_000 })
   await expect(page.getByRole('button', { name: 'End Online Match' })).toBeVisible({
     timeout: 5_000,
   })
 
   // Submit a guess
-  await page.getByTestId('grid-cell-0').click()
+  await safeClick(page.getByTestId('grid-cell-0'))
   await page.getByPlaceholder('Search for a video game...').fill('hal')
-  await page.getByRole('button', { name: /Half-Life 2/i }).click()
+  await safeClick(page.getByRole('button', { name: /Half-Life 2/i }))
   await expect(page.getByText('Confirm this answer?')).toBeVisible()
-  await page.getByRole('button', { name: /Confirm Half-Life 2/i }).click()
+  await safeClick(page.getByRole('button', { name: /Confirm Half-Life 2/i }))
 
   // Wait for at least one claim event to be recorded
   await expect.poll(() => capturedClaimBodies.length >= 1, { timeout: 5_000 }).toBe(true)
@@ -1320,7 +1321,7 @@ test('objection flow — sustained verdict updates button label in modal', async
 
   // Cell 0 has an incorrect guess — clicking it opens the guess details modal
   await expect(page.getByTestId('grid-cell-0')).toBeVisible({ timeout: 10_000 })
-  await page.getByTestId('grid-cell-0').click()
+  await safeClick(page.getByTestId('grid-cell-0'))
 
   // Scope all assertions to the dialog to avoid ambiguity with cell text
   const modal = page.getByRole('dialog')
@@ -1330,7 +1331,7 @@ test('objection flow — sustained verdict updates button label in modal', async
   // Objection button must be present and enabled
   const objectionBtn = modal.getByRole('button', { name: 'Objection!' })
   await expect(objectionBtn).toBeVisible()
-  await objectionBtn.click()
+  await safeClick(objectionBtn)
 
   // After sustained verdict the button label must change
   await expect(modal.getByRole('button', { name: 'Objection sustained' })).toBeVisible({

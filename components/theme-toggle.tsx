@@ -124,15 +124,16 @@ export function ThemeToggle({ showVersusAlarms = false }: { showVersusAlarms?: b
         setExportCode(normalizedCode)
         setExportExpiresAt(payload.expiresAt)
         setExportUrl(nextExportUrl)
-        try {
-          await navigator.clipboard.writeText(normalizedCode)
-          setTransferStatus('copied')
-          window.setTimeout(() => {
-            setTransferStatus((current) => (current === 'copied' ? 'idle' : current))
-          }, 2000)
-        } catch {
-          setTransferStatus('success')
-        }
+        setTransferStatus('success')
+        void navigator.clipboard
+          .writeText(normalizedCode)
+          .then(() => {
+            setTransferStatus('copied')
+            window.setTimeout(() => {
+              setTransferStatus((current) => (current === 'copied' ? 'idle' : current))
+            }, 2000)
+          })
+          .catch(() => {})
       } else {
         setExportCode(normalizedCode)
         setExportExpiresAt(payload.expiresAt)

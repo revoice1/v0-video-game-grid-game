@@ -100,8 +100,10 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const isE2E = process.env.NEXT_PUBLIC_E2E === '1'
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning data-e2e={isE2E ? 'true' : undefined}>
       <body
         className={`${geist.variable} ${geistMono.variable} min-h-screen font-sans antialiased`}
       >
