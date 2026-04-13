@@ -49,6 +49,9 @@ export async function GET(request: NextRequest) {
         )
     )
 
+    // answer_stats is a pre-aggregated table updated by a DB trigger on insert to guesses.
+    // Correct counts here are only as fresh as that trigger; incorrect counts below come
+    // from guesses directly and are always live.
     const { data: correctAnswerRows, error: correctAnswerError } = await supabase
       .from('answer_stats')
       .select('puzzle_id,cell_index,game_id,game_name,game_image,count')
