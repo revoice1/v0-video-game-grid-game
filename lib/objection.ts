@@ -198,6 +198,36 @@ function cleanJsonResponse(text: string): string {
     .trim()
 }
 
+function extractJsonBlock(text: string): string | null {
+  const cleaned = cleanJsonResponse(text)
+  const match = cleaned.match(/\{[\s\S]*\}/)
+  return match ? match[0] : null
+}
+
+function parseKeyValueFallback(text: string): ObjectionJudgment | null {
+  const verdictMatch = text.match(/verdict\s*[:=-]\s*(sustained|overruled)/i)
+  const confidenceMatch = text.match(/confidence\s*[:=-]\s*(low|medium|high)/i)
+  const explanationMatch = text.match(/explanation\s*[:=-]\s*([^\n]+)/i)
+  const missingMatch = text.match(/suspectedMissingMetadata\s*[:=-]\s*([^\n]+)/i)
+
+  if (!verdictMatch || !confidenceMatch) {
+    return null
+  }
+
+  return {
+    verdict: verdictMatch[1].toLowerCase() as ObjectionJudgment['verdict'],
+    confidence: confidenceMatch[1].toLowerCase() as ObjectionJudgment['confidence'],
+    explanation:
+      explanationMatch?.[1]?.trim() && explanationMatch[1].trim().length > 0
+        ? explanationMatch[1].trim()
+        : 'No explanation provided.',
+    suspectedMissingMetadata:
+      missingMatch?.[1]?.trim() && missingMatch[1].trim().length > 0
+        ? missingMatch[1].trim()
+        : null,
+  }
+}
+
 export function normalizeObjectionResponse(text: string): ObjectionJudgment | null {
   try {
     const parsed = JSON.parse(cleanJsonResponse(text)) as Partial<ObjectionJudgment>
@@ -228,6 +258,35 @@ export function normalizeObjectionResponse(text: string): ObjectionJudgment | nu
           : null,
     }
   } catch {
-    return null
+    const jsonBlock = extractJsonBlock(text)
+    if (jsonBlock) {
+      try {
+        const parsed = JSON.parse(jsonBlock) as Partial<ObjectionJudgment>
+        if (
+          (parsed.verdict === 'sustained' || parsed.verdict === 'overruled') &&
+          (parsed.confidence === 'low' ||
+            parsed.confidence === 'medium' ||
+            parsed.confidence === 'high')
+        ) {
+          return {
+            verdict: parsed.verdict,
+            confidence: parsed.confidence,
+            explanation:
+              typeof parsed.explanation === 'string' && parsed.explanation.trim().length > 0
+                ? parsed.explanation.trim()
+                : 'No explanation provided.',
+            suspectedMissingMetadata:
+              typeof parsed.suspectedMissingMetadata === 'string' &&
+              parsed.suspectedMissingMetadata.trim().length > 0
+                ? parsed.suspectedMissingMetadata.trim()
+                : null,
+          }
+        }
+      } catch {
+        // fall through to key-value parsing
+      }
+    }
+
+    return parseKeyValueFallback(text)
   }
 }

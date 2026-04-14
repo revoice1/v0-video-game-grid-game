@@ -14,6 +14,13 @@ const GEMINI_KEY = process.env.GEMINI_KEY
 const GEMINI_MODEL = (process.env.GEMINI_MODEL ?? 'gemini-3.1-flash-lite-preview')
   .replace(/^models\//, '')
   .trim()
+const GEMINI_FALLBACK_MODEL = (process.env.GEMINI_FALLBACK_MODEL ?? '')
+  .replace(/^models\//, '')
+  .trim()
+const GEMINI_MODELS = Array.from(
+  new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL].filter((model) => model.length > 0))
+)
+const GEMINI_TIMEOUT_MS = 15_000
 const IS_DEV = process.env.NODE_ENV !== 'production'
 const GROUNDED_MAX_ATTEMPTS = 2
 const DEFAULT_THINKING_LEVEL = 'HIGH'
@@ -168,180 +175,250 @@ export async function POST(request: NextRequest) {
       promptBytes: datasetForPrompt.length,
       groundingEnabled: ENABLE_SEARCH_GROUNDING,
       thinkingConfig: getGeminiThinkingConfig(GEMINI_MODEL, THINKING_LEVEL),
+      fallbackModel: GEMINI_FALLBACK_MODEL || null,
     })
 
     let geminiResponse: Response | null = null
     let lastErrorText = ''
-    const generationConfig: {
-      temperature: number
-      responseMimeType: string
-      thinkingConfig?: {
-        thinkingLevel?: string
-        thinkingBudget?: number
-      }
-    } = {
-      temperature: 0.1,
-      responseMimeType: 'application/json',
-    }
-
-    generationConfig.thinkingConfig = getGeminiThinkingConfig(GEMINI_MODEL, THINKING_LEVEL)
-
-    const requestBodyBase = {
-      systemInstruction: {
-        parts: [{ text: OBJECTION_SYSTEM_PROMPT }],
-      },
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: datasetForPrompt }],
+    let lastErrorMessage = ''
+    let lastModelUsed = GEMINI_MODEL
+    for (const model of GEMINI_MODELS) {
+      lastModelUsed = model
+      let modelProducedValidJudgment = false
+      const baseThinkingConfig = getGeminiThinkingConfig(model, THINKING_LEVEL)
+      const requestBodyBase = {
+        systemInstruction: {
+          parts: [{ text: OBJECTION_SYSTEM_PROMPT }],
         },
-      ],
-      generationConfig,
-    }
-    const tools = [{ googleSearch: {} }]
-    const requestVariants: Array<{
-      label: 'grounded' | 'standard'
-      body: Record<string, unknown>
-    }> = ENABLE_SEARCH_GROUNDING
-      ? [
+        contents: [
           {
-            label: 'grounded',
-            body: {
-              ...requestBodyBase,
-              tools,
+            role: 'user',
+            parts: [{ text: datasetForPrompt }],
+          },
+        ],
+      }
+      const tools = [{ googleSearch: {} }]
+      const requestVariants: Array<{
+        label: 'grounded' | 'standard'
+        body: Record<string, unknown>
+      }> = ENABLE_SEARCH_GROUNDING
+        ? [
+            {
+              label: 'grounded',
+              body: {
+                ...requestBodyBase,
+                tools,
+                generationConfig: {
+                  temperature: 0.1,
+                  ...(isGemini25Model(model) ? {} : { responseMimeType: 'application/json' }),
+                  thinkingConfig: baseThinkingConfig,
+                },
+              },
             },
-          },
-          {
-            label: 'standard',
-            body: requestBodyBase,
-          },
-        ]
-      : [{ label: 'standard', body: requestBodyBase }]
+            {
+              label: 'standard',
+              body: {
+                ...requestBodyBase,
+                generationConfig: {
+                  temperature: 0.1,
+                  responseMimeType: 'application/json',
+                  thinkingConfig: baseThinkingConfig,
+                },
+              },
+            },
+          ]
+        : [
+            {
+              label: 'standard',
+              body: {
+                ...requestBodyBase,
+                generationConfig: {
+                  temperature: 0.1,
+                  responseMimeType: 'application/json',
+                  thinkingConfig: baseThinkingConfig,
+                },
+              },
+            },
+          ]
 
-    for (const requestVariant of requestVariants) {
-      const model = GEMINI_MODEL
-      if (IS_DEV) {
-        logger.info('Gemini objection outbound request', {
-          model,
-          variant: requestVariant.label,
-          requestBody: requestVariant.body,
-        })
-      } else {
-        logger.info('Gemini objection request', {
-          model,
-          variant: requestVariant.label,
-          gameId: body.guess.gameId,
-          rowCategory: body.rowCategory.name,
-          colCategory: body.colCategory.name,
-          familyCount: dataset.familyNames.length,
-          familyNamesPreview,
-          familyNamesRemainder,
-          promptBytes: datasetForPrompt.length,
-          thinkingConfig: generationConfig.thinkingConfig,
-        })
-      }
-      const requestUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`
-      if (IS_DEV) {
-        logger.info('Gemini objection HTTP request', {
-          url: requestUrl.replace(/key=[^&]+/, 'key=REDACTED'),
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: requestVariant.body,
-        })
-      }
+      for (const requestVariant of requestVariants) {
+        if (IS_DEV) {
+          logger.info('Gemini objection outbound request', {
+            model,
+            variant: requestVariant.label,
+            requestBody: requestVariant.body,
+          })
+        } else {
+          logger.info('Gemini objection request', {
+            model,
+            variant: requestVariant.label,
+            gameId: body.guess.gameId,
+            rowCategory: body.rowCategory.name,
+            colCategory: body.colCategory.name,
+            familyCount: dataset.familyNames.length,
+            familyNamesPreview,
+            familyNamesRemainder,
+            promptBytes: datasetForPrompt.length,
+            thinkingConfig: baseThinkingConfig,
+          })
+        }
+        const requestUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`
+        if (IS_DEV) {
+          logger.info('Gemini objection HTTP request', {
+            url: requestUrl.replace(/key=[^&]+/, 'key=REDACTED'),
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: requestVariant.body,
+          })
+        }
 
-      let response: Response | null = null
-      const maxAttempts = requestVariant.label === 'grounded' ? GROUNDED_MAX_ATTEMPTS : 1
-      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-        response = await fetch(requestUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestVariant.body),
-        })
+        let response: Response | null = null
+        const maxAttempts = requestVariant.label === 'grounded' ? GROUNDED_MAX_ATTEMPTS : 1
+        for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS)
+          try {
+            response = await fetch(requestUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(requestVariant.body),
+              signal: controller.signal,
+            })
+          } catch (error) {
+            lastErrorText = ''
+            lastErrorMessage = error instanceof Error ? error.message : String(error)
+            logger.warn('Gemini objection request failed', {
+              model,
+              variant: requestVariant.label,
+              status: null,
+              message: lastErrorMessage,
+            })
+            response = null
+            clearTimeout(timeoutId)
+            break
+          }
+          clearTimeout(timeoutId)
 
-        if (response.status !== 429 || attempt === maxAttempts) {
+          if (response.status !== 429 || attempt === maxAttempts) {
+            break
+          }
+
+          const retryAfterHeader = response.headers.get('retry-after')
+          const retryAfterSeconds = retryAfterHeader ? Number.parseFloat(retryAfterHeader) : NaN
+          const retryDelayMs =
+            Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+              ? Math.ceil(retryAfterSeconds * 1000)
+              : 500
+
+          logger.warn('Gemini grounded request rate-limited; retrying request', {
+            model,
+            variant: requestVariant.label,
+            attempt,
+            maxAttempts,
+            retryAfterHeader: retryAfterHeader ?? null,
+            retryDelayMs,
+          })
+          await sleep(retryDelayMs)
+        }
+
+        if (!response) {
+          continue
+        }
+
+        if (response.ok) {
+          const payload = (await response.json()) as unknown
+          const extractedText = extractGeminiText(payload)
+          const parsedJudgment = extractedText ? normalizeObjectionResponse(extractedText) : null
+          if (
+            !parsedJudgment?.verdict ||
+            !parsedJudgment.confidence ||
+            !parsedJudgment.explanation
+          ) {
+            lastErrorText = extractedText ?? ''
+            lastErrorMessage = 'Gemini objection response was not parseable'
+            logger.warn('Gemini objection response was not parseable', {
+              model,
+              variant: requestVariant.label,
+              extractedTextPreview: extractedText ? extractedText.slice(0, 500) : null,
+              ...(IS_DEV ? { payload } : {}),
+            })
+            response = null
+            continue
+          }
+          if (IS_DEV) {
+            logger.info('Gemini objection raw response', {
+              model,
+              variant: requestVariant.label,
+              payload: JSON.stringify(payload, null, 2),
+              extractedText,
+              parsedJudgment,
+            })
+            logger.info('Gemini objection verdict', {
+              model,
+              variant: requestVariant.label,
+              verdict: parsedJudgment?.verdict ?? null,
+              confidence: parsedJudgment?.confidence ?? null,
+              explanation: parsedJudgment?.explanation ?? null,
+              suspectedMissingMetadata: parsedJudgment?.suspectedMissingMetadata ?? null,
+            })
+          } else {
+            logger.info('Gemini objection verdict', {
+              model,
+              variant: requestVariant.label,
+              verdict: parsedJudgment?.verdict ?? null,
+              confidence: parsedJudgment?.confidence ?? null,
+              explanation: parsedJudgment?.explanation ?? null,
+              suspectedMissingMetadata: parsedJudgment?.suspectedMissingMetadata ?? null,
+            })
+          }
+          geminiResponse = new Response(JSON.stringify(payload), {
+            status: response.status,
+            headers: { 'Content-Type': 'application/json' },
+          })
+          modelProducedValidJudgment = true
           break
         }
 
-        const retryAfterHeader = response.headers.get('retry-after')
-        const retryAfterSeconds = retryAfterHeader ? Number.parseFloat(retryAfterHeader) : NaN
-        const retryDelayMs =
-          Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
-            ? Math.ceil(retryAfterSeconds * 1000)
-            : 500
-
-        logger.warn('Gemini grounded request rate-limited; retrying request', {
+        lastErrorText = await response.text()
+        let parsedMessage: string | null = null
+        if (lastErrorText) {
+          try {
+            const parsed = JSON.parse(lastErrorText) as {
+              error?: { message?: string }
+              message?: string
+            }
+            parsedMessage = parsed.error?.message ?? parsed.message ?? null
+          } catch {
+            parsedMessage = null
+          }
+        }
+        lastErrorMessage = parsedMessage ?? ''
+        logger.warn('Gemini objection request failed', {
           model,
           variant: requestVariant.label,
-          attempt,
-          maxAttempts,
-          retryAfterHeader: retryAfterHeader ?? null,
-          retryDelayMs,
-        })
-        await sleep(retryDelayMs)
-      }
-
-      if (!response) {
-        continue
-      }
-
-      if (response.ok) {
-        const payload = (await response.json()) as unknown
-        const extractedText = extractGeminiText(payload)
-        const parsedJudgment = extractedText ? normalizeObjectionResponse(extractedText) : null
-        if (IS_DEV) {
-          logger.info('Gemini objection raw response', {
-            model,
-            variant: requestVariant.label,
-            payload: JSON.stringify(payload, null, 2),
-            extractedText,
-            parsedJudgment,
-          })
-          logger.info('Gemini objection verdict', {
-            model,
-            variant: requestVariant.label,
-            verdict: parsedJudgment?.verdict ?? null,
-            confidence: parsedJudgment?.confidence ?? null,
-            explanation: parsedJudgment?.explanation ?? null,
-            suspectedMissingMetadata: parsedJudgment?.suspectedMissingMetadata ?? null,
-          })
-        } else {
-          logger.info('Gemini objection verdict', {
-            model,
-            variant: requestVariant.label,
-            verdict: parsedJudgment?.verdict ?? null,
-            confidence: parsedJudgment?.confidence ?? null,
-            explanation: parsedJudgment?.explanation ?? null,
-            suspectedMissingMetadata: parsedJudgment?.suspectedMissingMetadata ?? null,
-          })
-        }
-        geminiResponse = new Response(JSON.stringify(payload), {
           status: response.status,
-          headers: { 'Content-Type': 'application/json' },
+          message: parsedMessage ?? null,
+          body: IS_DEV ? lastErrorText : undefined,
         })
+
+        geminiResponse = response
         break
       }
 
-      lastErrorText = await response.text()
-      logger.warn('Gemini objection request failed', {
-        model,
-        variant: requestVariant.label,
-        status: response.status,
-        body: IS_DEV ? lastErrorText : undefined,
-      })
-
-      geminiResponse = response
-      break
+      if (modelProducedValidJudgment && geminiResponse?.ok) {
+        break
+      }
     }
 
     if (!geminiResponse?.ok) {
       return NextResponse.json(
         {
-          error: lastErrorText.includes('NOT_FOUND')
-            ? 'No supported Gemini judgment model is configured.'
-            : 'Judgment service is unavailable.',
+          error:
+            lastErrorText.includes('NOT_FOUND') || lastErrorMessage.includes('NOT_FOUND')
+              ? 'No supported Gemini judgment model is configured.'
+              : 'Judgment service is unavailable.',
         },
         { status: 502 }
       )
@@ -353,7 +430,7 @@ export async function POST(request: NextRequest) {
 
     if (!judgment?.verdict || !judgment.confidence || !judgment.explanation) {
       logger.warn('Gemini objection response was not parseable', {
-        model: GEMINI_MODEL,
+        model: lastModelUsed,
         ...(IS_DEV ? { payload } : {}),
       })
       return NextResponse.json(
