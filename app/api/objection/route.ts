@@ -182,20 +182,7 @@ export async function POST(request: NextRequest) {
     let lastErrorText = ''
     let lastErrorMessage = ''
     for (const model of GEMINI_MODELS) {
-      const generationConfig: {
-        temperature: number
-        responseMimeType: string
-        thinkingConfig?: {
-          thinkingLevel?: string
-          thinkingBudget?: number
-        }
-      } = {
-        temperature: 0.1,
-        responseMimeType: 'application/json',
-      }
-
-      generationConfig.thinkingConfig = getGeminiThinkingConfig(model, THINKING_LEVEL)
-
+      const baseThinkingConfig = getGeminiThinkingConfig(model, THINKING_LEVEL)
       const requestBodyBase = {
         systemInstruction: {
           parts: [{ text: OBJECTION_SYSTEM_PROMPT }],
@@ -206,7 +193,6 @@ export async function POST(request: NextRequest) {
             parts: [{ text: datasetForPrompt }],
           },
         ],
-        generationConfig,
       }
       const tools = [{ googleSearch: {} }]
       const requestVariants: Array<{
@@ -219,14 +205,38 @@ export async function POST(request: NextRequest) {
               body: {
                 ...requestBodyBase,
                 tools,
+                generationConfig: {
+                  temperature: 0.1,
+                  ...(isGemini25Model(model) ? {} : { responseMimeType: 'application/json' }),
+                  thinkingConfig: baseThinkingConfig,
+                },
               },
             },
             {
               label: 'standard',
-              body: requestBodyBase,
+              body: {
+                ...requestBodyBase,
+                generationConfig: {
+                  temperature: 0.1,
+                  responseMimeType: 'application/json',
+                  thinkingConfig: baseThinkingConfig,
+                },
+              },
             },
           ]
-        : [{ label: 'standard', body: requestBodyBase }]
+        : [
+            {
+              label: 'standard',
+              body: {
+                ...requestBodyBase,
+                generationConfig: {
+                  temperature: 0.1,
+                  responseMimeType: 'application/json',
+                  thinkingConfig: baseThinkingConfig,
+                },
+              },
+            },
+          ]
 
       for (const requestVariant of requestVariants) {
         if (IS_DEV) {
@@ -246,7 +256,7 @@ export async function POST(request: NextRequest) {
             familyNamesPreview,
             familyNamesRemainder,
             promptBytes: datasetForPrompt.length,
-            thinkingConfig: generationConfig.thinkingConfig,
+            thinkingConfig: baseThinkingConfig,
           })
         }
         const requestUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`
