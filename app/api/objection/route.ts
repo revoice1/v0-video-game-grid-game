@@ -181,7 +181,10 @@ export async function POST(request: NextRequest) {
     let geminiResponse: Response | null = null
     let lastErrorText = ''
     let lastErrorMessage = ''
+    let lastModelUsed = GEMINI_MODEL
     for (const model of GEMINI_MODELS) {
+      lastModelUsed = model
+      let modelProducedValidJudgment = false
       const baseThinkingConfig = getGeminiThinkingConfig(model, THINKING_LEVEL)
       const requestBodyBase = {
         systemInstruction: {
@@ -328,6 +331,22 @@ export async function POST(request: NextRequest) {
           const payload = (await response.json()) as unknown
           const extractedText = extractGeminiText(payload)
           const parsedJudgment = extractedText ? normalizeObjectionResponse(extractedText) : null
+          if (
+            !parsedJudgment?.verdict ||
+            !parsedJudgment.confidence ||
+            !parsedJudgment.explanation
+          ) {
+            lastErrorText = extractedText ?? ''
+            lastErrorMessage = 'Gemini objection response was not parseable'
+            logger.warn('Gemini objection response was not parseable', {
+              model,
+              variant: requestVariant.label,
+              extractedTextPreview: extractedText ? extractedText.slice(0, 500) : null,
+              ...(IS_DEV ? { payload } : {}),
+            })
+            response = null
+            continue
+          }
           if (IS_DEV) {
             logger.info('Gemini objection raw response', {
               model,
@@ -358,6 +377,7 @@ export async function POST(request: NextRequest) {
             status: response.status,
             headers: { 'Content-Type': 'application/json' },
           })
+          modelProducedValidJudgment = true
           break
         }
 
@@ -387,7 +407,7 @@ export async function POST(request: NextRequest) {
         break
       }
 
-      if (geminiResponse?.ok) {
+      if (modelProducedValidJudgment && geminiResponse?.ok) {
         break
       }
     }
@@ -410,7 +430,7 @@ export async function POST(request: NextRequest) {
 
     if (!judgment?.verdict || !judgment.confidence || !judgment.explanation) {
       logger.warn('Gemini objection response was not parseable', {
-        model: GEMINI_MODEL,
+        model: lastModelUsed,
         ...(IS_DEV ? { payload } : {}),
       })
       return NextResponse.json(

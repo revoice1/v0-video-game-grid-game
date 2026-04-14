@@ -205,10 +205,10 @@ function extractJsonBlock(text: string): string | null {
 }
 
 function parseKeyValueFallback(text: string): ObjectionJudgment | null {
-  const verdictMatch = text.match(/verdict\s*[:=]\s*(sustained|overruled)/i)
-  const confidenceMatch = text.match(/confidence\s*[:=]\s*(low|medium|high)/i)
-  const explanationMatch = text.match(/explanation\s*[:=]\s*([^\n]+)/i)
-  const missingMatch = text.match(/suspectedMissingMetadata\s*[:=]\s*([^\n]+)/i)
+  const verdictMatch = text.match(/verdict\s*[:=-]\s*(sustained|overruled)/i)
+  const confidenceMatch = text.match(/confidence\s*[:=-]\s*(low|medium|high)/i)
+  const explanationMatch = text.match(/explanation\s*[:=-]\s*([^\n]+)/i)
+  const missingMatch = text.match(/suspectedMissingMetadata\s*[:=-]\s*([^\n]+)/i)
 
   if (!verdictMatch || !confidenceMatch) {
     return null
