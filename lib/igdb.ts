@@ -1248,17 +1248,14 @@ export async function searchIGDBGames(query: string): Promise<Game[]> {
       ].join(' ')
     )
 
-    const alternativeNames =
-      searchTerm.trim().length >= 4
-        ? await queryIGDB<IGDBAlternativeName>(
-            'alternative_names',
-            [
-              'fields game,name,comment;',
-              `where ${buildAlternativeNameMatchWhereClause(searchTerm)};`,
-              `limit ${Math.min(limit, 10)};`,
-            ].join(' ')
-          )
-        : []
+    const alternativeNames = await queryIGDB<IGDBAlternativeName>(
+      'alternative_names',
+      [
+        'fields game,name,comment;',
+        `where ${buildAlternativeNameMatchWhereClause(searchTerm)};`,
+        `limit ${Math.min(limit, 10)};`,
+      ].join(' ')
+    )
 
     return { games, alternativeNames }
   }
@@ -1272,7 +1269,7 @@ export async function searchIGDBGames(query: string): Promise<Game[]> {
         .filter((gameId): gameId is number => Number.isFinite(gameId))
     )
 
-    if (primarySearch.games.length < 5 && altMatchedGameIds.size > 0) {
+    if (altMatchedGameIds.size > 0) {
       const altGames = await queryIGDBGamesByIds([...altMatchedGameIds])
       mergedResults = [...mergedResults, ...altGames]
     }
@@ -1282,13 +1279,14 @@ export async function searchIGDBGames(query: string): Promise<Game[]> {
       for (const fallbackTerm of fallbackTerms.slice(0, 2)) {
         const fallbackSearch = await runSearch(fallbackTerm, 40)
         mergedResults = [...mergedResults, ...fallbackSearch.games]
+
         for (const gameId of fallbackSearch.alternativeNames
           .map((entry) => entry.game)
           .filter((gameId): gameId is number => Number.isFinite(gameId))) {
           altMatchedGameIds.add(gameId)
         }
 
-        if (fallbackSearch.games.length < 5 && altMatchedGameIds.size > 0) {
+        if (altMatchedGameIds.size > 0) {
           const altGames = await queryIGDBGamesByIds([...altMatchedGameIds])
           mergedResults = [...mergedResults, ...altGames]
         }
