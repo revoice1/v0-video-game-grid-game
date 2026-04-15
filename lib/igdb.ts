@@ -110,6 +110,12 @@ interface ResolvedIGDBGameDetails {
   game: Game
 }
 
+interface IGDBAlternativeName {
+  game?: number | null
+  name: string
+  comment?: string | null
+}
+
 // These caches are intentionally in-memory, so they help on warm Node instances
 // but are not shared across serverless cold starts or between regions.
 let tokenCache: IGDBTokenCache | null = null
@@ -290,6 +296,10 @@ function getCellCacheKey(
 
 function escapeIGDBSearch(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+}
+
+export function buildAlternativeNameMatchWhereClause(query: string): string {
+  return `name ~ *"${escapeIGDBSearch(query.trim())}"* & game != null`
 }
 
 export function shouldHideSameNamePortResult(
@@ -968,7 +978,11 @@ function getFallbackSearchTerms(query: string): string[] {
   return Array.from(new Set(fallbackTerms.filter((term) => term && term !== normalizedQuery)))
 }
 
-function scoreSearchCandidate(candidate: IGDBGame, query: string): number {
+function scoreSearchCandidate(
+  candidate: IGDBGame,
+  query: string,
+  altMatchIds = new Set<number>()
+): number {
   const normalizedQuery = normalizeName(query)
   const normalizedName = normalizeName(candidate.name)
   const hasCompanies = hasOfficialCompanyData(candidate)
@@ -992,6 +1006,10 @@ function scoreSearchCandidate(candidate: IGDBGame, query: string): number {
 
   if (hasCompanies) {
     score += 20
+  }
+
+  if (altMatchIds.has(candidate.id)) {
+    score += 70
   }
 
   if (candidate.first_release_date) {
@@ -1220,25 +1238,61 @@ export async function searchIGDBGames(query: string): Promise<Game[]> {
   }
 
   const runSearch = async (searchTerm: string, limit = 30) => {
-    const searchQuery = [
-      IGDB_GAME_FIELDS,
-      `where ${buildSearchGameWhereClause()};`,
-      `search "${escapeIGDBSearch(searchTerm)}";`,
-      `limit ${limit};`,
-    ].join(' ')
+    const games = await queryIGDB<IGDBGame>(
+      'games',
+      [
+        IGDB_GAME_FIELDS,
+        `where ${buildSearchGameWhereClause()};`,
+        `search "${escapeIGDBSearch(searchTerm)}";`,
+        `limit ${limit};`,
+      ].join(' ')
+    )
 
-    return queryIGDB<IGDBGame>('games', searchQuery)
+    const alternativeNames =
+      searchTerm.trim().length >= 4
+        ? await queryIGDB<IGDBAlternativeName>(
+            'alternative_names',
+            [
+              'fields game,name,comment;',
+              `where ${buildAlternativeNameMatchWhereClause(searchTerm)};`,
+              `limit ${Math.min(limit, 10)};`,
+            ].join(' ')
+          )
+        : []
+
+    return { games, alternativeNames }
   }
 
   const gatherVisibleResults = async () => {
-    const primaryResults = await runSearch(query, 30)
-    let mergedResults = [...primaryResults]
+    const primarySearch = await runSearch(query, 30)
+    let mergedResults = [...primarySearch.games]
+    const altMatchedGameIds = new Set<number>(
+      primarySearch.alternativeNames
+        .map((entry) => entry.game)
+        .filter((gameId): gameId is number => Number.isFinite(gameId))
+    )
 
-    if (primaryResults.length < 5) {
+    if (primarySearch.games.length < 5 && altMatchedGameIds.size > 0) {
+      const altGames = await queryIGDBGamesByIds([...altMatchedGameIds])
+      mergedResults = [...mergedResults, ...altGames]
+    }
+
+    if (primarySearch.games.length < 5) {
       const fallbackTerms = getFallbackSearchTerms(query)
       for (const fallbackTerm of fallbackTerms.slice(0, 2)) {
-        const fallbackResults = await runSearch(fallbackTerm, 40)
-        mergedResults = [...mergedResults, ...fallbackResults]
+        const fallbackSearch = await runSearch(fallbackTerm, 40)
+        mergedResults = [...mergedResults, ...fallbackSearch.games]
+        for (const gameId of fallbackSearch.alternativeNames
+          .map((entry) => entry.game)
+          .filter((gameId): gameId is number => Number.isFinite(gameId))) {
+          altMatchedGameIds.add(gameId)
+        }
+
+        if (fallbackSearch.games.length < 5 && altMatchedGameIds.size > 0) {
+          const altGames = await queryIGDBGamesByIds([...altMatchedGameIds])
+          mergedResults = [...mergedResults, ...altGames]
+        }
+
         if (mergedResults.length >= 30) {
           break
         }
@@ -1249,12 +1303,17 @@ export async function searchIGDBGames(query: string): Promise<Game[]> {
       new Map(mergedResults.map((result) => [result.id, result])).values()
     ).filter(isOfficialCatalogGame)
 
-    return hideSameNamePortResults(filteredResults)
+    return {
+      results: await hideSameNamePortResults(filteredResults),
+      altMatchedGameIds,
+    }
   }
 
-  const visibleResults = await gatherVisibleResults()
+  const { results: visibleResults, altMatchedGameIds } = await gatherVisibleResults()
   const rankedResults = visibleResults.sort(
-    (left, right) => scoreSearchCandidate(right, query) - scoreSearchCandidate(left, query)
+    (left, right) =>
+      scoreSearchCandidate(right, query, altMatchedGameIds) -
+      scoreSearchCandidate(left, query, altMatchedGameIds)
   )
 
   return rankedResults.slice(0, 15).map(mapIGDBGameToGame)
