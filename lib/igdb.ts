@@ -116,6 +116,12 @@ interface IGDBAlternativeName {
   comment?: string | null
 }
 
+interface IGDBMultiQueryResult<T> {
+  name: string
+  result?: T[]
+  count?: number
+}
+
 // These caches are intentionally in-memory, so they help on warm Node instances
 // but are not shared across serverless cold starts or between regions.
 let tokenCache: IGDBTokenCache | null = null
@@ -302,6 +308,10 @@ export function buildAlternativeNameMatchWhereClause(query: string): string {
   return `name ~ *"${escapeIGDBSearch(query.trim())}"* & game != null`
 }
 
+function buildGameNameMatchWhereClause(query: string): string {
+  return `name ~ *"${escapeIGDBSearch(query.trim())}"* & ${buildSearchGameWhereClause()}`
+}
+
 export function shouldHideSameNamePortResult(
   portGame: IGDBGame,
   parentGame: IGDBGame | null
@@ -460,6 +470,63 @@ async function queryIGDB<T>(endpoint: string, body: string): Promise<T[]> {
   }
 
   return []
+}
+
+async function queryIGDBMulti(
+  queries: Array<{ endpoint: string; name: string; body: string }>
+): Promise<Map<string, unknown[]>> {
+  const accessToken = await getIGDBAccessToken()
+  if (!accessToken || !TWITCH_IGDB_CLIENT_ID || queries.length === 0) {
+    return new Map()
+  }
+
+  const multiBody = queries
+    .slice(0, 10)
+    .map(({ endpoint, name, body }) => `query ${endpoint} "${name}" {\n ${body}\n};`)
+    .join('\n\n')
+
+  for (let attempt = 1; attempt <= IGDB_MAX_RETRIES; attempt += 1) {
+    try {
+      await scheduleIGDBRequest()
+
+      const response = await fetch('https://api.igdb.com/v4/multiquery', {
+        method: 'POST',
+        headers: {
+          'Client-ID': TWITCH_IGDB_CLIENT_ID,
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+        },
+        body: multiBody,
+        next: { revalidate: 86400 },
+      })
+
+      if (response.ok) {
+        const payload = (await response.json()) as Array<IGDBMultiQueryResult<unknown>>
+        return new Map(payload.map((entry) => [entry.name, entry.result ?? []]))
+      }
+
+      if (response.status === 429 && attempt < IGDB_MAX_RETRIES) {
+        const retryDelayMs = 1000 * attempt
+        logWarn(`IGDB multiquery rate limited, retrying in ${retryDelayMs}ms`)
+        await sleep(retryDelayMs)
+        continue
+      }
+
+      logError(`IGDB multiquery failed: ${response.status}`)
+      return new Map()
+    } catch (error) {
+      if (attempt < IGDB_MAX_RETRIES) {
+        const retryDelayMs = 1000 * attempt
+        logWarn(`IGDB multiquery transport error, retrying in ${retryDelayMs}ms`)
+        await sleep(retryDelayMs)
+        continue
+      }
+
+      throw error
+    }
+  }
+
+  return new Map()
 }
 
 export async function getIGDBPlatformSummary(platformId: number): Promise<string | null> {
@@ -1238,26 +1305,32 @@ export async function searchIGDBGames(query: string): Promise<Game[]> {
   }
 
   const runSearch = async (searchTerm: string, limit = 30) => {
-    const games = await queryIGDB<IGDBGame>(
-      'games',
-      [
-        IGDB_GAME_FIELDS,
-        `where ${buildSearchGameWhereClause()};`,
-        `search "${escapeIGDBSearch(searchTerm)}";`,
-        `limit ${limit};`,
-      ].join(' ')
-    )
+    const queryResults = await queryIGDBMulti([
+      {
+        endpoint: 'games',
+        name: 'games',
+        body: [
+          IGDB_GAME_FIELDS,
+          `where ${buildGameNameMatchWhereClause(searchTerm)};`,
+          `limit ${limit};`,
+        ].join(' '),
+      },
+      {
+        endpoint: 'alternative_names',
+        name: 'alternative_names',
+        body: [
+          'fields game,name,comment;',
+          `where ${buildAlternativeNameMatchWhereClause(searchTerm)};`,
+          `limit ${Math.min(limit, 10)};`,
+        ].join(' '),
+      },
+    ])
 
-    const alternativeNames = await queryIGDB<IGDBAlternativeName>(
-      'alternative_names',
-      [
-        'fields game,name,comment;',
-        `where ${buildAlternativeNameMatchWhereClause(searchTerm)};`,
-        `limit ${Math.min(limit, 10)};`,
-      ].join(' ')
-    )
-
-    return { games, alternativeNames }
+    return {
+      games: (queryResults.get('games') as IGDBGame[] | undefined) ?? [],
+      alternativeNames:
+        (queryResults.get('alternative_names') as IGDBAlternativeName[] | undefined) ?? [],
+    }
   }
 
   const gatherVisibleResults = async () => {
