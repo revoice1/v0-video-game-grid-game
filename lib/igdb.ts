@@ -129,6 +129,7 @@ const DEFAULT_CELL_VALIDATION_CACHE_TTL_MS = 1000 * 60 * 60 * 6
 const DEFAULT_PLATFORM_SUMMARY_CACHE_TTL_MS = 1000 * 60 * 60 * 12
 const DEFAULT_IGDB_MIN_REQUEST_INTERVAL_MS = 350
 const DEFAULT_IGDB_MAX_RETRIES = 3
+const DEFAULT_IGDB_ALT_NAME_SEARCH_LIMIT = 40
 const ALLOWED_GAME_TYPES = [0, 4, 8, 9, 10, 11] as const
 const ALLOWED_GAME_TYPE_SET = new Set<number>(ALLOWED_GAME_TYPES)
 const REJECTED_GAME_TYPE_SET = new Set<number>([1, 2, 3, 5, 6, 7, 12, 13, 14])
@@ -225,6 +226,9 @@ const IGDB_MIN_REQUEST_INTERVAL_MS = Number(
   process.env.IGDB_MIN_REQUEST_INTERVAL_MS ?? DEFAULT_IGDB_MIN_REQUEST_INTERVAL_MS
 )
 const IGDB_MAX_RETRIES = Number(process.env.IGDB_MAX_RETRIES ?? DEFAULT_IGDB_MAX_RETRIES)
+const IGDB_ALT_NAME_SEARCH_LIMIT = Number(
+  process.env.IGDB_ALT_NAME_SEARCH_LIMIT ?? DEFAULT_IGDB_ALT_NAME_SEARCH_LIMIT
+)
 const PLATFORM_SUMMARY_CACHE_TTL_MS = Number(
   process.env.IGDB_PLATFORM_SUMMARY_CACHE_TTL_MS ?? DEFAULT_PLATFORM_SUMMARY_CACHE_TTL_MS
 )
@@ -1088,6 +1092,42 @@ function scoreSearchCandidate(
   return score
 }
 
+function scoreAlternativeNameMatch(query: string, alternativeName: string): number {
+  const normalizedQuery = normalizeName(query)
+  const normalizedAlternativeName = normalizeName(alternativeName)
+  const tokenCoverage = getQueryTokenCoverageScore(query, alternativeName)
+
+  let score = 0
+
+  if (normalizedAlternativeName === normalizedQuery) {
+    score += 120
+  } else if (normalizedAlternativeName.startsWith(normalizedQuery)) {
+    score += 80
+  } else if (normalizedAlternativeName.includes(normalizedQuery)) {
+    score += 40
+  }
+
+  score += Math.round(tokenCoverage * 80)
+
+  return score
+}
+
+export function pickBetterAlternativeNameMatch(
+  query: string,
+  currentAlternativeName: string | null | undefined,
+  nextAlternativeName: string | null | undefined
+): string | null {
+  const currentName = currentAlternativeName?.trim() ?? ''
+  const nextName = nextAlternativeName?.trim() ?? ''
+
+  if (!nextName) return currentName || null
+  if (!currentName) return nextName
+
+  return scoreAlternativeNameMatch(query, nextName) > scoreAlternativeNameMatch(query, currentName)
+    ? nextName
+    : currentName
+}
+
 async function queryIGDBGamesByIds(gameIds: number[]): Promise<IGDBGame[]> {
   const uniqueIds = Array.from(new Set(gameIds.filter((id) => Number.isFinite(id))))
   if (uniqueIds.length === 0) {
@@ -1318,7 +1358,7 @@ export async function searchIGDBGames(query: string): Promise<Game[]> {
         body: [
           'fields game,name,comment;',
           `where ${buildAlternativeNameMatchWhereClause(searchTerm)};`,
-          `limit ${Math.min(limit, 10)};`,
+          `limit ${Math.max(limit, IGDB_ALT_NAME_SEARCH_LIMIT)};`,
         ].join(' '),
       },
     ])
@@ -1336,7 +1376,15 @@ export async function searchIGDBGames(query: string): Promise<Game[]> {
     const altMatchedNames = new Map<number, string>()
     for (const entry of primarySearch.alternativeNames) {
       if (Number.isFinite(entry.game) && typeof entry.name === 'string' && entry.name.trim()) {
-        altMatchedNames.set(entry.game as number, entry.name.trim())
+        const gameId = entry.game as number
+        const betterName = pickBetterAlternativeNameMatch(
+          query,
+          altMatchedNames.get(gameId),
+          entry.name
+        )
+        if (betterName) {
+          altMatchedNames.set(gameId, betterName)
+        }
       }
     }
     const altMatchedGameIds = new Set<number>(
@@ -1357,7 +1405,15 @@ export async function searchIGDBGames(query: string): Promise<Game[]> {
         mergedResults = [...mergedResults, ...fallbackSearch.games]
         for (const entry of fallbackSearch.alternativeNames) {
           if (Number.isFinite(entry.game) && typeof entry.name === 'string' && entry.name.trim()) {
-            altMatchedNames.set(entry.game as number, entry.name.trim())
+            const gameId = entry.game as number
+            const betterName = pickBetterAlternativeNameMatch(
+              query,
+              altMatchedNames.get(gameId),
+              entry.name
+            )
+            if (betterName) {
+              altMatchedNames.set(gameId, betterName)
+            }
           }
         }
 

@@ -10,6 +10,7 @@ import {
 import {
   buildAlternativeNameMatchWhereClause,
   buildSearchGameWhereClause,
+  pickBetterAlternativeNameMatch,
   resolveGenerationCategoryFamilies,
   mergePortFamilyGameDetails,
   shouldHideSameNamePortResult,
@@ -358,6 +359,18 @@ describe('buildAlternativeNameMatchWhereClause', () => {
     expect(buildAlternativeNameMatchWhereClause('MGS "Ground Zeroes"')).toBe(
       'name ~ *"MGS \\"Ground Zeroes\\""* & game != null'
     )
+  })
+})
+
+describe('pickBetterAlternativeNameMatch', () => {
+  it('keeps the alias that best matches the original query', () => {
+    expect(
+      pickBetterAlternativeNameMatch('final fantasy vi', 'Final Fantasy VI', 'FINAL FANTASY III')
+    ).toBe('Final Fantasy VI')
+  })
+
+  it('accepts a stronger later alias when it matches better', () => {
+    expect(pickBetterAlternativeNameMatch('ffiii', 'Final Fantasy III', 'FFIII')).toBe('FFIII')
   })
 })
 
