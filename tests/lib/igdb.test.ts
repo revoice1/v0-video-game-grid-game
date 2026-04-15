@@ -8,6 +8,7 @@ import {
   igdbGameMatchesCategory,
 } from '@/lib/igdb-validation'
 import {
+  buildAlternativeNameMatchWhereClause,
   buildSearchGameWhereClause,
   resolveGenerationCategoryFamilies,
   mergePortFamilyGameDetails,
@@ -348,6 +349,15 @@ describe('buildSearchGameWhereClause', () => {
   it('requires recognized ratings by default', () => {
     expect(buildSearchGameWhereClause()).toContain('total_rating != null')
     expect(buildSearchGameWhereClause()).toContain('involved_companies != null')
+    expect(buildSearchGameWhereClause()).toContain('game_type = (0,4,8,9,10,11)')
+  })
+})
+
+describe('buildAlternativeNameMatchWhereClause', () => {
+  it('builds wildcard match clause for alternative names', () => {
+    expect(buildAlternativeNameMatchWhereClause('MGS "Ground Zeroes"')).toBe(
+      'name ~ *"MGS \\"Ground Zeroes\\""* & game != null'
+    )
   })
 })
 
