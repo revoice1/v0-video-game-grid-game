@@ -259,6 +259,42 @@ describe('GameSearch', () => {
     expect(screen.getByText('Turn: 0:09')).toBeInTheDocument()
   })
 
+  it('shows a matched alternate title hint when search matched an alias', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        json: async () => ({
+          results: [
+            {
+              ...fakeGame,
+              id: 13,
+              name: 'The King of Fighters 2006',
+              slug: 'the-king-of-fighters-2006',
+              matchedAltName: 'KOF Maximum Impact 2',
+            },
+          ],
+        }),
+      })
+    )
+
+    const user = userEvent.setup()
+
+    render(
+      <GameSearch
+        isOpen
+        rowCategory={rowCategory}
+        colCategory={colCategory}
+        onSelect={() => {}}
+        onClose={() => {}}
+      />
+    )
+
+    await user.type(screen.getByPlaceholderText('Search for a video game...'), 'ko')
+
+    await screen.findByText('The King of Fighters 2006')
+    await screen.findByText('Matched alt title: KOF Maximum Impact 2')
+  })
+
   it('restores the initial query when reopened', async () => {
     const { rerender } = render(
       <GameSearch
@@ -355,12 +391,12 @@ describe('GameSearch', () => {
 
       fireEvent.change(input, { target: { value: 'wo' } })
       await act(async () => {
-        vi.advanceTimersByTime(300)
+        vi.advanceTimersByTime(450)
       })
 
       fireEvent.change(input, { target: { value: 'wor' } })
       await act(async () => {
-        vi.advanceTimersByTime(300)
+        vi.advanceTimersByTime(450)
       })
 
       expect(secondResolve).toBeDefined()

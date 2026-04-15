@@ -19,6 +19,7 @@ import Image from 'next/image'
 type SearchResultGame = Game & {
   disambiguationPlatform?: string | null
   disambiguationYear?: string | null
+  matchedAltName?: string | null
 }
 
 const PLATFORM_PREFERENCE = [
@@ -290,7 +291,7 @@ export function GameSearch({
     if (debounceRef.current) {
       clearTimeout(debounceRef.current)
     }
-    debounceRef.current = setTimeout(() => search(query), 300)
+    debounceRef.current = setTimeout(() => search(query), 450)
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
@@ -554,6 +555,11 @@ export function GameSearch({
                         <p className="truncate font-medium text-foreground">
                           {getDuplicateDisplayTitle(game, isDuplicateTitle, duplicateSuffixCounts)}
                         </p>
+                        {game.matchedAltName ? (
+                          <p className="truncate text-[11px] text-muted-foreground">
+                            Matched alt title: {game.matchedAltName}
+                          </p>
+                        ) : null}
                         {metadata.length > 0 && (
                           <div className="relative mt-1">
                             {isPendingConfirmation && (

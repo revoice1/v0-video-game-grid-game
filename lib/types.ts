@@ -11,6 +11,7 @@ export interface Game {
   stealRating?: number | null
   stealRatingCount?: number | null
   gameTypeLabel?: string | null
+  matchedAltName?: string | null
   originalPlatformName?: string | null
   hasSameNamePortFamily?: boolean
   genres: { id: number; name: string; slug: string }[]

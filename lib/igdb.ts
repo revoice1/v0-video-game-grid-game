@@ -413,6 +413,23 @@ async function getIGDBAccessToken(): Promise<string | null> {
   return tokenCache.token
 }
 
+async function fetchIGDBWithToken(
+  accessToken: string,
+  endpoint: string,
+  body: string
+): Promise<Response> {
+  return fetch(`https://api.igdb.com/v4/${endpoint}`, {
+    method: 'POST',
+    headers: {
+      'Client-ID': TWITCH_IGDB_CLIENT_ID!,
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json',
+    },
+    body,
+    next: { revalidate: 86400 },
+  })
+}
+
 async function queryIGDB<T>(endpoint: string, body: string): Promise<T[]> {
   const accessToken = await getIGDBAccessToken()
   if (!accessToken || !TWITCH_IGDB_CLIENT_ID) {
@@ -423,16 +440,7 @@ async function queryIGDB<T>(endpoint: string, body: string): Promise<T[]> {
     try {
       await scheduleIGDBRequest()
 
-      const response = await fetch(`https://api.igdb.com/v4/${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Client-ID': TWITCH_IGDB_CLIENT_ID,
-          Authorization: `Bearer ${accessToken}`,
-          Accept: 'application/json',
-        },
-        body,
-        next: { revalidate: 86400 },
-      })
+      const response = await fetchIGDBWithToken(accessToken, endpoint, body)
 
       if (response.ok) {
         return (await response.json()) as T[]
@@ -460,6 +468,61 @@ async function queryIGDB<T>(endpoint: string, body: string): Promise<T[]> {
   }
 
   return []
+}
+
+async function queryIGDBConcurrent(
+  queries: Array<{ key: string; endpoint: string; body: string }>
+): Promise<Map<string, unknown[]>> {
+  const accessToken = await getIGDBAccessToken()
+  if (!accessToken || !TWITCH_IGDB_CLIENT_ID || queries.length === 0) {
+    return new Map()
+  }
+
+  for (let attempt = 1; attempt <= IGDB_MAX_RETRIES; attempt += 1) {
+    try {
+      await scheduleIGDBRequest()
+
+      const responses = await Promise.all(
+        queries.map(async (query) => ({
+          key: query.key,
+          endpoint: query.endpoint,
+          response: await fetchIGDBWithToken(accessToken, query.endpoint, query.body),
+        }))
+      )
+
+      const rateLimited = responses.some(({ response }) => response.status === 429)
+      if (rateLimited && attempt < IGDB_MAX_RETRIES) {
+        const retryDelayMs = 1000 * attempt
+        logWarn(`IGDB concurrent query rate limited, retrying in ${retryDelayMs}ms`)
+        await sleep(retryDelayMs)
+        continue
+      }
+
+      const results = new Map<string, unknown[]>()
+      for (const { key, endpoint, response } of responses) {
+        if (response.ok) {
+          results.set(key, (await response.json()) as unknown[])
+          continue
+        }
+
+        logError(`IGDB query failed (${endpoint}): ${response.status}`)
+        results.set(key, [])
+      }
+
+      return results
+    } catch (error) {
+      if (attempt < IGDB_MAX_RETRIES) {
+        const retryDelayMs = 1000 * attempt
+        logWarn(`IGDB concurrent transport error, retrying in ${retryDelayMs}ms`)
+        await sleep(retryDelayMs)
+        continue
+      }
+
+      throw error
+    }
+  }
+
+  return new Map()
 }
 
 export async function getIGDBPlatformSummary(platformId: number): Promise<string | null> {
@@ -1238,25 +1301,31 @@ export async function searchIGDBGames(query: string): Promise<Game[]> {
   }
 
   const runSearch = async (searchTerm: string, limit = 30) => {
-    const [games, alternativeNames] = await Promise.all([
-      queryIGDB<IGDBGame>(
-        'games',
-        [
+    const queryResults = await queryIGDBConcurrent([
+      {
+        key: 'games',
+        endpoint: 'games',
+        body: [
           IGDB_GAME_FIELDS,
           `where ${buildSearchGameWhereClause()};`,
           `search "${escapeIGDBSearch(searchTerm)}";`,
           `limit ${limit};`,
-        ].join(' ')
-      ),
-      queryIGDB<IGDBAlternativeName>(
-        'alternative_names',
-        [
+        ].join(' '),
+      },
+      {
+        key: 'alternativeNames',
+        endpoint: 'alternative_names',
+        body: [
           'fields game,name,comment;',
           `where ${buildAlternativeNameMatchWhereClause(searchTerm)};`,
           `limit ${Math.min(limit, 10)};`,
-        ].join(' ')
-      ),
+        ].join(' '),
+      },
     ])
+
+    const games = (queryResults.get('games') as IGDBGame[] | undefined) ?? []
+    const alternativeNames =
+      (queryResults.get('alternativeNames') as IGDBAlternativeName[] | undefined) ?? []
 
     return { games, alternativeNames }
   }
@@ -1264,6 +1333,12 @@ export async function searchIGDBGames(query: string): Promise<Game[]> {
   const gatherVisibleResults = async () => {
     const primarySearch = await runSearch(query, 30)
     let mergedResults = [...primarySearch.games]
+    const altMatchedNames = new Map<number, string>()
+    for (const entry of primarySearch.alternativeNames) {
+      if (Number.isFinite(entry.game) && typeof entry.name === 'string' && entry.name.trim()) {
+        altMatchedNames.set(entry.game as number, entry.name.trim())
+      }
+    }
     const altMatchedGameIds = new Set<number>(
       primarySearch.alternativeNames
         .map((entry) => entry.game)
@@ -1280,6 +1355,11 @@ export async function searchIGDBGames(query: string): Promise<Game[]> {
       for (const fallbackTerm of fallbackTerms.slice(0, 2)) {
         const fallbackSearch = await runSearch(fallbackTerm, 40)
         mergedResults = [...mergedResults, ...fallbackSearch.games]
+        for (const entry of fallbackSearch.alternativeNames) {
+          if (Number.isFinite(entry.game) && typeof entry.name === 'string' && entry.name.trim()) {
+            altMatchedNames.set(entry.game as number, entry.name.trim())
+          }
+        }
 
         const newAltIds: number[] = []
         for (const gameId of fallbackSearch.alternativeNames
@@ -1309,17 +1389,32 @@ export async function searchIGDBGames(query: string): Promise<Game[]> {
     return {
       results: await hideSameNamePortResults(filteredResults),
       altMatchedGameIds,
+      altMatchedNames,
     }
   }
 
-  const { results: visibleResults, altMatchedGameIds } = await gatherVisibleResults()
+  const {
+    results: visibleResults,
+    altMatchedGameIds,
+    altMatchedNames,
+  } = await gatherVisibleResults()
   const rankedResults = visibleResults.sort(
     (left, right) =>
       scoreSearchCandidate(right, query, altMatchedGameIds) -
       scoreSearchCandidate(left, query, altMatchedGameIds)
   )
 
-  return rankedResults.slice(0, 15).map(mapIGDBGameToGame)
+  return rankedResults.slice(0, 15).map((game) => {
+    const mapped = mapIGDBGameToGame(game)
+    const matchedAltName = altMatchedNames.get(game.id) ?? null
+    return {
+      ...mapped,
+      matchedAltName:
+        matchedAltName && normalizeName(matchedAltName) !== normalizeName(mapped.name)
+          ? matchedAltName
+          : null,
+    }
+  })
 }
 
 export async function getIGDBGameDetails(gameId: number): Promise<Game | null> {
