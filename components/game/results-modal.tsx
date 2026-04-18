@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import type { CellGuess, Category } from '@/lib/types'
@@ -158,7 +159,19 @@ export function ResultsModal({
     return total / 9
   }
 
+  const calculateAveragePlayerUniqueness = (): number | null => {
+    if (!stats || totalCompletions === 0) return null
+
+    const totalUniquenessPoints = Array.from({ length: 9 }, (_, cellIndex) => {
+      const distinctCorrectAnswers = stats[cellIndex]?.correct.length ?? 0
+      return distinctCorrectAnswers * 100
+    }).reduce((sum, points) => sum + points, 0)
+
+    return totalUniquenessPoints / (totalCompletions * 9)
+  }
+
   const overallUniqueness = calculateOverallUniqueness()
+  const averagePlayerUniqueness = calculateAveragePlayerUniqueness()
   const getCellLabel = (cellIndex: number) => {
     const rowCategory = rowCategories[Math.floor(cellIndex / 3)]
     const colCategory = colCategories[cellIndex % 3]
@@ -250,15 +263,81 @@ export function ResultsModal({
               {isDaily && score > 0 && (
                 <div className="text-center p-4 rounded-lg bg-secondary/50 border border-border">
                   <p className="text-sm text-muted-foreground mb-1">Uniqueness Score</p>
-                  <div className={cn('text-3xl font-bold', getUniquenessClass(overallUniqueness))}>
-                    {overallUniqueness.toFixed(1)}
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-center">
+                    <div className="rounded-lg border border-border/70 bg-background/30 px-3 py-3">
+                      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                        You
+                      </p>
+                      {isLoading || !stats ? (
+                        <p className="mt-1 text-sm font-medium text-muted-foreground">
+                          Calculating...
+                        </p>
+                      ) : (
+                        <>
+                          <p
+                            className={cn(
+                              'mt-1 text-3xl font-bold',
+                              getUniquenessClass(overallUniqueness)
+                            )}
+                          >
+                            {overallUniqueness.toFixed(1)}
+                          </p>
+                          <p
+                            className={cn(
+                              'text-sm font-medium',
+                              getUniquenessClass(overallUniqueness)
+                            )}
+                          >
+                            {getUniquenessLabel(overallUniqueness)}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                    <div className="rounded-lg border border-border/70 bg-background/30 px-3 py-3">
+                      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                        Average Player
+                      </p>
+                      {isLoading || averagePlayerUniqueness === null ? (
+                        <p className="mt-1 text-sm font-medium text-muted-foreground">
+                          Calculating...
+                        </p>
+                      ) : (
+                        <>
+                          <p
+                            className={cn(
+                              'mt-1 text-3xl font-bold',
+                              getUniquenessClass(averagePlayerUniqueness)
+                            )}
+                          >
+                            {averagePlayerUniqueness.toFixed(1)}
+                          </p>
+                          <p
+                            className={cn(
+                              'text-sm font-medium',
+                              getUniquenessClass(averagePlayerUniqueness)
+                            )}
+                          >
+                            {getUniquenessLabel(averagePlayerUniqueness)}
+                          </p>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <p className={cn('text-sm font-medium', getUniquenessClass(overallUniqueness))}>
-                    {getUniquenessLabel(overallUniqueness)} Uniqueness
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Higher = more unique correct answers, with misses counting as zero
-                  </p>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="underline decoration-dotted underline-offset-2 hover:text-foreground focus:outline-none focus-visible:text-foreground"
+                        >
+                          How uniqueness works
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-64">
+                        Higher = more unique correct answers, with misses counting as zero.
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                 </div>
               )}
 

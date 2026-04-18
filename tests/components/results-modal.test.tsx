@@ -237,9 +237,41 @@ describe('ResultsModal', () => {
     )
 
     expect(await screen.findByText('Uniqueness Score')).toBeInTheDocument()
-    expect(screen.getByText('11.1')).toBeInTheDocument()
-    expect(
-      screen.getByText('Higher = more unique correct answers, with misses counting as zero')
-    ).toBeInTheDocument()
+    expect(screen.getByText('You')).toBeInTheDocument()
+    expect(screen.getByText('Average Player')).toBeInTheDocument()
+    expect(screen.getAllByText('11.1')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'How uniqueness works' })).toBeInTheDocument()
+  })
+
+  it('shows calculating instead of zero while uniqueness data is loading', () => {
+    fetchMock.mockImplementationOnce(() => new Promise(() => {}))
+
+    const guesses: (CellGuess | null)[] = [
+      {
+        gameId: 1,
+        gameName: 'Final Fantasy VII',
+        gameImage: null,
+        isCorrect: true,
+      },
+      ...Array(8).fill(null),
+    ]
+
+    render(
+      <ResultsModal
+        isOpen
+        onClose={() => {}}
+        guesses={guesses}
+        puzzleId="daily-2026-03-28"
+        puzzleDate="2026-03-28"
+        rowCategories={rowCategories}
+        colCategories={colCategories}
+        isDaily
+        onPlayAgain={() => {}}
+      />
+    )
+
+    expect(screen.getByText('Uniqueness Score')).toBeInTheDocument()
+    expect(screen.getAllByText('Calculating...')).toHaveLength(2)
+    expect(screen.queryByText('0.0')).not.toBeInTheDocument()
   })
 })
