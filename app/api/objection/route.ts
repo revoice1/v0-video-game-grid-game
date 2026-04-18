@@ -20,7 +20,7 @@ const GEMINI_FALLBACK_MODEL = (process.env.GEMINI_FALLBACK_MODEL ?? '')
 const GEMINI_MODELS = Array.from(
   new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL].filter((model) => model.length > 0))
 )
-const GEMINI_TIMEOUT_MS = 15_000
+const GEMINI_TIMEOUT_MS = 10_000
 const IS_DEV = process.env.NODE_ENV !== 'production'
 const GROUNDED_MAX_ATTEMPTS = 2
 const DEFAULT_THINKING_LEVEL = 'HIGH'
