@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import type { CellGuess, Category } from '@/lib/types'
@@ -51,19 +52,19 @@ interface ResultsModalProps {
   onPlayAgain: () => void
 }
 
-function getRarityClass(percentage: number): string {
-  if (percentage <= 1) return 'rarity-legendary'
-  if (percentage <= 5) return 'rarity-epic'
-  if (percentage <= 15) return 'rarity-rare'
-  if (percentage <= 30) return 'rarity-uncommon'
+function getUniquenessClass(score: number): string {
+  if (score >= 90) return 'rarity-legendary'
+  if (score >= 75) return 'rarity-epic'
+  if (score >= 60) return 'rarity-rare'
+  if (score >= 40) return 'rarity-uncommon'
   return 'rarity-common'
 }
 
-function getRarityLabel(percentage: number): string {
-  if (percentage <= 1) return 'Legendary'
-  if (percentage <= 5) return 'Epic'
-  if (percentage <= 15) return 'Rare'
-  if (percentage <= 30) return 'Uncommon'
+function getUniquenessLabel(score: number): string {
+  if (score >= 90) return 'Legendary'
+  if (score >= 75) return 'Epic'
+  if (score >= 60) return 'Rare'
+  if (score >= 40) return 'Uncommon'
   return 'Common'
 }
 
@@ -139,35 +140,46 @@ export function ResultsModal({
     }
   }, [isDaily, isOpen, puzzleId])
 
-  // Calculate rarity for each of user's guesses
-  const getCellRarity = (cellIndex: number): number | null => {
+  // Calculate uniqueness for each of the player's correct guesses.
+  const getCellUniqueness = (cellIndex: number): number | null => {
     const guess = guesses[cellIndex]
     if (!guess?.isCorrect || !stats) return null
 
     const cellStats = stats[cellIndex]?.correct || []
-    const totalForCell = cellStats.reduce((sum, s) => sum + s.count, 0)
-    if (totalForCell === 0) return null
-
     const userStat = cellStats.find((s) => s.game_id === guess.gameId)
-    if (!userStat) return 100 // First person to pick this!
+    if (!userStat) return 100
 
-    return (userStat.count / totalForCell) * 100
+    return 100 / userStat.count
   }
 
-  // Calculate overall rarity score (average of all correct guesses' rarity)
-  const calculateOverallRarity = (): number => {
-    const rarities = guesses.map((_, i) => getCellRarity(i)).filter((r): r is number => r !== null)
-
-    if (rarities.length === 0) return 0
-    return rarities.reduce((sum, r) => sum + (100 - r), 0) / rarities.length
+  // Calculate the overall uniqueness score across all 9 cells.
+  // Misses count as zero so the headline score rewards both accuracy and uniqueness.
+  const calculateOverallUniqueness = (): number => {
+    const total = guesses.reduce((sum, _guess, index) => sum + (getCellUniqueness(index) ?? 0), 0)
+    return total / 9
   }
 
-  const overallRarity = calculateOverallRarity()
+  const calculateAveragePlayerUniqueness = (): number | null => {
+    if (!stats || totalCompletions === 0) return null
+
+    const totalUniquenessPoints = Array.from({ length: 9 }, (_, cellIndex) => {
+      const distinctCorrectAnswers = stats[cellIndex]?.correct.length ?? 0
+      return distinctCorrectAnswers * 100
+    }).reduce((sum, points) => sum + points, 0)
+
+    return totalUniquenessPoints / (totalCompletions * 9)
+  }
+
+  const overallUniqueness = calculateOverallUniqueness()
+  const averagePlayerUniqueness = calculateAveragePlayerUniqueness()
   const getCellLabel = (cellIndex: number) => {
     const rowCategory = rowCategories[Math.floor(cellIndex / 3)]
     const colCategory = colCategories[cellIndex % 3]
     return `${rowCategory?.name ?? 'Row'} x ${colCategory?.name ?? 'Column'}`
   }
+
+  const isPlayersPickForCell = (cellIndex: number, gameId: number) =>
+    guesses[cellIndex]?.gameId === gameId
 
   const handleCopyResults = async () => {
     const shareText = buildShareText(guesses, isDaily, puzzleDate)
@@ -247,17 +259,85 @@ export function ResultsModal({
                 </p>
               </div>
 
-              {/* Rarity Score */}
+              {/* Uniqueness Score */}
               {isDaily && score > 0 && (
                 <div className="text-center p-4 rounded-lg bg-secondary/50 border border-border">
-                  <p className="text-sm text-muted-foreground mb-1">Rarity Score</p>
-                  <div className={cn('text-3xl font-bold', getRarityClass(100 - overallRarity))}>
-                    {overallRarity.toFixed(1)}
+                  <p className="text-sm text-muted-foreground mb-1">Uniqueness Score</p>
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-center">
+                    <div className="rounded-lg border border-border/70 bg-background/30 px-3 py-3">
+                      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                        You
+                      </p>
+                      {isLoading || !stats ? (
+                        <p className="mt-1 text-sm font-medium text-muted-foreground">
+                          Calculating...
+                        </p>
+                      ) : (
+                        <>
+                          <p
+                            className={cn(
+                              'mt-1 text-3xl font-bold',
+                              getUniquenessClass(overallUniqueness)
+                            )}
+                          >
+                            {overallUniqueness.toFixed(1)}
+                          </p>
+                          <p
+                            className={cn(
+                              'text-sm font-medium',
+                              getUniquenessClass(overallUniqueness)
+                            )}
+                          >
+                            {getUniquenessLabel(overallUniqueness)}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                    <div className="rounded-lg border border-border/70 bg-background/30 px-3 py-3">
+                      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                        Average Player
+                      </p>
+                      {isLoading || averagePlayerUniqueness === null ? (
+                        <p className="mt-1 text-sm font-medium text-muted-foreground">
+                          Calculating...
+                        </p>
+                      ) : (
+                        <>
+                          <p
+                            className={cn(
+                              'mt-1 text-3xl font-bold',
+                              getUniquenessClass(averagePlayerUniqueness)
+                            )}
+                          >
+                            {averagePlayerUniqueness.toFixed(1)}
+                          </p>
+                          <p
+                            className={cn(
+                              'text-sm font-medium',
+                              getUniquenessClass(averagePlayerUniqueness)
+                            )}
+                          >
+                            {getUniquenessLabel(averagePlayerUniqueness)}
+                          </p>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <p className={cn('text-sm font-medium', getRarityClass(100 - overallRarity))}>
-                    {getRarityLabel(100 - overallRarity)} Picks
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">Higher = more unique answers</p>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="underline decoration-dotted underline-offset-2 hover:text-foreground focus:outline-none focus-visible:text-foreground"
+                        >
+                          How uniqueness works
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-64">
+                        Higher = more unique correct answers, with misses counting as zero.
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                 </div>
               )}
 
@@ -301,8 +381,8 @@ export function ResultsModal({
               {/* Grid overview with rarity */}
               <div className="grid grid-cols-3 gap-2">
                 {guesses.map((guess, index) => {
-                  const rarity = getCellRarity(index)
-                  const percentage = rarity !== null ? rarity : null
+                  const uniqueness = getCellUniqueness(index)
+                  const percentage = uniqueness !== null ? uniqueness : null
 
                   return (
                     <div
@@ -336,7 +416,7 @@ export function ResultsModal({
                               <p
                                 className={cn(
                                   'text-[10px] font-medium text-center',
-                                  getRarityClass(percentage)
+                                  getUniquenessClass(percentage)
                                 )}
                               >
                                 {percentage < 1 ? '<1' : percentage.toFixed(0)}%
@@ -373,14 +453,6 @@ export function ResultsModal({
                   <div className="space-y-4">
                     {Array.from({ length: 9 }, (_, cellIndex) => {
                       const cellBucket = stats?.[cellIndex] ?? { correct: [], incorrect: [] }
-                      const totalCorrect = cellBucket.correct.reduce(
-                        (sum, stat) => sum + stat.count,
-                        0
-                      )
-                      const totalIncorrect = cellBucket.incorrect.reduce(
-                        (sum, stat) => sum + stat.count,
-                        0
-                      )
 
                       return (
                         <div
@@ -397,11 +469,22 @@ export function ResultsModal({
                                 {cellBucket.correct.length > 0 ? (
                                   cellBucket.correct.slice(0, 5).map((stat, index) => {
                                     const percentage =
-                                      totalCorrect > 0 ? (stat.count / totalCorrect) * 100 : 0
+                                      totalCompletions > 0
+                                        ? (stat.count / totalCompletions) * 100
+                                        : 0
+                                    const isPlayersPick = isPlayersPickForCell(
+                                      cellIndex,
+                                      stat.game_id
+                                    )
                                     return (
                                       <div
                                         key={`correct-${cellIndex}-${stat.game_id}`}
-                                        className="flex items-center gap-2 rounded-lg bg-background/60 p-2"
+                                        className={cn(
+                                          'flex items-center gap-2 rounded-lg bg-background/60 p-2',
+                                          isPlayersPick &&
+                                            'ring-2 ring-primary ring-offset-1 ring-offset-card'
+                                        )}
+                                        data-selected-by-player={isPlayersPick ? 'true' : 'false'}
                                       >
                                         <span className="w-5 text-xs text-muted-foreground">
                                           #{index + 1}
@@ -423,7 +506,7 @@ export function ResultsModal({
                                           <p className="truncate text-sm">{stat.game_name}</p>
                                           <p className="text-xs text-muted-foreground">
                                             {percentage < 1 ? '<1' : percentage.toFixed(0)}% of
-                                            correct picks
+                                            players
                                           </p>
                                         </div>
                                       </div>
@@ -445,11 +528,22 @@ export function ResultsModal({
                                 {cellBucket.incorrect.length > 0 ? (
                                   cellBucket.incorrect.slice(0, 5).map((stat, index) => {
                                     const percentage =
-                                      totalIncorrect > 0 ? (stat.count / totalIncorrect) * 100 : 0
+                                      totalCompletions > 0
+                                        ? (stat.count / totalCompletions) * 100
+                                        : 0
+                                    const isPlayersPick = isPlayersPickForCell(
+                                      cellIndex,
+                                      stat.game_id
+                                    )
                                     return (
                                       <div
                                         key={`incorrect-${cellIndex}-${stat.game_id}`}
-                                        className="flex items-center gap-2 rounded-lg bg-background/60 p-2"
+                                        className={cn(
+                                          'flex items-center gap-2 rounded-lg bg-background/60 p-2',
+                                          isPlayersPick &&
+                                            'ring-2 ring-destructive ring-offset-1 ring-offset-card'
+                                        )}
+                                        data-selected-by-player={isPlayersPick ? 'true' : 'false'}
                                       >
                                         <span className="w-5 text-xs text-muted-foreground">
                                           #{index + 1}
@@ -471,7 +565,7 @@ export function ResultsModal({
                                           <p className="truncate text-sm">{stat.game_name}</p>
                                           <p className="text-xs text-muted-foreground">
                                             {percentage < 1 ? '<1' : percentage.toFixed(0)}% of
-                                            misses
+                                            players
                                           </p>
                                         </div>
                                       </div>

@@ -74,7 +74,6 @@ function makeGetSupabase({
   puzzleError = null as unknown,
   completionRows = [{ session_id: 'sess-1' }] as { session_id: string }[],
   completionError = null as unknown,
-  answerRows = [] as GuessRow[],
   guessRows = [] as GuessRow[],
   guessError = null as unknown,
 } = {}) {
@@ -83,7 +82,6 @@ function makeGetSupabase({
       if (table === 'puzzles') return makeChain({ data: puzzle, error: puzzleError })
       if (table === 'puzzle_completions')
         return makeChain({ data: completionRows, error: completionError })
-      if (table === 'answer_stats') return makeChain({ data: answerRows, error: null })
       if (table === 'guesses') return makeChain({ data: guessRows, error: guessError })
       throw new Error(`Unexpected table: ${table}`)
     }),
@@ -116,7 +114,7 @@ describe('GET /api/stats', () => {
     createClientMock.mockResolvedValue(
       makeGetSupabase({
         completionRows: [{ session_id: 'sess-1' }, { session_id: 'sess-2' }],
-        answerRows: [
+        guessRows: [
           {
             puzzle_id: 'p1',
             cell_index: 0,
@@ -126,8 +124,6 @@ describe('GET /api/stats', () => {
             is_correct: true,
             session_id: 'sess-1',
           },
-        ],
-        guessRows: [
           {
             puzzle_id: 'p1',
             cell_index: 0,
@@ -146,6 +142,115 @@ describe('GET /api/stats', () => {
     expect(body.cellStats[0].correct).toHaveLength(1)
     expect(body.cellStats[0].incorrect).toHaveLength(1)
     expect(body.cellStats[0].correct[0].game_name).toBe('Portal')
+  })
+
+  it('counts incorrect answers by distinct completed players, not raw guess rows', async () => {
+    createClientMock.mockResolvedValue(
+      makeGetSupabase({
+        completionRows: [
+          { session_id: 'sess-1' },
+          { session_id: 'sess-2' },
+          { session_id: 'sess-3' },
+        ],
+        guessRows: [
+          {
+            puzzle_id: 'p1',
+            cell_index: 0,
+            game_id: 2,
+            game_name: 'HL2',
+            game_image: null,
+            is_correct: false,
+            session_id: 'sess-1',
+          },
+          {
+            puzzle_id: 'p1',
+            cell_index: 0,
+            game_id: 2,
+            game_name: 'HL2',
+            game_image: null,
+            is_correct: false,
+            session_id: 'sess-1',
+          },
+          {
+            puzzle_id: 'p1',
+            cell_index: 0,
+            game_id: 2,
+            game_name: 'HL2',
+            game_image: null,
+            is_correct: false,
+            session_id: 'sess-2',
+          },
+        ],
+      })
+    )
+
+    const res = await GET(makeGetRequest('p1'))
+    const body = await res.json()
+
+    expect(body.totalCompletions).toBe(3)
+    expect(body.cellStats[0].incorrect).toEqual([
+      expect.objectContaining({
+        game_name: 'HL2',
+        count: 2,
+      }),
+    ])
+  })
+
+  it('counts correct answers from completed guesses, including objection-corrected rows', async () => {
+    createClientMock.mockResolvedValue(
+      makeGetSupabase({
+        completionRows: [
+          { session_id: 'sess-1' },
+          { session_id: 'sess-2' },
+          { session_id: 'sess-3' },
+        ],
+        guessRows: [
+          {
+            puzzle_id: 'p1',
+            cell_index: 4,
+            game_id: 5422,
+            game_name: 'Radiant Silvergun',
+            game_image: null,
+            is_correct: true,
+            session_id: 'sess-1',
+          },
+          {
+            puzzle_id: 'p1',
+            cell_index: 4,
+            game_id: 5422,
+            game_name: 'Radiant Silvergun',
+            game_image: null,
+            is_correct: true,
+            session_id: 'sess-1',
+          },
+          {
+            puzzle_id: 'p1',
+            cell_index: 4,
+            game_id: 202966,
+            game_name: 'Sonic 3D Blast',
+            game_image: null,
+            is_correct: false,
+            session_id: 'sess-2',
+          },
+        ],
+      })
+    )
+
+    const res = await GET(makeGetRequest('p1'))
+    const body = await res.json()
+
+    expect(body.cellStats[4].correct).toEqual([
+      expect.objectContaining({
+        game_name: 'Radiant Silvergun',
+        count: 1,
+      }),
+    ])
+    expect(body.cellStats[4].incorrect).toEqual([
+      expect.objectContaining({
+        game_name: 'Sonic 3D Blast',
+        count: 1,
+      }),
+    ])
   })
 
   it('returns 500 on puzzle query error', async () => {
@@ -192,20 +297,8 @@ describe('POST /api/stats', () => {
         if (table === 'puzzle_completions' && callIdx === 2) {
           return { upsert: vi.fn().mockResolvedValue({ error: null }) }
         }
-        if (table === 'guesses') {
-          return {
-            select: vi.fn(() => ({
-              eq: vi.fn(() => ({
-                eq: vi.fn(() => ({
-                  eq: vi.fn().mockResolvedValue({ data: [], error: null }),
-                })),
-              })),
-            })),
-          }
-        }
         throw new Error(`Unexpected: ${table}`)
       }),
-      rpc: vi.fn().mockResolvedValue({ error: null }),
     }
     createClientMock.mockResolvedValue(supabaseFull)
 

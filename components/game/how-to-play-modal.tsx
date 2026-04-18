@@ -159,9 +159,10 @@ function StandardHowToPlay({
             <span className="font-bold text-primary">10</span>
           </div>
           <div>
-            <p className="font-medium">Rarity Score</p>
+            <p className="font-medium">Uniqueness Score</p>
             <p className="text-sm text-muted-foreground">
-              After completing, see how unique your answers were compared to other players!
+              After completing, see how unique your correct answers were compared to other
+              players&apos; correct picks, with misses counting as zero.
             </p>
           </div>
         </div>

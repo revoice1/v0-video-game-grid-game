@@ -160,7 +160,7 @@ test('how to play modal stays available for daily and versus modes', async ({ pa
   await expect(dailyHowToDialog.getByRole('heading', { name: 'How to Play' })).toBeVisible()
   await expect(page.getByText('Fill the Grid')).toBeVisible()
   await expect(page.getByText('Release Tags')).toBeVisible()
-  await expect(page.getByText('Rarity Score')).toBeVisible()
+  await expect(page.getByText('Uniqueness Score')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Changelog' })).toBeVisible()
   await safeClick(dailyHowToDialog.getByRole('button', { name: 'Got it!' }))
   await expect(dailyHowToDialog).not.toBeVisible()
