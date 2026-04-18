@@ -223,6 +223,11 @@ function VersusHowToPlay() {
               Steals compare each game's hidden rating. Depending on the custom rule, either the
               lower-rated or higher-rated game wins the square.
             </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              When steals are enabled, versus search favors games with rating or review data so
+              those tiebreaks stay meaningful. With steals off, obscure unrated titles can still
+              appear.
+            </p>
           </div>
         </div>
 

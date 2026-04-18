@@ -123,6 +123,8 @@ interface GameSearchProps {
   isOpen: boolean
   initialQuery?: string | null
   puzzleId?: string
+  searchMode?: 'daily' | 'practice' | 'versus'
+  versusStealsEnabled?: boolean
   hideScores?: boolean
   confirmBeforeSelect?: boolean
   lowEffects?: boolean
@@ -140,6 +142,8 @@ export function GameSearch({
   isOpen,
   initialQuery = '',
   puzzleId,
+  searchMode = 'versus',
+  versusStealsEnabled = true,
   hideScores = false,
   confirmBeforeSelect = false,
   lowEffects = false,
@@ -237,6 +241,10 @@ export function GameSearch({
       setIsLoading(true)
       try {
         const params = new URLSearchParams({ q: searchQuery })
+        params.set('mode', searchMode)
+        if (searchMode === 'versus') {
+          params.set('versusStealsEnabled', String(versusStealsEnabled))
+        }
         const categoryTypes =
           activeCategoryTypesKey.length > 0
             ? activeCategoryTypesKey
@@ -284,7 +292,14 @@ export function GameSearch({
         }
       }
     },
-    [activeCategoryTypesKey, colCategory?.type, puzzleId, rowCategory?.type]
+    [
+      activeCategoryTypesKey,
+      colCategory?.type,
+      puzzleId,
+      rowCategory?.type,
+      searchMode,
+      versusStealsEnabled,
+    ]
   )
 
   useEffect(() => {

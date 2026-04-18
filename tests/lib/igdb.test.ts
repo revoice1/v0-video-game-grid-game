@@ -352,6 +352,15 @@ describe('buildSearchGameWhereClause', () => {
     expect(buildSearchGameWhereClause()).toContain('involved_companies != null')
     expect(buildSearchGameWhereClause()).toContain('game_type = (0,4,8,9,10,11)')
   })
+
+  it('can omit the rating requirement for solo fallback search', () => {
+    expect(buildSearchGameWhereClause({ requireRating: false })).not.toContain(
+      'total_rating != null'
+    )
+    expect(buildSearchGameWhereClause({ requireRating: false })).toContain(
+      'involved_companies != null'
+    )
+  })
 })
 
 describe('buildAlternativeNameMatchWhereClause', () => {

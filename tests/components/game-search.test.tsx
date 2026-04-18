@@ -346,6 +346,60 @@ describe('GameSearch', () => {
     expect(onQueryChange).toHaveBeenNthCalledWith(2, 'mass')
   })
 
+  it('includes search mode in the API request', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      json: async () => ({ results: [fakeGame] }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const user = userEvent.setup()
+
+    render(
+      <GameSearch
+        isOpen
+        searchMode="daily"
+        rowCategory={rowCategory}
+        colCategory={colCategory}
+        onSelect={() => {}}
+        onClose={() => {}}
+      />
+    )
+
+    await user.type(screen.getByPlaceholderText('Search for a video game...'), 'wo')
+    await screen.findByText('World of Warcraft')
+
+    const requestUrl = String(fetchMock.mock.calls.at(-1)?.[0] ?? '')
+    expect(requestUrl).toContain('mode=daily')
+  })
+
+  it('includes versus steal state in the API request', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      json: async () => ({ results: [fakeGame] }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const user = userEvent.setup()
+
+    render(
+      <GameSearch
+        isOpen
+        searchMode="versus"
+        versusStealsEnabled={false}
+        rowCategory={rowCategory}
+        colCategory={colCategory}
+        onSelect={() => {}}
+        onClose={() => {}}
+      />
+    )
+
+    await user.type(screen.getByPlaceholderText('Search for a video game...'), 'wo')
+    await screen.findByText('World of Warcraft')
+
+    const requestUrl = String(fetchMock.mock.calls.at(-1)?.[0] ?? '')
+    expect(requestUrl).toContain('mode=versus')
+    expect(requestUrl).toContain('versusStealsEnabled=false')
+  })
+
   it('ignores stale search responses when a newer query finishes later', async () => {
     vi.useFakeTimers()
     try {
