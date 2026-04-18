@@ -86,12 +86,21 @@ export async function GET(request: NextRequest) {
       incorrectGuessRows = incorrectGuessResponse.data
     }
 
-    const completedIncorrectGuessRows = (incorrectGuessRows ?? []).filter((guess) =>
-      guess.session_id ? completedSessionIds.has(guess.session_id) : false
+    const completedIncorrectGuessRows = (incorrectGuessRows ?? []).filter(
+      (
+        guess
+      ): guess is {
+        cell_index: number
+        game_id: number
+        game_name: string
+        game_image: string | null
+        is_correct: boolean
+        session_id: string
+      } => (guess.session_id ? completedSessionIds.has(guess.session_id) : false)
     )
 
     const correctStatsMap = new Map<number, GuessStatRow[]>()
-    const incorrectStatsMap = new Map<string, GuessStatRow>()
+    const incorrectStatsMap = new Map<string, GuessStatRow & { sessionIds: Set<string> }>()
     for (const stat of correctAnswerRows ?? []) {
       const current = correctStatsMap.get(stat.cell_index) ?? []
       current.push(stat)
@@ -103,7 +112,8 @@ export async function GET(request: NextRequest) {
       const existing = incorrectStatsMap.get(key)
 
       if (existing) {
-        existing.count += 1
+        existing.sessionIds.add(guess.session_id)
+        existing.count = existing.sessionIds.size
       } else {
         incorrectStatsMap.set(key, {
           puzzle_id: puzzleId,
@@ -112,6 +122,7 @@ export async function GET(request: NextRequest) {
           game_name: guess.game_name,
           game_image: guess.game_image,
           count: 1,
+          sessionIds: new Set([guess.session_id]),
         })
       }
     }
@@ -125,6 +136,14 @@ export async function GET(request: NextRequest) {
         ),
         incorrect: Array.from(incorrectStatsMap.values())
           .filter((s) => s.cell_index === i)
+          .map((stat) => ({
+            puzzle_id: stat.puzzle_id,
+            cell_index: stat.cell_index,
+            game_id: stat.game_id,
+            game_name: stat.game_name,
+            game_image: stat.game_image,
+            count: stat.count,
+          }))
           .sort((left, right) => right.count - left.count),
       }
     }

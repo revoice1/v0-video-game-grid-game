@@ -148,6 +148,58 @@ describe('GET /api/stats', () => {
     expect(body.cellStats[0].correct[0].game_name).toBe('Portal')
   })
 
+  it('counts incorrect answers by distinct completed players, not raw guess rows', async () => {
+    createClientMock.mockResolvedValue(
+      makeGetSupabase({
+        completionRows: [
+          { session_id: 'sess-1' },
+          { session_id: 'sess-2' },
+          { session_id: 'sess-3' },
+        ],
+        guessRows: [
+          {
+            puzzle_id: 'p1',
+            cell_index: 0,
+            game_id: 2,
+            game_name: 'HL2',
+            game_image: null,
+            is_correct: false,
+            session_id: 'sess-1',
+          },
+          {
+            puzzle_id: 'p1',
+            cell_index: 0,
+            game_id: 2,
+            game_name: 'HL2',
+            game_image: null,
+            is_correct: false,
+            session_id: 'sess-1',
+          },
+          {
+            puzzle_id: 'p1',
+            cell_index: 0,
+            game_id: 2,
+            game_name: 'HL2',
+            game_image: null,
+            is_correct: false,
+            session_id: 'sess-2',
+          },
+        ],
+      })
+    )
+
+    const res = await GET(makeGetRequest('p1'))
+    const body = await res.json()
+
+    expect(body.totalCompletions).toBe(3)
+    expect(body.cellStats[0].incorrect).toEqual([
+      expect.objectContaining({
+        game_name: 'HL2',
+        count: 2,
+      }),
+    ])
+  })
+
   it('returns 500 on puzzle query error', async () => {
     createClientMock.mockResolvedValue(makeGetSupabase({ puzzleError: new Error('DB fail') }))
     const res = await GET(makeGetRequest('p1'))

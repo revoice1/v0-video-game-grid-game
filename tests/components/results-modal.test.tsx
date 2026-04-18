@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildShareText, ResultsModal } from '@/components/game/results-modal'
 import type { Category, CellGuess } from '@/lib/types'
@@ -95,5 +95,84 @@ describe('ResultsModal', () => {
       '1f7e9',
       '1f7e5',
     ])
+  })
+
+  it('highlights the current player pick and shows player-based percentages in all players view', async () => {
+    fetchMock.mockResolvedValueOnce({
+      json: async () => ({
+        cellStats: {
+          0: {
+            correct: [
+              {
+                puzzle_id: 'daily-2026-03-28',
+                cell_index: 0,
+                game_id: 1,
+                game_name: 'Final Fantasy VII',
+                game_image: null,
+                count: 2,
+              },
+            ],
+            incorrect: [
+              {
+                puzzle_id: 'daily-2026-03-28',
+                cell_index: 0,
+                game_id: 2,
+                game_name: 'Parasite Eve',
+                game_image: null,
+                count: 1,
+              },
+            ],
+          },
+        },
+        totalCompletions: 4,
+        dailySummary: {
+          currentStreak: 3,
+          bestStreak: 8,
+          completedCount: 17,
+          perfectCount: 4,
+        },
+      }),
+    })
+
+    const guesses: (CellGuess | null)[] = [
+      {
+        gameId: 1,
+        gameName: 'Final Fantasy VII',
+        gameImage: null,
+        isCorrect: true,
+      },
+      ...Array(8).fill(null),
+    ]
+
+    render(
+      <ResultsModal
+        isOpen
+        onClose={() => {}}
+        guesses={guesses}
+        puzzleId="daily-2026-03-28"
+        puzzleDate="2026-03-28"
+        rowCategories={rowCategories}
+        colCategories={colCategories}
+        isDaily
+        onPlayAgain={() => {}}
+      />
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'All Players' }))
+
+    const cellCard = screen.getByText('RPG x PlayStation').closest('div.rounded-xl')
+    expect(cellCard).not.toBeNull()
+
+    const correctRow = within(cellCard as HTMLElement)
+      .getByText('Final Fantasy VII')
+      .closest('[data-selected-by-player]')
+    expect(correctRow).toHaveAttribute('data-selected-by-player', 'true')
+    expect(within(correctRow as HTMLElement).getByText('50% of players')).toBeInTheDocument()
+
+    const incorrectRow = within(cellCard as HTMLElement)
+      .getByText('Parasite Eve')
+      .closest('[data-selected-by-player]')
+    expect(incorrectRow).toHaveAttribute('data-selected-by-player', 'false')
+    expect(within(incorrectRow as HTMLElement).getByText('25% of players')).toBeInTheDocument()
   })
 })

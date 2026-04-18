@@ -169,6 +169,9 @@ export function ResultsModal({
     return `${rowCategory?.name ?? 'Row'} x ${colCategory?.name ?? 'Column'}`
   }
 
+  const isPlayersPickForCell = (cellIndex: number, gameId: number) =>
+    guesses[cellIndex]?.gameId === gameId
+
   const handleCopyResults = async () => {
     const shareText = buildShareText(guesses, isDaily, puzzleDate)
 
@@ -373,14 +376,6 @@ export function ResultsModal({
                   <div className="space-y-4">
                     {Array.from({ length: 9 }, (_, cellIndex) => {
                       const cellBucket = stats?.[cellIndex] ?? { correct: [], incorrect: [] }
-                      const totalCorrect = cellBucket.correct.reduce(
-                        (sum, stat) => sum + stat.count,
-                        0
-                      )
-                      const totalIncorrect = cellBucket.incorrect.reduce(
-                        (sum, stat) => sum + stat.count,
-                        0
-                      )
 
                       return (
                         <div
@@ -397,11 +392,22 @@ export function ResultsModal({
                                 {cellBucket.correct.length > 0 ? (
                                   cellBucket.correct.slice(0, 5).map((stat, index) => {
                                     const percentage =
-                                      totalCorrect > 0 ? (stat.count / totalCorrect) * 100 : 0
+                                      totalCompletions > 0
+                                        ? (stat.count / totalCompletions) * 100
+                                        : 0
+                                    const isPlayersPick = isPlayersPickForCell(
+                                      cellIndex,
+                                      stat.game_id
+                                    )
                                     return (
                                       <div
                                         key={`correct-${cellIndex}-${stat.game_id}`}
-                                        className="flex items-center gap-2 rounded-lg bg-background/60 p-2"
+                                        className={cn(
+                                          'flex items-center gap-2 rounded-lg bg-background/60 p-2',
+                                          isPlayersPick &&
+                                            'ring-2 ring-primary ring-offset-1 ring-offset-card'
+                                        )}
+                                        data-selected-by-player={isPlayersPick ? 'true' : 'false'}
                                       >
                                         <span className="w-5 text-xs text-muted-foreground">
                                           #{index + 1}
@@ -423,7 +429,7 @@ export function ResultsModal({
                                           <p className="truncate text-sm">{stat.game_name}</p>
                                           <p className="text-xs text-muted-foreground">
                                             {percentage < 1 ? '<1' : percentage.toFixed(0)}% of
-                                            correct picks
+                                            players
                                           </p>
                                         </div>
                                       </div>
@@ -445,11 +451,22 @@ export function ResultsModal({
                                 {cellBucket.incorrect.length > 0 ? (
                                   cellBucket.incorrect.slice(0, 5).map((stat, index) => {
                                     const percentage =
-                                      totalIncorrect > 0 ? (stat.count / totalIncorrect) * 100 : 0
+                                      totalCompletions > 0
+                                        ? (stat.count / totalCompletions) * 100
+                                        : 0
+                                    const isPlayersPick = isPlayersPickForCell(
+                                      cellIndex,
+                                      stat.game_id
+                                    )
                                     return (
                                       <div
                                         key={`incorrect-${cellIndex}-${stat.game_id}`}
-                                        className="flex items-center gap-2 rounded-lg bg-background/60 p-2"
+                                        className={cn(
+                                          'flex items-center gap-2 rounded-lg bg-background/60 p-2',
+                                          isPlayersPick &&
+                                            'ring-2 ring-destructive ring-offset-1 ring-offset-card'
+                                        )}
+                                        data-selected-by-player={isPlayersPick ? 'true' : 'false'}
                                       >
                                         <span className="w-5 text-xs text-muted-foreground">
                                           #{index + 1}
@@ -471,7 +488,7 @@ export function ResultsModal({
                                           <p className="truncate text-sm">{stat.game_name}</p>
                                           <p className="text-xs text-muted-foreground">
                                             {percentage < 1 ? '<1' : percentage.toFixed(0)}% of
-                                            misses
+                                            players
                                           </p>
                                         </div>
                                       </div>
