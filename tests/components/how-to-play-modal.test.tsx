@@ -9,6 +9,11 @@ describe('HowToPlayModal', () => {
     expect(screen.getByRole('heading', { name: 'How to Play Versus' })).toBeInTheDocument()
     expect(screen.getByText(/opponent's freshest claim\./i)).toBeInTheDocument()
     expect(screen.getByText(/Steals compare each game's hidden rating\./i)).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        /when steals are enabled, versus search favors games with rating or review data/i
+      )
+    ).toBeInTheDocument()
     expect(screen.getByText('Rules and reminders for local head-to-head play.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Changelog' })).toHaveAttribute('href', '/changelog')
     expect(screen.getByRole('link', { name: 'Report a bug' })).toHaveAttribute(

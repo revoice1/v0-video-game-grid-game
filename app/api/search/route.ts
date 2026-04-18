@@ -6,6 +6,12 @@ import type { Category } from '@/lib/types'
 
 type SearchMode = 'daily' | 'practice' | 'versus'
 
+function parseVersusStealsEnabled(rawValue: string | null): boolean | null {
+  if (rawValue === 'true') return true
+  if (rawValue === 'false') return false
+  return null
+}
+
 function parseCategoryTypes(rawValue: string | null): Set<Category['type']> {
   if (!rawValue) {
     return new Set<Category['type']>()
@@ -52,6 +58,7 @@ export async function GET(request: NextRequest) {
   const puzzleId = searchParams.get('puzzleId')
   const categoryTypesParam = searchParams.get('categoryTypes')
   const modeParam = searchParams.get('mode')
+  const versusStealsEnabledParam = searchParams.get('versusStealsEnabled')
 
   if (!query || query.length < 2) {
     return NextResponse.json({ results: [] })
@@ -62,13 +69,14 @@ export async function GET(request: NextRequest) {
       modeParam === 'daily' || modeParam === 'practice' || modeParam === 'versus'
         ? modeParam
         : 'versus'
+    const versusStealsEnabled = parseVersusStealsEnabled(versusStealsEnabledParam)
     const explicitCategoryTypes = parseCategoryTypes(categoryTypesParam)
     const categoryTypes =
       explicitCategoryTypes.size > 0
         ? explicitCategoryTypes
         : await getPuzzleCategoryTypes(puzzleId)
     const games = await searchIGDBGames(query, {
-      allowUnratedFallback: mode !== 'versus',
+      allowUnratedFallback: mode !== 'versus' || versusStealsEnabled === false,
     })
     const duplicateTitleKeys = new Set(
       Object.entries(

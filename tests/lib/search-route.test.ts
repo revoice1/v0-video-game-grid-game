@@ -110,6 +110,16 @@ describe('GET /api/search', () => {
     })
   })
 
+  it('allows unrated fallback for versus mode when steals are disabled', async () => {
+    searchIGDBGamesMock.mockResolvedValue([makeGame()])
+
+    await GET(makeRequest({ q: 'lunacy', mode: 'versus', versusStealsEnabled: 'false' }))
+
+    expect(searchIGDBGamesMock).toHaveBeenCalledWith('lunacy', {
+      allowUnratedFallback: true,
+    })
+  })
+
   it('scrubs platform data when categoryTypes includes platform', async () => {
     searchIGDBGamesMock.mockResolvedValue([makeGame()])
     const res = await GET(makeRequest({ q: 'half-life', categoryTypes: 'platform' }))

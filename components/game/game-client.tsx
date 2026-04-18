@@ -4305,6 +4305,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
         initialQuery={searchQueryDraft}
         puzzleId={mode === 'daily' ? puzzle.id : undefined}
         searchMode={mode}
+        versusStealsEnabled={stealsEnabled}
         hideScores={mode === 'versus'}
         confirmBeforeSelect={confirmBeforeSelect}
         lowEffects={animationQuality === 'low'}
