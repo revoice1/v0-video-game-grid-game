@@ -855,7 +855,9 @@ function hasRecognizedRating(game: IGDBGame): boolean {
   return game.total_rating != null
 }
 
-function isOfficialCatalogGame(game: IGDBGame): boolean {
+function isOfficialCatalogGame(game: IGDBGame, options?: { requireRating?: boolean }): boolean {
+  const requireRating = options?.requireRating ?? true
+
   if (!game.first_release_date) {
     return false
   }
@@ -872,7 +874,7 @@ function isOfficialCatalogGame(game: IGDBGame): boolean {
     return false
   }
 
-  if (!hasRecognizedRating(game)) {
+  if (requireRating && !hasRecognizedRating(game)) {
     return false
   }
 
@@ -1451,18 +1453,19 @@ export async function searchIGDBGames(
 
     const filteredResults = Array.from(
       new Map(mergedResults.map((result) => [result.id, result])).values()
-    ).filter(isOfficialCatalogGame)
+    ).filter((result) => isOfficialCatalogGame(result, searchOptions))
 
     return {
       results: await hideSameNamePortResults(filteredResults),
       altMatchedGameIds,
       altMatchedNames,
+      primarySearchGameCount: primarySearch.games.length,
     }
   }
 
   const primaryVisibleResults = await gatherVisibleResults()
   const unratedFallbackResults =
-    allowUnratedFallback && primaryVisibleResults.results.length < 5
+    allowUnratedFallback && primaryVisibleResults.primarySearchGameCount < 5
       ? await gatherVisibleResults({ requireRating: false })
       : null
 
