@@ -174,4 +174,24 @@ describe('normalizeObjectionResponse', () => {
       )
     ).toBeNull()
   })
+
+  it('parses grounded narrative verdicts when Gemini ignores the JSON format', () => {
+    expect(
+      normalizeObjectionResponse(
+        [
+          'Cloning Clyde is a side-scrolling platformer.',
+          'The game was released on Xbox 360.',
+          'The perspective is side-view.',
+          'The verdict is sustained.',
+          'The game is a side-scrolling platformer, confirming the "Side view" perspective.',
+        ].join(' ')
+      )
+    ).toEqual({
+      verdict: 'sustained',
+      confidence: 'medium',
+      explanation:
+        'Cloning Clyde is a side-scrolling platformer. The game was released on Xbox 360. The perspective is side-view. The verdict is sustained. The game is a side-scrolling platformer, confirming the "Side view" perspective.',
+      suspectedMissingMetadata: null,
+    })
+  })
 })

@@ -228,6 +228,33 @@ function parseKeyValueFallback(text: string): ObjectionJudgment | null {
   }
 }
 
+function parseNarrativeFallback(text: string): ObjectionJudgment | null {
+  const normalized = text.replace(/\s+/g, ' ').trim()
+  if (!normalized) {
+    return null
+  }
+
+  const verdictMatch =
+    normalized.match(/\bverdict\s+(?:is\s+)?(sustained|overruled)\b/i) ??
+    normalized.match(/\bobjection\s+(?:is\s+)?(sustained|overruled)\b/i) ??
+    normalized.match(/\b(sustained|overruled)\b/i)
+
+  if (!verdictMatch) {
+    return null
+  }
+
+  const confidenceMatch = normalized.match(/\b(low|medium|high)\s+confidence\b/i)
+
+  return {
+    verdict: verdictMatch[1].toLowerCase() as ObjectionJudgment['verdict'],
+    confidence: confidenceMatch
+      ? (confidenceMatch[1].toLowerCase() as ObjectionJudgment['confidence'])
+      : 'medium',
+    explanation: normalized,
+    suspectedMissingMetadata: null,
+  }
+}
+
 export function normalizeObjectionResponse(text: string): ObjectionJudgment | null {
   try {
     const parsed = JSON.parse(cleanJsonResponse(text)) as Partial<ObjectionJudgment>
@@ -287,6 +314,6 @@ export function normalizeObjectionResponse(text: string): ObjectionJudgment | nu
       }
     }
 
-    return parseKeyValueFallback(text)
+    return parseKeyValueFallback(text) ?? parseNarrativeFallback(text)
   }
 }
