@@ -428,6 +428,49 @@ describe('useOnlineVersusRoom', () => {
     })
   })
 
+  describe('continueRoom', () => {
+    it('updates the local role when the continued room returns a swapped side', async () => {
+      const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation((input) => {
+        const url = String(input)
+
+        if (url === '/api/versus/room/ABCD/join') {
+          return Promise.resolve(makeJsonResponse({ room: makeActiveRoom(), role: 'o' }))
+        }
+
+        if (url === '/api/versus/room/ABCD/continue') {
+          return Promise.resolve(
+            makeJsonResponse({
+              room: makeActiveRoom({ match_number: 2 }),
+              role: 'x',
+            })
+          )
+        }
+
+        throw new Error(`Unexpected fetch: ${url}`)
+      })
+
+      const { result } = renderHook(() => useOnlineVersusRoom())
+
+      await act(async () => {
+        await result.current.joinRoom('ABCD')
+      })
+
+      expect(result.current.myRole).toBe('o')
+
+      await act(async () => {
+        await result.current.continueRoom()
+      })
+
+      expect(fetchSpy).toHaveBeenLastCalledWith('/api/versus/room/ABCD/continue', {
+        method: 'POST',
+      })
+      expect(result.current.phase).toBe('active')
+      expect(result.current.myRole).toBe('x')
+      expect(result.current.room?.match_number).toBe(2)
+      expect(localStorage.getItem('gg_online_versus_room')).toContain('"role":"x"')
+    })
+  })
+
   describe('catch-up recovery', () => {
     async function joinActiveRoomWithRouter(
       snapshotOverride?:

@@ -79,7 +79,7 @@ function buildSupabaseMock() {
     }),
   }
 
-  return { supabase, updatePayloads, updatedRoom }
+  return { supabase, room, updatePayloads, updatedRoom }
 }
 
 describe('/api/versus/room/[code]/continue route', () => {
@@ -105,7 +105,7 @@ describe('/api/versus/room/[code]/continue route', () => {
     const payload = await response.json()
 
     expect(response.status).toBe(200)
-    expect(payload).toEqual({ room: updatedRoom })
+    expect(payload).toEqual({ room: updatedRoom, role: 'x' })
     expect(updatePayloads).toHaveLength(1)
     expect(updatePayloads[0]).toEqual(
       expect.objectContaining({
@@ -116,5 +116,57 @@ describe('/api/versus/room/[code]/continue route', () => {
         state_data: null,
       })
     )
+  })
+
+  it('lets the O winner continue and swaps host and guest for the next match', async () => {
+    const { supabase, room, updatePayloads, updatedRoom } = buildSupabaseMock()
+    room.state_data = { winner: 'o' }
+    resolveAnonymousSessionMock.mockReturnValue({
+      sessionId: 'session-2',
+      shouldSetCookie: false,
+    })
+    createAdminClientMock.mockReturnValue(supabase)
+
+    const request = new NextRequest('http://localhost/api/versus/room/ABCD/continue', {
+      method: 'POST',
+    })
+
+    const response = await POST(request, {
+      params: Promise.resolve({ code: 'ABCD' }),
+    })
+    const payload = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(payload).toEqual({ room: updatedRoom, role: 'x' })
+    expect(updatePayloads).toHaveLength(1)
+    expect(updatePayloads[0]).toEqual(
+      expect.objectContaining({
+        host_session_id: 'session-2',
+        guest_session_id: 'session-1',
+      })
+    )
+  })
+
+  it('rejects the guest when X won the prior match', async () => {
+    const { supabase } = buildSupabaseMock()
+    resolveAnonymousSessionMock.mockReturnValue({
+      sessionId: 'session-2',
+      shouldSetCookie: false,
+    })
+    createAdminClientMock.mockReturnValue(supabase)
+
+    const request = new NextRequest('http://localhost/api/versus/room/ABCD/continue', {
+      method: 'POST',
+    })
+
+    const response = await POST(request, {
+      params: Promise.resolve({ code: 'ABCD' }),
+    })
+    const payload = await response.json()
+
+    expect(response.status).toBe(403)
+    expect(payload).toEqual({
+      error: 'Only the player who opens the next match can continue the room.',
+    })
   })
 })
