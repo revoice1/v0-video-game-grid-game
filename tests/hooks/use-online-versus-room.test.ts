@@ -243,8 +243,8 @@ describe('useOnlineVersusRoom', () => {
       const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation((input) => {
         const url = String(input)
 
-        if (url === '/api/versus/room/ABCD/join') {
-          return Promise.resolve(makeJsonResponse({ room: makeActiveRoom(), role: 'x' }))
+        if (url === '/api/versus/room/ABCD') {
+          return Promise.resolve(makeJsonResponse({ room: makeActiveRoom() }))
         }
 
         if (url === '/api/versus/event') {
@@ -256,8 +256,8 @@ describe('useOnlineVersusRoom', () => {
           )
         }
 
-        if (url === '/api/versus/room/ABCD') {
-          return Promise.resolve(makeJsonResponse({ room: makeActiveRoom() }))
+        if (url === '/api/versus/room/ABCD/join') {
+          return Promise.resolve(makeJsonResponse({ room: makeActiveRoom(), role: 'x' }))
         }
 
         if (url === '/api/versus/room-events/room-1') {

@@ -32,7 +32,11 @@ export async function POST(
     })
     return NextResponse.json({ error: 'Room not found.' }, { status: 404 })
   }
-  const assignments = getOnlineVersusRoleAssignments(room.state_data, room.host_session_id, null)
+  const assignments = getOnlineVersusRoleAssignments(
+    room.state_data,
+    room.host_session_id,
+    room.guest_session_id
+  )
   if (assignments.xSessionId !== session.sessionId) {
     logger.error('[versus.room.puzzle] not host', {
       code: upperCode,
