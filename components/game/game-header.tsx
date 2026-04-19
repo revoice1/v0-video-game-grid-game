@@ -34,6 +34,7 @@ interface GameHeaderProps {
   score: number
   currentPlayer?: 'x' | 'o' | null
   myOnlineRole?: 'x' | 'o' | null
+  isOnlineHost?: boolean
   winner?: 'x' | 'o' | 'draw' | null
   versusRecord?: { xWins: number; oWins: number }
   versusObjectionRule?: VersusObjectionRule
@@ -48,6 +49,7 @@ interface GameHeaderProps {
   onAchievements: () => void
   onDailyHistory?: () => void
   onNewGame?: () => void
+  onContinueOnlineRoom?: () => void
   onCustomizeGame?: () => void
   onStartOnlineMatch?: () => void
   onEndOnlineMatch?: () => void
@@ -59,6 +61,7 @@ export function GameHeader({
   score,
   currentPlayer = null,
   myOnlineRole = null,
+  isOnlineHost = false,
   winner = null,
   versusRecord = { xWins: 0, oWins: 0 },
   versusObjectionRule = 'off',
@@ -73,6 +76,7 @@ export function GameHeader({
   onAchievements,
   onDailyHistory,
   onNewGame,
+  onContinueOnlineRoom,
   onCustomizeGame,
   onStartOnlineMatch,
   onEndOnlineMatch,
@@ -84,6 +88,7 @@ export function GameHeader({
   const poolLabel = hasActiveCustomSetup ? 'Custom' : 'Standard'
   const versusTurnLabel = winner === 'draw' ? 'Result' : winner ? 'Winner' : 'Turn'
   const versusTurnValue = winner === 'draw' ? 'Tie' : (winner ?? currentPlayer ?? 'x').toUpperCase()
+  const canContinueOnlineRoom = myOnlineRole !== null && isOnlineHost && winner !== null
   const objectionTokenCount =
     versusObjectionRule === 'three' ? 3 : versusObjectionRule === 'one' ? 1 : 0
   const utilityButtons = (
@@ -365,18 +370,27 @@ export function GameHeader({
                     </span>
                   </div>
                 )}
-                {myOnlineRole && onNewGame && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onNewGame}
-                    className="h-8 min-w-[9rem] border-sky-500/35 px-2.5 text-xs text-sky-300 hover:bg-sky-500/10 hover:text-sky-200 sm:h-9 sm:px-3 sm:text-sm"
-                  >
-                    {winner !== null && myOnlineRole === 'x'
-                      ? 'Continue In Room'
-                      : 'New Online Room'}
-                  </Button>
-                )}
+                {myOnlineRole ? (
+                  canContinueOnlineRoom && onContinueOnlineRoom ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onContinueOnlineRoom}
+                      className="h-8 min-w-[9rem] border-sky-500/35 px-2.5 text-xs text-sky-300 hover:bg-sky-500/10 hover:text-sky-200 sm:h-9 sm:px-3 sm:text-sm"
+                    >
+                      Continue In Room
+                    </Button>
+                  ) : onNewGame ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onNewGame}
+                      className="h-8 min-w-[9rem] border-sky-500/35 px-2.5 text-xs text-sky-300 hover:bg-sky-500/10 hover:text-sky-200 sm:h-9 sm:px-3 sm:text-sm"
+                    >
+                      New Online Room
+                    </Button>
+                  ) : null
+                ) : null}
                 {myOnlineRole && onEndOnlineMatch && (
                   <Button
                     variant="outline"

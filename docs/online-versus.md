@@ -22,6 +22,13 @@ Online versus currently uses:
 - a host-driven in-room continue flow after game end that clears the prior match and reuses the
   invite code for the next board
 
+The model is intentionally split:
+
+- `host_session_id` / `guest_session_id` remain the stable room owners
+- `state_data.roleAssignments` decides who is currently `X` and `O`
+- host-only routes still control room lifecycle (`continue`, puzzle publish, finish-room flow)
+- gameplay auth (`claim`, `miss`, `steal`, `objection`) follows the current `X/O` assignment
+
 The intended authority chain today is:
 
 1. both host and guest drive local state forward by processing events as they arrive via Realtime
@@ -100,6 +107,7 @@ animations and overlay cues are suppressed so fetched history replays silently.
 - winner
 - steal/final-steal state
 - objections used
+- role assignments for the active match
 - turn deadline / duration
 
 Snapshots are **not** used for live sync during active play. They are written by the host after
@@ -126,6 +134,32 @@ When a client rejoins and `state_data` is present, it hydrates from the snapshot
 Both `saveSnapshot` and `markFinished` in `use-online-versus-room.ts` carry an 8-second
 `AbortController` timeout and return `{ ok: false, error: 'Request timed out.' }` on abort.
 
+## Objection Authority
+
+Online objections now have two server-owned stages:
+
+1. `POST /api/objection`
+   - reviews the guess with Gemini
+   - returns the visible verdict/explanation
+   - for sustained verdicts, also returns a short-lived signed proof tied to:
+     - `gameId`
+     - row category
+     - column category
+     - verdict = `sustained`
+2. `POST /api/versus/event`
+   - validates turn legality, objection limits, and live room state
+   - verifies the signed proof for sustained online objections
+   - rebuilds the authoritative guess from resolved IGDB details before inserting the event
+
+That proof step exists because a sustained objection can be correct even when plain
+`validateIGDBGameForCell()` would still reject the game due to incomplete metadata.
+
+## Timer Behavior
+
+- Online turn timers pause while an objection review is pending.
+- Once Judge Gemini returns, the objection event is applied and the timer resumes from the updated
+  authoritative state.
+
 ## Current Limits
 
 The online loop is real enough to play, but these caveats still matter:
@@ -141,6 +175,8 @@ The online loop is real enough to play, but these caveats still matter:
   `match_number` on the room and scopes event replay/history to that boundary, so old events no
   longer leak into the next game. It still does not have a ready-check handshake or richer rematch
   lifecycle.
+- **Room control is still host-owned** — the host remains responsible for continuing the room and
+  publishing the next board, even when the prior winner becomes the next match's `X`.
 - **`New Online Room`** remains the clean escape hatch when you want a fresh invite code.
 
 So the current feature should be treated as:

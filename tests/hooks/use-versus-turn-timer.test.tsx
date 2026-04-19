@@ -11,6 +11,7 @@ describe('useVersusTurnTimer', () => {
     renderHook(() =>
       useVersusTurnTimer({
         isVersusMode: true,
+        objectionPending: false,
         isLoading: false,
         loadedPuzzleMode: 'versus',
         puzzleId: 'versus-puzzle',
@@ -42,6 +43,7 @@ describe('useVersusTurnTimer', () => {
       ({ isLoading, turnTimeLeft }: { isLoading: boolean; turnTimeLeft: number | null }) =>
         useVersusTurnTimer({
           isVersusMode: true,
+          objectionPending: false,
           isLoading,
           loadedPuzzleMode: 'versus',
           puzzleId: 'versus-puzzle',
@@ -94,6 +96,7 @@ describe('useVersusTurnTimer', () => {
         useVersusTurnTimer({
           isVersusMode: true,
           isOnlineMatch: true,
+          objectionPending: false,
           isLoading: false,
           loadedPuzzleMode: 'versus',
           puzzleId: 'versus-puzzle',
@@ -128,6 +131,7 @@ describe('useVersusTurnTimer', () => {
     renderHook(() =>
       useVersusTurnTimer({
         isVersusMode: true,
+        objectionPending: false,
         isLoading: false,
         loadedPuzzleMode: 'versus',
         puzzleId: 'versus-puzzle',
@@ -159,6 +163,7 @@ describe('useVersusTurnTimer', () => {
       ({ currentPlayer }: { currentPlayer: 'x' | 'o' }) =>
         useVersusTurnTimer({
           isVersusMode: true,
+          objectionPending: false,
           isLoading: false,
           loadedPuzzleMode: 'versus',
           puzzleId: 'versus-puzzle',
@@ -208,6 +213,7 @@ describe('useVersusTurnTimer', () => {
         }) =>
           useVersusTurnTimer({
             isVersusMode: true,
+            objectionPending: false,
             isLoading: false,
             loadedPuzzleMode: 'versus',
             puzzleId: 'versus-puzzle',
@@ -274,6 +280,7 @@ describe('useVersusTurnTimer', () => {
       }) =>
         useVersusTurnTimer({
           isVersusMode: true,
+          objectionPending: false,
           isLoading: false,
           loadedPuzzleMode: 'versus',
           puzzleId: 'versus-puzzle',
@@ -328,6 +335,7 @@ describe('useVersusTurnTimer', () => {
         }) =>
           useVersusTurnTimer({
             isVersusMode: true,
+            objectionPending: false,
             isLoading: false,
             loadedPuzzleMode: 'versus',
             puzzleId: 'versus-puzzle',
@@ -458,6 +466,7 @@ describe('useVersusTurnTimer', () => {
 
           return useVersusTurnTimer({
             isVersusMode: true,
+            objectionPending: false,
             isLoading: false,
             loadedPuzzleMode: 'versus',
             puzzleId: 'versus-puzzle',
@@ -513,6 +522,7 @@ describe('useVersusTurnTimer', () => {
       ({ isVersusMode }: { isVersusMode: boolean }) =>
         useVersusTurnTimer({
           isVersusMode,
+          objectionPending: false,
           isLoading: false,
           loadedPuzzleMode: 'versus',
           puzzleId: 'versus-puzzle',
@@ -841,6 +851,60 @@ describe('useVersusTurnTimer', () => {
       })
 
       expect(setTurnTimeLeft.mock.calls.length).toBeGreaterThan(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('pauses online turn expiry while an objection review is pending', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-03-29T20:00:00.000Z'))
+
+    try {
+      const activeTurnTimerKeyRef = { current: 'versus-puzzle:x' as string | null }
+      const onTurnExpired = vi.fn()
+      const setTurnTimeLeft = vi.fn()
+      const setTurnDeadlineAt = vi.fn()
+
+      const { rerender } = renderHook(
+        ({ objectionPending }: { objectionPending: boolean }) =>
+          useVersusTurnTimer({
+            isVersusMode: true,
+            isOnlineMatch: true,
+            objectionPending,
+            isLoading: false,
+            loadedPuzzleMode: 'versus',
+            puzzleId: 'versus-puzzle',
+            currentPlayer: 'x',
+            winner: null,
+            versusTimerOption: 20,
+            turnTimeLeft: 2,
+            turnDeadlineAt: '2026-03-29T20:00:02.000Z',
+            pendingFinalSteal: null,
+            animationsEnabled: true,
+            audioEnabled: true,
+            activeTurnTimerKeyRef,
+            setTurnTimeLeft,
+            setTurnDeadlineAt,
+            onTurnExpired,
+          }),
+        {
+          initialProps: {
+            objectionPending: true,
+          },
+        }
+      )
+
+      act(() => {
+        vi.advanceTimersByTime(3000)
+      })
+
+      expect(onTurnExpired).not.toHaveBeenCalled()
+
+      rerender({ objectionPending: false })
+
+      expect(setTurnTimeLeft).toHaveBeenCalledWith(20)
+      expect(setTurnDeadlineAt).toHaveBeenCalledWith('2026-03-29T20:00:23.000Z')
     } finally {
       vi.useRealTimers()
     }

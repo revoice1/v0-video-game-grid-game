@@ -133,6 +133,7 @@ export interface OnlineVersusObjectionPayload {
   clientEventId?: string
   verdict: 'sustained' | 'overruled'
   updatedGuess: CellGuess
+  proof?: string
   isSteal: boolean
   successful?: boolean
   guessesRemaining?: number

@@ -110,6 +110,7 @@ const ObjectionPayloadSchema = z.object({
   clientEventId: z.string().trim().min(1).max(100).optional(),
   verdict: z.enum(['sustained', 'overruled']),
   updatedGuess: LooseCellGuessSchema,
+  proof: z.string().trim().min(1).max(1024).optional(),
   isSteal: z.boolean(),
   successful: z.boolean().optional(),
   guessesRemaining: z.number().int().min(0).max(9).optional(),

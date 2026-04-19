@@ -37,13 +37,13 @@ export async function POST(
     room.host_session_id,
     room.guest_session_id
   )
-  if (assignments.xSessionId !== session.sessionId) {
+  if (room.host_session_id !== session.sessionId) {
     logger.error('[versus.room.puzzle] not host', {
       code: upperCode,
       roomId: room.id,
       sessionId: session.sessionId,
     })
-    return NextResponse.json({ error: 'Only the X player can set the puzzle.' }, { status: 403 })
+    return NextResponse.json({ error: 'Only the host can set the puzzle.' }, { status: 403 })
   }
   if (room.status !== 'active') {
     return NextResponse.json({ error: 'Room is not active.' }, { status: 409 })

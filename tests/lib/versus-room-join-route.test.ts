@@ -98,6 +98,7 @@ describe('/api/versus/room/[code]/join route', () => {
 
     expect(res.status).toBe(200)
     expect(body.role).toBe('x')
+    expect(body.isHost).toBe(true)
     expect(body.room.code).toBe('TSTRM')
     // session IDs must not be in the response
     expect(body.room.host_session_id).toBeUndefined()
@@ -114,6 +115,7 @@ describe('/api/versus/room/[code]/join route', () => {
 
     expect(res.status).toBe(200)
     expect(body.role).toBe('o')
+    expect(body.isHost).toBe(false)
     expect(body.room.host_session_id).toBeUndefined()
   })
 
@@ -136,6 +138,7 @@ describe('/api/versus/room/[code]/join route', () => {
 
     expect(res.status).toBe(200)
     expect(body.role).toBe('x')
+    expect(body.isHost).toBe(false)
   })
 
   it('new guest joins a waiting room, room transitions to active', async () => {
@@ -148,6 +151,7 @@ describe('/api/versus/room/[code]/join route', () => {
 
     expect(res.status).toBe(200)
     expect(body.role).toBe('o')
+    expect(body.isHost).toBe(false)
     expect(body.room.status).toBe('active')
   })
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getNextPlayer, getStealShowdownMetric } from '@/components/game/game-client-versus-helpers'
-import { validateIGDBGameForCell } from '@/lib/igdb'
+import { getResolvedIGDBGameDetails, validateIGDBGameForCell } from '@/lib/igdb'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   type ClaimPayload,
@@ -12,9 +12,11 @@ import {
 } from '@/lib/online-versus-event-validation'
 import { resolveAnonymousSession } from '@/lib/server-session'
 import { createRequestLogger } from '@/lib/logging'
-import type { CellGuess, Puzzle } from '@/lib/types'
+import type { Category, CellGuess, Puzzle } from '@/lib/types'
+import { verifyObjectionProof } from '@/lib/objection-proof'
 import {
   getOnlineVersusRoleAssignments,
+  isOnlineVersusSnapshot,
   type OnlineVersusEventType,
   type RoomPlayer,
 } from '@/lib/versus-room'
@@ -114,8 +116,8 @@ function getPuzzleCategoriesForCell(
   puzzle: Puzzle | null,
   cellIndex: number
 ): {
-  rowCategory: Puzzle['row_categories'][number] | null
-  colCategory: Puzzle['col_categories'][number] | null
+  rowCategory: Category | null
+  colCategory: Category | null
 } {
   if (!puzzle) {
     return { rowCategory: null, colCategory: null }
@@ -124,6 +126,48 @@ function getPuzzleCategoriesForCell(
   return {
     rowCategory: puzzle.row_categories[Math.floor(cellIndex / 3)] ?? null,
     colCategory: puzzle.col_categories[cellIndex % 3] ?? null,
+  }
+}
+
+function buildGuessFromResolvedDetails(options: {
+  player: RoomPlayer
+  resolvedGame: NonNullable<Awaited<ReturnType<typeof getResolvedIGDBGameDetails>>>['game']
+  selectedGame: NonNullable<Awaited<ReturnType<typeof getResolvedIGDBGameDetails>>>['selectedGame']
+  matchedRow: boolean
+  matchedCol: boolean
+  validationExplanation: CellGuess['validationExplanation']
+}): CellGuess {
+  const resolvedMetadata = serializeGameDetails(options.resolvedGame)
+
+  return {
+    gameId: options.selectedGame.id,
+    gameName: options.selectedGame.name,
+    owner: options.player,
+    gameSlug: resolvedMetadata?.slug ?? null,
+    gameUrl: resolvedMetadata?.url ?? null,
+    gameImage: options.selectedGame.background_image,
+    isCorrect: true,
+    released: resolvedMetadata?.released ?? null,
+    metacritic: resolvedMetadata?.metacritic ?? null,
+    stealRating: resolvedMetadata?.stealRating ?? null,
+    stealRatingCount: resolvedMetadata?.stealRatingCount ?? null,
+    genres: resolvedMetadata?.genres ?? [],
+    platforms: resolvedMetadata?.platforms ?? [],
+    developers: resolvedMetadata?.developers ?? [],
+    publishers: resolvedMetadata?.publishers ?? [],
+    tags: resolvedMetadata?.tags ?? [],
+    gameModes: resolvedMetadata?.gameModes ?? [],
+    themes: resolvedMetadata?.themes ?? [],
+    perspectives: resolvedMetadata?.perspectives ?? [],
+    companies: resolvedMetadata?.companies ?? [],
+    matchedRow: options.matchedRow,
+    matchedCol: options.matchedCol,
+    validationExplanation: options.validationExplanation,
+    objectionUsed: false,
+    objectionVerdict: null,
+    objectionExplanation: null,
+    objectionOriginalMatchedRow: null,
+    objectionOriginalMatchedCol: null,
   }
 }
 
@@ -166,40 +210,16 @@ async function buildAuthoritativeGuess(options: {
     }
   }
 
-  const resolvedMetadata = serializeGameDetails(validation.game)
-
   return {
     ok: true,
-    guess: {
-      gameId: validation.selectedGame.id,
-      gameName: validation.selectedGame.name,
-      owner: options.player,
-      gameSlug: resolvedMetadata?.slug ?? null,
-      gameUrl: resolvedMetadata?.url ?? null,
-      gameImage: validation.selectedGame.background_image,
-      isCorrect: true,
-      released: resolvedMetadata?.released ?? null,
-      metacritic: resolvedMetadata?.metacritic ?? null,
-      stealRating: resolvedMetadata?.stealRating ?? null,
-      stealRatingCount: resolvedMetadata?.stealRatingCount ?? null,
-      genres: resolvedMetadata?.genres ?? [],
-      platforms: resolvedMetadata?.platforms ?? [],
-      developers: resolvedMetadata?.developers ?? [],
-      publishers: resolvedMetadata?.publishers ?? [],
-      tags: resolvedMetadata?.tags ?? [],
-      gameModes: resolvedMetadata?.gameModes ?? [],
-      themes: resolvedMetadata?.themes ?? [],
-      perspectives: resolvedMetadata?.perspectives ?? [],
-      companies: resolvedMetadata?.companies ?? [],
+    guess: buildGuessFromResolvedDetails({
+      player: options.player,
+      resolvedGame: validation.game,
+      selectedGame: validation.selectedGame,
       matchedRow: validation.matchesRow,
       matchedCol: validation.matchesCol,
       validationExplanation: validation.explanation ?? null,
-      objectionUsed: false,
-      objectionVerdict: null,
-      objectionExplanation: null,
-      objectionOriginalMatchedRow: null,
-      objectionOriginalMatchedCol: null,
-    },
+    }),
   }
 }
 
@@ -453,26 +473,74 @@ async function buildAuthoritativeObjectionPayload(options: {
     return {
       ok: true,
       payload: {
-        ...options.payload,
+        cellIndex: options.payload.cellIndex,
+        clientEventId: options.payload.clientEventId,
+        verdict: options.payload.verdict,
         updatedGuess: {
           ...options.payload.updatedGuess,
           objectionExplanation: normalizedObjectionDetails.objectionExplanation,
           objectionOriginalMatchedRow: normalizedObjectionDetails.objectionOriginalMatchedRow,
           objectionOriginalMatchedCol: normalizedObjectionDetails.objectionOriginalMatchedCol,
         } as ObjectionPayload['updatedGuess'],
+        isSteal: options.payload.isSteal,
         resolutionKind: missResolution.resolutionKind,
         nextPlayer: missResolution.nextPlayer,
         defender: missResolution.defender,
       },
     }
   }
+  const { rowCategory, colCategory } = getPuzzleCategoriesForCell(
+    options.puzzle,
+    options.payload.cellIndex
+  )
+  if (!rowCategory || !colCategory) {
+    return {
+      ok: false,
+      error: 'The room puzzle is missing category data for that cell.',
+      code: 'state_mismatch',
+      status: 409,
+    }
+  }
 
-  const authoritativeGuess = await buildAuthoritativeGuess({
+  let authoritativeGuess = await buildAuthoritativeGuess({
     puzzle: options.puzzle,
     cellIndex: options.payload.cellIndex,
     gameId: options.payload.updatedGuess.gameId,
     player: options.player,
   })
+
+  if (
+    !authoritativeGuess.ok &&
+    verifyObjectionProof(options.payload.proof, {
+      gameId: options.payload.updatedGuess.gameId,
+      rowCategory,
+      colCategory,
+      verdict: 'sustained',
+    })
+  ) {
+    const resolvedDetails = await getResolvedIGDBGameDetails(options.payload.updatedGuess.gameId)
+    if (!resolvedDetails) {
+      return {
+        ok: false,
+        error: 'The submitted game could not be resolved on the server.',
+        code: 'invalid_guess',
+        status: 409,
+      }
+    }
+
+    authoritativeGuess = {
+      ok: true,
+      guess: buildGuessFromResolvedDetails({
+        player: options.player,
+        resolvedGame: resolvedDetails.game,
+        selectedGame: resolvedDetails.selectedGame,
+        matchedRow: true,
+        matchedCol: true,
+        validationExplanation:
+          (options.payload.updatedGuess as Partial<CellGuess>).validationExplanation ?? null,
+      }),
+    }
+  }
 
   if (!authoritativeGuess.ok) {
     return authoritativeGuess
@@ -491,8 +559,11 @@ async function buildAuthoritativeObjectionPayload(options: {
     return {
       ok: true,
       payload: {
-        ...options.payload,
+        cellIndex: options.payload.cellIndex,
+        clientEventId: options.payload.clientEventId,
+        verdict: options.payload.verdict,
         updatedGuess: updatedGuess as ObjectionPayload['updatedGuess'],
+        isSteal: options.payload.isSteal,
       },
     }
   }
@@ -519,8 +590,11 @@ async function buildAuthoritativeObjectionPayload(options: {
   return {
     ok: true,
     payload: {
-      ...options.payload,
+      cellIndex: options.payload.cellIndex,
+      clientEventId: options.payload.clientEventId,
+      verdict: options.payload.verdict,
       updatedGuess: updatedGuess as ObjectionPayload['updatedGuess'],
+      isSteal: options.payload.isSteal,
       successful: authoritativeResolution.successful,
       hadShowdownScores: authoritativeResolution.hadShowdownScores,
       attackingGameName: authoritativeResolution.attackingGameName,
@@ -645,6 +719,34 @@ export async function POST(request: NextRequest) {
     })
 
     if (!validation.ok) {
+      const snapshotSummary = isOnlineVersusSnapshot(room.state_data)
+        ? {
+            currentPlayer: room.state_data.currentPlayer,
+            winner: room.state_data.winner,
+            stealableCell: room.state_data.stealableCell,
+            pendingFinalSteal: room.state_data.pendingFinalSteal,
+            objectionsUsed: room.state_data.objectionsUsed,
+          }
+        : null
+      logger.warn('Online versus event validation failed', {
+        roomId,
+        matchNumber,
+        player,
+        type,
+        sessionId: session.sessionId,
+        code: validation.code,
+        error: validation.error,
+        payload,
+        snapshotSummary,
+        recentEvents: ((existingEventRows ?? []) as StoredOnlineVersusEvent[])
+          .slice(-5)
+          .map((event) => ({
+            id: event.id,
+            player: event.player,
+            type: event.type,
+            payload: event.payload,
+          })),
+      })
       return NextResponse.json(
         { error: validation.error, code: validation.code },
         { status: validation.status }
@@ -661,6 +763,15 @@ export async function POST(request: NextRequest) {
       })
 
       if (!authoritativeEvent.ok) {
+        logger.warn('Online versus objection authoritative build failed', {
+          roomId,
+          matchNumber: room.match_number,
+          player,
+          sessionId: session.sessionId,
+          code: authoritativeEvent.code,
+          error: authoritativeEvent.error,
+          payload: validation.payload,
+        })
         return NextResponse.json(
           { error: authoritativeEvent.error, code: authoritativeEvent.code },
           { status: authoritativeEvent.status }
@@ -690,6 +801,19 @@ export async function POST(request: NextRequest) {
     }
 
     if (validation.type === 'objection') {
+      logger.info('Online versus objection validated', {
+        roomId,
+        matchNumber: room.match_number,
+        player,
+        sessionId: session.sessionId,
+        currentPlayer: validation.state.currentPlayer,
+        winner: validation.state.winner,
+        stealableCell: validation.state.stealableCell,
+        pendingFinalSteal: validation.state.pendingFinalSteal,
+        objectionsUsed: validation.state.objectionsUsed,
+        payload: validation.payload,
+      })
+
       const authoritativeEvent = await buildAuthoritativeObjectionPayload({
         puzzle: (room.puzzle_data as Puzzle | null) ?? null,
         player,
@@ -704,6 +828,14 @@ export async function POST(request: NextRequest) {
           { status: authoritativeEvent.status }
         )
       }
+
+      logger.info('Online versus objection authoritative payload', {
+        roomId,
+        matchNumber: room.match_number,
+        player,
+        sessionId: session.sessionId,
+        payload: authoritativeEvent.payload,
+      })
 
       authoritativePayload = authoritativeEvent.payload as Record<string, unknown>
     }
@@ -726,6 +858,16 @@ export async function POST(request: NextRequest) {
         error,
       })
       return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    if (validation.type === 'objection') {
+      logger.info('Online versus objection inserted', {
+        roomId,
+        matchNumber: room.match_number,
+        player,
+        sessionId: session.sessionId,
+        payload: authoritativePayload,
+      })
     }
 
     return NextResponse.json({ ok: true, type: validation.type, payload: authoritativePayload })

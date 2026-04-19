@@ -29,11 +29,14 @@
 ## Versus
 
 - Turn state needs to be obvious, but not loud enough to destabilize the header layout.
+- Remote turn changes need an explicit cue; do not rely on players noticing only the turn pill.
 - The turn pill can show the active player's remaining objection economy when objections are enabled.
 - Final steal should feel focused and dramatic.
 - Alarm-driven motion should respect the versus alarm setting.
 - Heartbeat and future sound cues should respect the separate `Audio` toggle.
 - Custom rules like steals, objections, draws, and timer should be explained in setup and feel predictable at match end.
+- In online rematches, room-control actions should stay host-owned even when the winner becomes the
+  next match's `X`.
 - The custom setup modal now groups `Rules` and `Categories` into collapsible sections and surfaces subtle `Custom` indicators when defaults change.
 
 ## Results
@@ -67,6 +70,10 @@
 - Sustained objections use an orange reviewed-success treatment, but only on the category the review actually rescued.
 - Players only get one objection per square, so the button should lock after use.
 - Versus objections should use a reduced-information review modal so live players do not get the full metadata panel for a disputed guess.
+- If an objection is sustained in online versus, the server must apply the corrected square or
+  showdown result authoritatively instead of dropping players back into the metadata modal.
+- If a turn timer exists, objection review pauses it so Gemini latency cannot expire the turn
+  underneath a live review.
 
 ## Achievements
 

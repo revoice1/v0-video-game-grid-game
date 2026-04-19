@@ -556,7 +556,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
 
   // When the online room becomes active, apply authoritative settings and reset board state
   useEffect(() => {
-    const { room, myRole } = onlineVersus
+    const { room } = onlineVersus
     if (!hasActiveOnlineRoom || !room || !shouldForegroundOnlineSession) return
 
     // Apply room.settings as the authoritative rules for this match.
@@ -582,7 +582,9 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
 
     setMode('versus')
     setShowVersusStartOptions(false)
-    setShowOnlineLobby(false)
+    const shouldKeepOnlineLobbyOpen =
+      showOnlineLobby && room.puzzle_id === null && room.puzzle_data === null
+    setShowOnlineLobby(shouldKeepOnlineLobbyOpen)
 
     const roomSnapshot = isOnlineVersusSnapshot(room.state_data) ? room.state_data : null
     const roomMatchKey = `${room.id}:${room.match_number}`
@@ -599,7 +601,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       preparedOnlineRoomKeyRef.current !== roomPrepKey && !hasMatchingLocalPuzzle
     const shouldHydrateRoomSnapshot =
       Boolean(roomSnapshot) &&
-      (myRole === 'o' ||
+      (!onlineVersus.isHost ||
         needsFreshRoomPrep ||
         isSwitchingToDifferentPuzzle ||
         !hasMatchingLocalPuzzle) &&
@@ -637,9 +639,9 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       setLoadingProgress(8)
       setLoadingAttempts([])
       setLoadingStage(
-        myRole === 'x'
+        onlineVersus.isHost
           ? 'Preparing the shared board...'
-          : 'Waiting for the X player to finish preparing the board...'
+          : 'Waiting for the host to finish preparing the board...'
       )
     }
 
@@ -673,8 +675,8 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       return
     }
 
-    if (myRole === 'x' && room.puzzle_id === null && needsFreshRoomPrep) {
-      // X generates the puzzle; after generation, that player should call
+    if (onlineVersus.isHost && room.puzzle_id === null && needsFreshRoomPrep) {
+      // Host generates the puzzle; after generation, that player should call
       // onlineVersus.setPuzzle() to push it to the room for the opponent to load
       skipNextVersusAutoLoadRef.current = true
       loadPuzzle('versus', categoryFilters, undefined, minimumValidOptionsOverride ?? null)
@@ -684,6 +686,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     loadedPuzzleMode,
     mode,
     onlineVersus.room?.puzzle_id,
+    onlineVersus.room?.puzzle_data,
     onlineVersus.room?.state_data,
     onlineVersus.isResuming,
     puzzle,
@@ -775,18 +778,18 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     [onlineVersus.saveSnapshot]
   )
 
-  // X-only: once the puzzle is generated and loaded locally, publish it to the room once.
+  // Host-only: once the puzzle is generated and loaded locally, publish it to the room once.
   // Guards:
-  //   - must be the current X player (myRole === 'x')
+  //   - must be the host for this room
   //   - room must be active with no puzzle yet (room.puzzle_id null = not yet published)
   //   - puzzle must be fully loaded locally
   //   - ref prevents re-firing if this effect re-runs (e.g. strict mode double-invoke)
   useEffect(() => {
-    const { room, myRole } = onlineVersus
+    const { room, isHost } = onlineVersus
     if (
       !isOnlineRoomActive ||
       !room ||
-      myRole !== 'x' ||
+      !isHost ||
       room.puzzle_id !== null || // room already has a puzzle — do not overwrite
       !puzzle ||
       loadedPuzzleMode !== 'versus' ||
@@ -811,7 +814,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
   }, [
     isOnlineRoomActive,
     onlineVersus.room?.puzzle_id,
-    onlineVersus.myRole,
+    onlineVersus.isHost,
     puzzle,
     loadedPuzzleMode,
   ])
@@ -847,7 +850,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
           : undefined,
     }
 
-    if (onlineVersus.myRole !== 'x') {
+    if (!onlineVersus.isHost) {
       return
     }
 
@@ -860,7 +863,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     isCurrentOnlineMatch,
     loadedPuzzleMode,
     mode,
-    onlineVersus.myRole,
+    onlineVersus.isHost,
     onlineVersus.room,
     pendingFinalSteal,
     puzzle,
@@ -1077,6 +1080,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       } else if (event.type === 'miss') {
         if (alreadyApplied) continue
         const missPayload = payload as unknown as OnlineVersusMissPayload
+        const suppressReplayEffects = shouldSuppressOnlineVersusReplayEffects(eventSource)
         const nextGuessesRemaining =
           typeof missPayload.guessesRemaining === 'number'
             ? missPayload.guessesRemaining
@@ -1095,6 +1099,12 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
           const nextPlayer = missPayload.nextPlayer as TicTacToePlayer
           if (nextPlayer === 'x' || nextPlayer === 'o') {
             setCurrentPlayer(nextPlayer)
+            if (!suppressReplayEffects && event.player !== myRole && nextPlayer === myRole) {
+              toast({
+                title: 'Your turn',
+                description: 'Your opponent missed. Make your move.',
+              })
+            }
           }
         }
       } else if (event.type === 'objection') {
@@ -1256,6 +1266,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     onlineVersus.isHydratingHistory,
     onlineVersus.myRole,
     isCurrentOnlineMatch,
+    toast,
   ])
 
   const commitVersusEventLog = useCallback((nextEventLog: VersusEventRecord[]) => {
@@ -1449,7 +1460,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       mode !== 'versus' ||
       !isCurrentOnlineMatch ||
       !onlineVersus.room ||
-      onlineVersus.myRole !== 'x' ||
+      !onlineVersus.isHost ||
       !puzzle ||
       winner === null ||
       finishedOnlineRoomIdRef.current === onlineVersus.room.id
@@ -1470,6 +1481,12 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       objectionsUsed: versusObjectionsUsed,
       turnDeadlineAt,
       turnDurationSeconds: typeof versusTimerOption === 'number' ? versusTimerOption : null,
+      roleAssignments:
+        onlineVersus.room?.state_data &&
+        typeof onlineVersus.room.state_data === 'object' &&
+        'roleAssignments' in onlineVersus.room.state_data
+          ? onlineVersus.room.state_data.roleAssignments
+          : undefined,
     }
 
     enqueueSaveSnapshot(finalSnapshot, () => {
@@ -1747,6 +1764,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
         verdict?: 'sustained' | 'overruled'
         confidence?: 'low' | 'medium' | 'high'
         explanation?: string
+        proof?: string | null
       }
 
       if (!response.ok || !payload.verdict) {
@@ -1786,6 +1804,8 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
 
       if (mode === 'versus' && pendingVersusObjectionReview && isCurrentOnlineMatch) {
         const clientEventId = createOnlineVersusClientEventId('objection')
+        const onlineUpdatedGuess = { ...nextGuess }
+        delete onlineUpdatedGuess.owner
         const overruledResolution =
           payload.verdict === 'overruled'
             ? pendingVersusObjectionReview.invalidGuessResolution
@@ -1797,7 +1817,8 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
           cellIndex: activeDetailCell,
           clientEventId,
           verdict: payload.verdict,
-          updatedGuess: nextGuess,
+          updatedGuess: onlineUpdatedGuess,
+          proof: payload.proof ?? undefined,
           isSteal: pendingVersusObjectionReview.isVersusSteal,
           guessesRemaining: overruledGuessesRemaining,
           resolutionKind: overruledResolution?.kind,
@@ -2094,6 +2115,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
             viaObjection: true,
           })
 
+          setGuesses(nextGuesses)
           setPendingVersusObjectionReview(null)
           setDetailCell(null)
           setObjectionVerdict(null)
@@ -2284,6 +2306,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
   useVersusTurnTimer({
     isVersusMode,
     isOnlineMatch: isCurrentOnlineMatch,
+    objectionPending,
     isLoading,
     loadedPuzzleMode,
     puzzleId: puzzle?.id ?? null,
@@ -3603,8 +3626,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
   }, [onlineVersus, resetOnlineVersusSession, toast, commitVersusEventLog])
 
   const canContinueOnlineRoom =
-    onlineVersus.myRole !== null &&
-    (winner === 'draw' ? onlineVersus.myRole === 'x' : onlineVersus.myRole === winner)
+    onlineVersus.myRole !== null && onlineVersus.isHost && winner !== null
 
   const handleContinueOnlineRoom = useCallback(() => {
     activePuzzleLoadControllerRef.current?.abort()
@@ -3662,7 +3684,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       setLoadingStage(
         canContinueOnlineRoom
           ? 'Preparing the shared board...'
-          : 'Waiting for the X player to finish preparing the board...'
+          : 'Waiting for the host to finish preparing the board...'
       )
       setPendingVersusObjectionReview(null)
       clearAllCelebrations()
@@ -3754,7 +3776,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     }
 
     if (onlineVersus.myRole) {
-      if (winner !== null && onlineVersus.myRole === 'x') {
+      if (winner !== null && onlineVersus.isHost) {
         handleContinueOnlineRoom()
       } else {
         handleStartFreshOnlineMatch()
@@ -3913,7 +3935,11 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       }}
       onDismiss={() => {
         setShowOnlineLobby(false)
-        if (onlineVersus.phase === 'idle' || onlineVersus.phase === 'error') {
+        if (
+          onlineVersus.phase === 'idle' ||
+          onlineVersus.phase === 'error' ||
+          onlineVersus.phase === 'finished'
+        ) {
           resetOnlineVersusSession()
         }
       }}
@@ -3942,12 +3968,11 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     if (hasActiveOnlineRoom && (!onlineVersus.room?.puzzle_id || !onlineVersus.room?.puzzle_data)) {
       return {
         title: 'Waiting For Board',
-        description:
-          onlineVersus.myRole === 'x'
-            ? 'Preparing the shared board for your online match.'
-            : 'Waiting for the X player to finish preparing the shared board.',
-        showProgress: onlineVersus.myRole === 'x',
-        showAttempts: onlineVersus.myRole === 'x',
+        description: onlineVersus.isHost
+          ? 'Preparing the shared board for your online match.'
+          : 'Waiting for the host to finish preparing the shared board.',
+        showProgress: onlineVersus.isHost,
+        showAttempts: onlineVersus.isHost,
       }
     }
 
@@ -3972,9 +3997,9 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     }
 
     if (hasActiveOnlineRoom && (!onlineVersus.room?.puzzle_id || !onlineVersus.room?.puzzle_data)) {
-      return onlineVersus.myRole === 'x'
+      return onlineVersus.isHost
         ? 'Preparing the shared board...'
-        : 'Waiting for the X player to finish preparing the board...'
+        : 'Waiting for the host to finish preparing the board...'
     }
 
     return 'Syncing match state...'
@@ -4128,6 +4153,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
           score={score}
           currentPlayer={isVersusMode ? currentPlayer : null}
           myOnlineRole={onlineVersus.myRole}
+          isOnlineHost={onlineVersus.isHost}
           winner={isVersusMode ? winner : null}
           versusRecord={versusRecord}
           versusObjectionRule={versusObjectionRule}
@@ -4142,6 +4168,11 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
           onHowToPlay={() => setShowHowToPlay(true)}
           onDailyHistory={mode === 'daily' ? openDailyHistory : undefined}
           onNewGame={mode === 'practice' || mode === 'versus' ? handleNewGame : undefined}
+          onContinueOnlineRoom={
+            mode === 'versus' && onlineVersus.myRole && canContinueOnlineRoom
+              ? handleContinueOnlineRoom
+              : undefined
+          }
           onStartOnlineMatch={
             mode === 'versus' && !onlineVersus.myRole ? handleStartOnlineMatch : undefined
           }
@@ -4226,12 +4257,12 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
               ? onlineVersus.myRole
                 ? canContinueOnlineRoom
                   ? 'The online match ended in a draw. Close this dialog to review the finished board, continue in this room, or start a fresh online room.'
-                  : 'The online match ended in a draw. Close this dialog to review the finished board or start a fresh online room.'
+                  : 'The online match ended in a draw. Close this dialog to review the finished board or wait for the host to continue this room.'
                 : 'The versus match ended in a draw. Close this dialog to review the finished board or start a new match.'
               : onlineVersus.myRole
                 ? canContinueOnlineRoom
                   ? 'The online match is over. Close this dialog to review the finished board, continue in this room, or start a fresh online room.'
-                  : 'The online match is over. Close this dialog to review the finished board or wait for the winner to continue this room.'
+                  : 'The online match is over. Close this dialog to review the finished board or wait for the host to continue this room.'
                 : 'The versus match is over. Close this dialog to review the finished board or start a new match.'}
           </DialogDescription>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
@@ -4245,12 +4276,12 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
               ? onlineVersus.myRole
                 ? canContinueOnlineRoom
                   ? 'No line was completed before the board filled up. Continue in this room or start a fresh online room to play again.'
-                  : 'No line was completed before the board filled up. Wait for the X player to continue this room or start a fresh online room.'
+                  : 'No line was completed before the board filled up. Wait for the host to continue this room or start a fresh online room.'
                 : 'No line was completed before the board filled up.'
               : onlineVersus.myRole
                 ? canContinueOnlineRoom
                   ? 'Click outside to review the finished board, continue in this room, or start a fresh online room.'
-                  : 'Click outside to review the finished board, or wait for the winner to continue this room.'
+                  : 'Click outside to review the finished board, or wait for the host to continue this room.'
                 : 'Click outside to review the finished board, or start a new match.'}
           </p>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
@@ -4269,7 +4300,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
               </button>
             )}
             <button
-              onClick={onlineVersus.myRole === 'x' ? handleStartFreshOnlineMatch : handleNewGame}
+              onClick={onlineVersus.isHost ? handleStartFreshOnlineMatch : handleNewGame}
               className="rounded-lg bg-primary px-5 py-2.5 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
               {onlineVersus.myRole ? 'New Online Room' : 'New Match'}

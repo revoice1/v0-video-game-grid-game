@@ -8,8 +8,13 @@ const { createAdminClientMock, resolveAnonymousSessionMock, validateOnlineVersus
     validateOnlineVersusEventMock: vi.fn(),
   }))
 
-const { validateIGDBGameForCellMock } = vi.hoisted(() => ({
+const { validateIGDBGameForCellMock, getResolvedIGDBGameDetailsMock } = vi.hoisted(() => ({
   validateIGDBGameForCellMock: vi.fn(),
+  getResolvedIGDBGameDetailsMock: vi.fn(),
+}))
+
+const { verifyObjectionProofMock } = vi.hoisted(() => ({
+  verifyObjectionProofMock: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/admin', () => ({
@@ -26,6 +31,11 @@ vi.mock('@/lib/online-versus-event-validation', () => ({
 
 vi.mock('@/lib/igdb', () => ({
   validateIGDBGameForCell: validateIGDBGameForCellMock,
+  getResolvedIGDBGameDetails: getResolvedIGDBGameDetailsMock,
+}))
+
+vi.mock('@/lib/objection-proof', () => ({
+  verifyObjectionProof: verifyObjectionProofMock,
 }))
 
 import { POST } from '@/app/api/versus/event/route'
@@ -188,6 +198,55 @@ describe('/api/versus/event route', () => {
         },
       },
     })
+    getResolvedIGDBGameDetailsMock.mockResolvedValue({
+      game: {
+        id: 70,
+        name: 'Resolved Game',
+        slug: 'resolved-game',
+        gameUrl: 'https://example.com/resolved-game',
+        background_image: 'resolved.png',
+        released: '2001-01-01',
+        metacritic: 88,
+        stealRating: 99,
+        stealRatingCount: 240,
+        genres: [{ id: 1, name: 'RPG', slug: 'rpg' }],
+        platforms: [{ platform: { id: 1, name: 'PlayStation', slug: 'playstation' } }],
+        developers: [{ id: 7, name: 'Dev Team', slug: 'dev-team' }],
+        publishers: [{ id: 8, name: 'Pub Team', slug: 'pub-team' }],
+        tags: [{ id: 9, name: 'Story Rich', slug: 'story-rich' }],
+        igdb: {
+          game_modes: ['Single player'],
+          themes: ['Fantasy'],
+          player_perspectives: ['Third person'],
+          companies: ['Dev Team'],
+          keywords: [],
+        },
+      },
+      selectedGame: {
+        id: 7,
+        name: 'Chosen Port',
+        slug: 'chosen-port',
+        gameUrl: 'https://example.com/chosen-port',
+        background_image: 'chosen.png',
+        released: '2004-01-01',
+        metacritic: 75,
+        stealRating: 99,
+        stealRatingCount: 100,
+        genres: [{ id: 1, name: 'RPG', slug: 'rpg' }],
+        platforms: [{ platform: { id: 1, name: 'PlayStation', slug: 'playstation' } }],
+        developers: [{ id: 7, name: 'Dev Team', slug: 'dev-team' }],
+        publishers: [{ id: 8, name: 'Pub Team', slug: 'pub-team' }],
+        tags: [{ id: 9, name: 'Story Rich', slug: 'story-rich' }],
+        igdb: {
+          game_modes: ['Single player'],
+          themes: ['Fantasy'],
+          player_perspectives: ['Third person'],
+          companies: ['Dev Team'],
+          keywords: [],
+        },
+      },
+    })
+    verifyObjectionProofMock.mockReturnValue(false)
   })
 
   it('returns the validation rejection code when the event is illegal', async () => {
@@ -677,6 +736,123 @@ describe('/api/versus/event route', () => {
             objectionExplanation: 'Judge agreed this should count.',
             objectionOriginalMatchedRow: null,
             objectionOriginalMatchedCol: true,
+          }),
+        }),
+      })
+    )
+  })
+
+  it('accepts sustained objections with a valid proof when direct metadata validation fails', async () => {
+    const { supabase, insertMock } = buildSupabaseMock({
+      room: {
+        host_session_id: 'session-1',
+        guest_session_id: 'session-2',
+        match_number: 3,
+        status: 'active',
+        settings: {
+          categoryFilters: {},
+          stealRule: 'lower',
+          timerOption: 'none',
+          disableDraws: false,
+          objectionRule: 'one',
+        },
+        puzzle_id: 'puzzle-1',
+        puzzle_data: {
+          id: 'puzzle-1',
+          date: null,
+          is_daily: false,
+          row_categories: [
+            { type: 'company', id: 1, name: 'Square Enix' },
+            { type: 'genre', id: 2, name: 'Action' },
+            { type: 'genre', id: 3, name: 'Puzzle' },
+          ],
+          col_categories: [
+            { type: 'perspective', id: 1, name: 'First person' },
+            { type: 'platform', id: 2, name: 'Switch' },
+            { type: 'platform', id: 3, name: 'PC' },
+          ],
+          created_at: '2026-04-09T00:00:00.000Z',
+        },
+        state_data: null,
+      },
+    })
+    createAdminClientMock.mockReturnValue(supabase)
+    validateOnlineVersusEventMock.mockReturnValue({
+      ok: true,
+      type: 'objection',
+      payload: {
+        cellIndex: 0,
+        verdict: 'sustained',
+        proof: 'signed-proof',
+        updatedGuess: {
+          gameId: 7,
+          gameName: 'Client Claimed Name',
+          gameImage: null,
+          isCorrect: true,
+          owner: 'x',
+          objectionUsed: true,
+          objectionVerdict: 'sustained',
+          objectionExplanation: 'Judge agreed this should count.',
+          objectionOriginalMatchedRow: false,
+          objectionOriginalMatchedCol: true,
+          validationExplanation: {
+            row: { matched: true },
+            col: { matched: true },
+          },
+        },
+        isSteal: false,
+      },
+      state: {
+        guesses: Array.from({ length: 9 }, () => null),
+        guessesRemaining: 9,
+        currentPlayer: 'x',
+        winner: null,
+        stealableCell: null,
+        pendingFinalSteal: null,
+        objectionsUsed: { x: 0, o: 0 },
+      },
+    })
+    validateIGDBGameForCellMock.mockResolvedValueOnce({
+      valid: false,
+      game: null,
+      selectedGame: null,
+      matchesRow: false,
+      matchesCol: false,
+      explanation: null,
+    })
+    verifyObjectionProofMock.mockReturnValueOnce(true)
+
+    const request = new NextRequest('http://localhost/api/versus/event', {
+      method: 'POST',
+      body: JSON.stringify({
+        roomId: 'room-1',
+        matchNumber: 3,
+        player: 'x',
+        type: 'objection',
+        payload: { cellIndex: 0 },
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+
+    const response = await POST(request)
+
+    expect(response.status).toBe(200)
+    expect(verifyObjectionProofMock).toHaveBeenCalledOnce()
+    expect(insertMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'objection',
+        payload: expect.objectContaining({
+          verdict: 'sustained',
+          isSteal: false,
+          updatedGuess: expect.objectContaining({
+            gameId: 7,
+            gameName: 'Chosen Port',
+            matchedRow: true,
+            matchedCol: true,
+            objectionVerdict: 'sustained',
+            objectionExplanation: 'Judge agreed this should count.',
           }),
         }),
       })

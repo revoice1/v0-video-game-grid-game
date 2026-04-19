@@ -128,6 +128,7 @@ describe('/api/objection route', () => {
       confidence: 'high',
       explanation: 'The app rejection is probably correct.',
       suspectedMissingMetadata: null,
+      proof: null,
     })
     expect(fetchMock).toHaveBeenCalledOnce()
     expect(requestBody).toMatchObject({
@@ -166,6 +167,54 @@ describe('/api/objection route', () => {
     })
   })
 
+  it('returns a proof for sustained verdicts', async () => {
+    process.env.OBJECTION_PROOF_SECRET = 'test-proof-secret'
+
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            candidates: [
+              {
+                content: {
+                  parts: [
+                    {
+                      text: JSON.stringify({
+                        verdict: 'sustained',
+                        confidence: 'high',
+                        explanation: 'The app rejection is wrong.',
+                        suspectedMissingMetadata: null,
+                      }),
+                    },
+                  ],
+                },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        )
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { POST } = await import('@/app/api/objection/route')
+    const response = await POST(buildRequest())
+    const payload = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(payload).toEqual({
+      verdict: 'sustained',
+      confidence: 'high',
+      explanation: 'The app rejection is wrong.',
+      suspectedMissingMetadata: null,
+      proof: expect.any(String),
+    })
+  })
+
   it('uses thinking budgets for explicit Gemini 2.5 models', async () => {
     process.env.GEMINI_MODEL = 'gemini-2.5-flash-lite'
     process.env.GEMINI_OBJECTION_THINKING_LEVEL = 'minimal'
@@ -195,5 +244,56 @@ describe('/api/objection route', () => {
         },
       },
     })
+  })
+
+  it('accepts grounded narrative verdicts from Gemini 2.5 without falling back to standard', async () => {
+    process.env.GEMINI_MODEL = 'gemini-2.5-flash-lite'
+    process.env.GEMINI_OBJECTION_ENABLE_SEARCH_GROUNDING = '1'
+    process.env.GEMINI_OBJECTION_THINKING_LEVEL = 'minimal'
+
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            candidates: [
+              {
+                content: {
+                  parts: [
+                    {
+                      text: [
+                        'Cloning Clyde is a side-scrolling platformer.',
+                        'The game was released on Xbox 360.',
+                        'The verdict is sustained.',
+                      ].join(' '),
+                    },
+                  ],
+                },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        )
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { POST } = await import('@/app/api/objection/route')
+    const response = await POST(buildRequest())
+    const payload = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(payload).toEqual({
+      verdict: 'sustained',
+      confidence: 'medium',
+      explanation:
+        'Cloning Clyde is a side-scrolling platformer. The game was released on Xbox 360. The verdict is sustained.',
+      suspectedMissingMetadata: null,
+      proof: null,
+    })
+    expect(fetchMock).toHaveBeenCalledOnce()
   })
 })

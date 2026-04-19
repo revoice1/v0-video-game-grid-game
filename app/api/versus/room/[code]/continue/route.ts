@@ -57,7 +57,7 @@ export async function POST(
         : currentAssignments.oSessionId,
   }
 
-  const canContinue = nextAssignments.xSessionId === session.sessionId
+  const canContinue = room.host_session_id === session.sessionId
 
   if (!canContinue) {
     logger.error('[versus.room.continue] not host', {
@@ -66,10 +66,7 @@ export async function POST(
       sessionId: session.sessionId,
       winner: snapshotWinner,
     })
-    return NextResponse.json(
-      { error: 'Only the player who opens the next match can continue the room.' },
-      { status: 403 }
-    )
+    return NextResponse.json({ error: 'Only the host can continue the room.' }, { status: 403 })
   }
 
   const isReadyForContinue = room.status === 'finished' || snapshotWinner !== null
@@ -106,5 +103,5 @@ export async function POST(
 
   const role = nextAssignments.xSessionId === session.sessionId ? 'x' : 'o'
 
-  return NextResponse.json({ room: updated, role })
+  return NextResponse.json({ room: updated, role, isHost: true })
 }

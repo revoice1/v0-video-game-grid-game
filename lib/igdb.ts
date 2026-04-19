@@ -1546,7 +1546,9 @@ export async function getIGDBGameDetails(gameId: number): Promise<Game | null> {
   return mapped
 }
 
-async function getResolvedIGDBGameDetails(gameId: number): Promise<ResolvedIGDBGameDetails | null> {
+export async function getResolvedIGDBGameDetails(
+  gameId: number
+): Promise<ResolvedIGDBGameDetails | null> {
   if (igdbResolvedPortFamilyCache.has(gameId)) {
     return igdbResolvedPortFamilyCache.get(gameId) ?? null
   }

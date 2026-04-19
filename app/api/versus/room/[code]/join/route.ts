@@ -67,7 +67,7 @@ export async function POST(
       room.guest_session_id
     )
     const role = assignments.xSessionId === session.sessionId ? 'x' : 'o'
-    const response = NextResponse.json({ room: safeRoom, role })
+    const response = NextResponse.json({ room: safeRoom, role, isHost: true })
     return applyAnonymousSessionCookie(response, session, request)
   }
 
@@ -79,7 +79,7 @@ export async function POST(
       room.guest_session_id
     )
     const role = assignments.xSessionId === session.sessionId ? 'x' : 'o'
-    const response = NextResponse.json({ room: safeRoom, role })
+    const response = NextResponse.json({ room: safeRoom, role, isHost: false })
     return applyAnonymousSessionCookie(response, session, request)
   }
 
@@ -118,6 +118,6 @@ export async function POST(
     )
   }
 
-  const response = NextResponse.json({ room: updated, role: 'o' })
+  const response = NextResponse.json({ room: updated, role: 'o', isHost: false })
   return applyAnonymousSessionCookie(response, session, request)
 }

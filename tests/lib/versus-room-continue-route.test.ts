@@ -118,7 +118,7 @@ describe('/api/versus/room/[code]/continue route', () => {
     const payload = await response.json()
 
     expect(response.status).toBe(200)
-    expect(payload).toEqual({ room: updatedRoom, role: 'x' })
+    expect(payload).toEqual({ room: updatedRoom, role: 'x', isHost: true })
     expect(updatePayloads).toHaveLength(1)
     expect(updatePayloads[0]).toEqual(
       expect.objectContaining({
@@ -136,13 +136,9 @@ describe('/api/versus/room/[code]/continue route', () => {
     )
   })
 
-  it('lets the O winner continue and records the next x/o assignment without swapping host ownership', async () => {
+  it('lets the host continue after an O win and records the next x/o assignment without swapping host ownership', async () => {
     const { supabase, room, updatePayloads, updatedRoom } = buildSupabaseMock()
     room.state_data = { winner: 'o' }
-    resolveAnonymousSessionMock.mockReturnValue({
-      sessionId: 'session-2',
-      shouldSetCookie: false,
-    })
     createAdminClientMock.mockReturnValue(supabase)
 
     const request = new NextRequest('http://localhost/api/versus/room/ABCD/continue', {
@@ -155,7 +151,7 @@ describe('/api/versus/room/[code]/continue route', () => {
     const payload = await response.json()
 
     expect(response.status).toBe(200)
-    expect(payload).toEqual({ room: updatedRoom, role: 'x' })
+    expect(payload).toEqual({ room: updatedRoom, role: 'o', isHost: true })
     expect(updatePayloads).toHaveLength(1)
     expect(updatePayloads[0]).toEqual(
       expect.objectContaining({
@@ -188,7 +184,31 @@ describe('/api/versus/room/[code]/continue route', () => {
 
     expect(response.status).toBe(403)
     expect(payload).toEqual({
-      error: 'Only the player who opens the next match can continue the room.',
+      error: 'Only the host can continue the room.',
+    })
+  })
+
+  it('rejects the guest when O won the prior match', async () => {
+    const { supabase, room } = buildSupabaseMock()
+    room.state_data = { winner: 'o' }
+    resolveAnonymousSessionMock.mockReturnValue({
+      sessionId: 'session-2',
+      shouldSetCookie: false,
+    })
+    createAdminClientMock.mockReturnValue(supabase)
+
+    const request = new NextRequest('http://localhost/api/versus/room/ABCD/continue', {
+      method: 'POST',
+    })
+
+    const response = await POST(request, {
+      params: Promise.resolve({ code: 'ABCD' }),
+    })
+    const payload = await response.json()
+
+    expect(response.status).toBe(403)
+    expect(payload).toEqual({
+      error: 'Only the host can continue the room.',
     })
   })
 })

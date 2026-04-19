@@ -13,6 +13,7 @@ interface PendingFinalStealLike {
 interface UseVersusTurnTimerOptions {
   isVersusMode: boolean
   isOnlineMatch?: boolean
+  objectionPending?: boolean
   isLoading: boolean
   loadedPuzzleMode: 'daily' | 'practice' | 'versus' | null
   puzzleId: string | null
@@ -33,6 +34,7 @@ interface UseVersusTurnTimerOptions {
 export function useVersusTurnTimer({
   isVersusMode,
   isOnlineMatch = false,
+  objectionPending = false,
   isLoading,
   loadedPuzzleMode,
   puzzleId,
@@ -82,13 +84,15 @@ export function useVersusTurnTimer({
     const isVersusBoardReady =
       isVersusMode && !isLoading && loadedPuzzleMode === 'versus' && puzzleId !== null
 
-    if (winner || versusTimerOption === 'none') {
+    if (winner || objectionPending || versusTimerOption === 'none') {
       activeTurnTimerKeyRef.current = null
       initializedTurnTimerKeyRef.current = null
       expiredTurnTimerKeyRef.current = null
       pendingLocalTurnResetKeyRef.current = null
       setTurnTimeLeft(null)
-      setTurnDeadlineAt(null)
+      if (!objectionPending) {
+        setTurnDeadlineAt(null)
+      }
       return
     }
 
@@ -167,10 +171,11 @@ export function useVersusTurnTimer({
     turnTimeLeft,
     versusTimerOption,
     winner,
+    objectionPending,
   ])
 
   useEffect(() => {
-    if (!isVersusMode || winner) {
+    if (!isVersusMode || winner || objectionPending) {
       return
     }
 
@@ -240,5 +245,6 @@ export function useVersusTurnTimer({
     turnDeadlineAt,
     turnTimeLeft,
     winner,
+    objectionPending,
   ])
 }

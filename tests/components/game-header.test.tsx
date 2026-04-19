@@ -104,6 +104,7 @@ describe('GameHeader objection tracker', () => {
         score={0}
         currentPlayer="o"
         myOnlineRole="x"
+        isOnlineHost
         winner="x"
         versusRecord={{ xWins: 0, oWins: 0 }}
         versusObjectionRule="one"
@@ -113,9 +114,59 @@ describe('GameHeader objection tracker', () => {
         onAchievements={() => {}}
         onEndOnlineMatch={() => {}}
         onNewGame={() => {}}
+        onContinueOnlineRoom={() => {}}
       />
     )
 
     expect(screen.getByRole('button', { name: 'Continue In Room' })).toBeInTheDocument()
+  })
+
+  it('shows continue in room for a finished guest-side online match when O wins', () => {
+    render(
+      <GameHeader
+        mode="versus"
+        guessesRemaining={0}
+        score={0}
+        currentPlayer="x"
+        myOnlineRole="o"
+        isOnlineHost
+        winner="o"
+        versusRecord={{ xWins: 0, oWins: 0 }}
+        versusObjectionRule="one"
+        versusObjectionsUsed={{ x: 0, o: 1 }}
+        onModeChange={() => {}}
+        onHowToPlay={() => {}}
+        onAchievements={() => {}}
+        onEndOnlineMatch={() => {}}
+        onNewGame={() => {}}
+        onContinueOnlineRoom={() => {}}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: 'Continue In Room' })).toBeInTheDocument()
+  })
+
+  it('does not show continue in room for a finished guest-side online match', () => {
+    render(
+      <GameHeader
+        mode="versus"
+        guessesRemaining={0}
+        score={0}
+        currentPlayer="x"
+        myOnlineRole="o"
+        winner="o"
+        versusRecord={{ xWins: 0, oWins: 0 }}
+        versusObjectionRule="one"
+        versusObjectionsUsed={{ x: 0, o: 1 }}
+        onModeChange={() => {}}
+        onHowToPlay={() => {}}
+        onAchievements={() => {}}
+        onEndOnlineMatch={() => {}}
+        onNewGame={() => {}}
+        onContinueOnlineRoom={() => {}}
+      />
+    )
+
+    expect(screen.queryByRole('button', { name: 'Continue In Room' })).not.toBeInTheDocument()
   })
 })

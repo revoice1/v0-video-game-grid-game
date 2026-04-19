@@ -254,8 +254,9 @@ function VersusHowToPlay() {
             <p className="text-sm text-muted-foreground">
               Some versus matches allow a limited number of objections per player. Use one when you
               think a claimed answer does not really fit the square. If the objection is sustained,
-              that claim is removed. If it is overruled, the claim stands and the objection is
-              spent.
+              the server applies the corrected result authoritatively. On steals that means the
+              showdown still resolves and the square can flip. If it is overruled, the claim stands
+              and the objection is spent.
             </p>
           </div>
         </div>
@@ -268,7 +269,8 @@ function VersusHowToPlay() {
             <p className="font-medium">Optional Turn Timer</p>
             <p className="text-sm text-muted-foreground">
               If your custom match uses a timer, it shows in the versus HUD. When the clock hits
-              zero, the turn expires and play passes immediately.
+              zero, the turn expires and play passes immediately. Active objection reviews pause the
+              clock until Judge Gemini returns a verdict.
             </p>
           </div>
         </div>
@@ -296,6 +298,10 @@ function VersusHowToPlay() {
               First to complete any row, column, or diagonal wins the match. If no line appears, the
               match is either a draw or a cell-count tiebreak depending on your custom rules.
             </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              In online rooms, the host always controls room flow like `Continue In Room`, while the
+              winner becomes next match&apos;s `X`.
+            </p>
           </div>
         </div>
       </div>
@@ -320,7 +326,7 @@ export function HowToPlayModal({
           </DialogTitle>
           <DialogDescription className="text-center text-sm text-muted-foreground">
             {mode === 'versus'
-              ? 'Rules and reminders for local head-to-head play.'
+              ? 'Rules and reminders for local and online head-to-head play.'
               : 'Rules and reminders for daily and practice boards.'}
           </DialogDescription>
         </DialogHeader>

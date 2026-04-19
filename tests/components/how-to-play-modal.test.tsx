@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { HowToPlayModal } from '@/components/game/how-to-play-modal'
 
 describe('HowToPlayModal', () => {
-  it('renders versus guidance with the updated steal copy and player links', () => {
+  it('renders versus guidance with the updated steal, timer, and online room copy', () => {
     render(<HowToPlayModal isOpen onClose={() => {}} mode="versus" />)
 
     expect(screen.getByRole('heading', { name: 'How to Play Versus' })).toBeInTheDocument()
@@ -14,7 +14,16 @@ describe('HowToPlayModal', () => {
         /when steals are enabled, versus search favors games with rating or review data/i
       )
     ).toBeInTheDocument()
-    expect(screen.getByText('Rules and reminders for local head-to-head play.')).toBeInTheDocument()
+    expect(
+      screen.getByText('Rules and reminders for local and online head-to-head play.')
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        /active objection reviews pause the clock until Judge Gemini returns a verdict/i
+      )
+    ).toBeInTheDocument()
+    expect(screen.getByText(/the host always controls room flow/i)).toBeInTheDocument()
+    expect(screen.getByText(/winner becomes next match/i)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Changelog' })).toHaveAttribute('href', '/changelog')
     expect(screen.getByRole('link', { name: 'Report a bug' })).toHaveAttribute(
       'href',
