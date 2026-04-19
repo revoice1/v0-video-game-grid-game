@@ -16,6 +16,8 @@ This is the working checklist for the current cleanup pass after the curated-gen
 - Add tests where recent product rules are still mostly protected by manual QA.
 - Make the e2e suite easier to extend without adding more repeated setup code.
 - Keep the docs honest about what has already been extracted and what still carries risk.
+- Keep the online-versus authority model explicit so future rematch and objection fixes do not
+  re-entangle host ownership with `X/O` role rotation.
 
 ## Game Client Extraction Order
 
@@ -61,6 +63,14 @@ Status:
 - The rerender-related timer starvation bug is now fixed and covered.
 - The main versus gameplay spec coverage has been split into `tests/e2e/app-versus.spec.ts`.
 - Remaining work is the effect/state-machine orchestration and timer flow.
+- Online host-vs-role responsibilities are much clearer now:
+  - host-owned room control
+  - role-assignment refresh on rematch advance
+  - host-owned snapshot persistence
+  - objection timer pause
+  - signed sustained-objection proof handoff
+- `useOnlineVersusRoom` now has better regression coverage for host/guest rematch role refresh and
+  finished-room auto-resume cleanup.
 
 Current hot spots:
 
@@ -68,6 +78,8 @@ Current hot spots:
 - final-steal state
 - disable-draws resolution
 - winner banner dismissal / versus record updates
+- room lifecycle orchestration still split between `game-client.tsx` and
+  `hooks/use-online-versus-room.ts`
 
 Why this should move next:
 
@@ -184,6 +196,10 @@ Still worth adding:
 - Timer danger state now has both e2e coverage and component-level header coverage.
 - Timer expiration plus pending final-steal interactions still deserve one more targeted case.
 - Add a regression for "failed final steal with alarms off" so the no-alarm visual/audio path stays intentional.
+- The online rematch/role model now has direct hook and route coverage, plus a lightweight
+  runbook (`docs/online-versus-runbook.md`) for symptom-to-log debugging.
+- A richer multi-client browser harness is still the main missing piece for online-versus
+  confidence.
 
 ### Achievements And Celebrations
 
@@ -276,5 +292,7 @@ We should keep pushing rule-heavy logic there instead of only verifying it throu
 1. Keep extracting the remaining async/eventful center of `game-client.tsx`.
 2. Add one more targeted versus timer/final-steal interaction regression.
 3. Add a rejected-guess details regression that exercises sparse metadata preservation end-to-end.
-4. Continue carving celebration/achievement orchestration out of `game-client.tsx`.
-5. Do a dedicated formatting/hygiene pass when we want `npm test` to go fully green again.
+4. Decide whether online-versus deserves a heavier multi-client E2E harness or whether the current
+   route/hook coverage is enough for now.
+5. Continue carving celebration/achievement orchestration out of `game-client.tsx`.
+6. Do a dedicated formatting/hygiene pass when we want `npm test` to go fully green again.
