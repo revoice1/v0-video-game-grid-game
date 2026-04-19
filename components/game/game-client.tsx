@@ -847,7 +847,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
           : undefined,
     }
 
-    if (onlineVersus.myRole !== 'x') {
+    if (!onlineVersus.isHost) {
       return
     }
 
@@ -860,7 +860,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     isCurrentOnlineMatch,
     loadedPuzzleMode,
     mode,
-    onlineVersus.myRole,
+    onlineVersus.isHost,
     onlineVersus.room,
     pendingFinalSteal,
     puzzle,
@@ -1457,7 +1457,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       mode !== 'versus' ||
       !isCurrentOnlineMatch ||
       !onlineVersus.room ||
-      onlineVersus.myRole !== 'x' ||
+      !onlineVersus.isHost ||
       !puzzle ||
       winner === null ||
       finishedOnlineRoomIdRef.current === onlineVersus.room.id
@@ -1478,6 +1478,12 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       objectionsUsed: versusObjectionsUsed,
       turnDeadlineAt,
       turnDurationSeconds: typeof versusTimerOption === 'number' ? versusTimerOption : null,
+      roleAssignments:
+        onlineVersus.room?.state_data &&
+        typeof onlineVersus.room.state_data === 'object' &&
+        'roleAssignments' in onlineVersus.room.state_data
+          ? onlineVersus.room.state_data.roleAssignments
+          : undefined,
     }
 
     enqueueSaveSnapshot(finalSnapshot, () => {
