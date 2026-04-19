@@ -1077,6 +1077,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       } else if (event.type === 'miss') {
         if (alreadyApplied) continue
         const missPayload = payload as unknown as OnlineVersusMissPayload
+        const suppressReplayEffects = shouldSuppressOnlineVersusReplayEffects(eventSource)
         const nextGuessesRemaining =
           typeof missPayload.guessesRemaining === 'number'
             ? missPayload.guessesRemaining
@@ -1095,6 +1096,12 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
           const nextPlayer = missPayload.nextPlayer as TicTacToePlayer
           if (nextPlayer === 'x' || nextPlayer === 'o') {
             setCurrentPlayer(nextPlayer)
+            if (!suppressReplayEffects && event.player !== myRole && nextPlayer === myRole) {
+              toast({
+                title: 'Your turn',
+                description: 'Your opponent missed. Make your move.',
+              })
+            }
           }
         }
       } else if (event.type === 'objection') {
@@ -1256,6 +1263,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     onlineVersus.isHydratingHistory,
     onlineVersus.myRole,
     isCurrentOnlineMatch,
+    toast,
   ])
 
   const commitVersusEventLog = useCallback((nextEventLog: VersusEventRecord[]) => {
@@ -3913,7 +3921,11 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       }}
       onDismiss={() => {
         setShowOnlineLobby(false)
-        if (onlineVersus.phase === 'idle' || onlineVersus.phase === 'error') {
+        if (
+          onlineVersus.phase === 'idle' ||
+          onlineVersus.phase === 'error' ||
+          onlineVersus.phase === 'finished'
+        ) {
           resetOnlineVersusSession()
         }
       }}
