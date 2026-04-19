@@ -15,6 +15,7 @@ import { createRequestLogger } from '@/lib/logging'
 import type { CellGuess, Puzzle } from '@/lib/types'
 import {
   getOnlineVersusRoleAssignments,
+  isOnlineVersusSnapshot,
   type OnlineVersusEventType,
   type RoomPlayer,
 } from '@/lib/versus-room'
@@ -645,6 +646,34 @@ export async function POST(request: NextRequest) {
     })
 
     if (!validation.ok) {
+      const snapshotSummary = isOnlineVersusSnapshot(room.state_data)
+        ? {
+            currentPlayer: room.state_data.currentPlayer,
+            winner: room.state_data.winner,
+            stealableCell: room.state_data.stealableCell,
+            pendingFinalSteal: room.state_data.pendingFinalSteal,
+            objectionsUsed: room.state_data.objectionsUsed,
+          }
+        : null
+      logger.warn('Online versus event validation failed', {
+        roomId,
+        matchNumber,
+        player,
+        type,
+        sessionId: session.sessionId,
+        code: validation.code,
+        error: validation.error,
+        payload,
+        snapshotSummary,
+        recentEvents: ((existingEventRows ?? []) as StoredOnlineVersusEvent[])
+          .slice(-5)
+          .map((event) => ({
+            id: event.id,
+            player: event.player,
+            type: event.type,
+            payload: event.payload,
+          })),
+      })
       return NextResponse.json(
         { error: validation.error, code: validation.code },
         { status: validation.status }

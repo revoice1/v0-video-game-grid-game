@@ -582,7 +582,9 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
 
     setMode('versus')
     setShowVersusStartOptions(false)
-    setShowOnlineLobby(false)
+    const shouldKeepOnlineLobbyOpen =
+      showOnlineLobby && room.puzzle_id === null && room.puzzle_data === null
+    setShowOnlineLobby(shouldKeepOnlineLobbyOpen)
 
     const roomSnapshot = isOnlineVersusSnapshot(room.state_data) ? room.state_data : null
     const roomMatchKey = `${room.id}:${room.match_number}`
@@ -684,6 +686,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     loadedPuzzleMode,
     mode,
     onlineVersus.room?.puzzle_id,
+    onlineVersus.room?.puzzle_data,
     onlineVersus.room?.state_data,
     onlineVersus.isResuming,
     puzzle,
@@ -1800,6 +1803,8 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
 
       if (mode === 'versus' && pendingVersusObjectionReview && isCurrentOnlineMatch) {
         const clientEventId = createOnlineVersusClientEventId('objection')
+        const onlineUpdatedGuess = { ...nextGuess }
+        delete onlineUpdatedGuess.owner
         const overruledResolution =
           payload.verdict === 'overruled'
             ? pendingVersusObjectionReview.invalidGuessResolution
@@ -1811,7 +1816,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
           cellIndex: activeDetailCell,
           clientEventId,
           verdict: payload.verdict,
-          updatedGuess: nextGuess,
+          updatedGuess: onlineUpdatedGuess,
           isSteal: pendingVersusObjectionReview.isVersusSteal,
           guessesRemaining: overruledGuessesRemaining,
           resolutionKind: overruledResolution?.kind,
