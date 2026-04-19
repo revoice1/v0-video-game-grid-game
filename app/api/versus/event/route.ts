@@ -719,6 +719,19 @@ export async function POST(request: NextRequest) {
     }
 
     if (validation.type === 'objection') {
+      logger.info('Online versus objection validated', {
+        roomId,
+        matchNumber: room.match_number,
+        player,
+        sessionId: session.sessionId,
+        currentPlayer: validation.state.currentPlayer,
+        winner: validation.state.winner,
+        stealableCell: validation.state.stealableCell,
+        pendingFinalSteal: validation.state.pendingFinalSteal,
+        objectionsUsed: validation.state.objectionsUsed,
+        payload: validation.payload,
+      })
+
       const authoritativeEvent = await buildAuthoritativeObjectionPayload({
         puzzle: (room.puzzle_data as Puzzle | null) ?? null,
         player,
@@ -733,6 +746,14 @@ export async function POST(request: NextRequest) {
           { status: authoritativeEvent.status }
         )
       }
+
+      logger.info('Online versus objection authoritative payload', {
+        roomId,
+        matchNumber: room.match_number,
+        player,
+        sessionId: session.sessionId,
+        payload: authoritativeEvent.payload,
+      })
 
       authoritativePayload = authoritativeEvent.payload as Record<string, unknown>
     }

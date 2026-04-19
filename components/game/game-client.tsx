@@ -2113,6 +2113,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
             viaObjection: true,
           })
 
+          setGuesses(nextGuesses)
           setPendingVersusObjectionReview(null)
           setDetailCell(null)
           setObjectionVerdict(null)
