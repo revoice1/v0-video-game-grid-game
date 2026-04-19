@@ -690,6 +690,15 @@ export async function POST(request: NextRequest) {
       })
 
       if (!authoritativeEvent.ok) {
+        logger.warn('Online versus objection authoritative build failed', {
+          roomId,
+          matchNumber: room.match_number,
+          player,
+          sessionId: session.sessionId,
+          code: authoritativeEvent.code,
+          error: authoritativeEvent.error,
+          payload: validation.payload,
+        })
         return NextResponse.json(
           { error: authoritativeEvent.error, code: authoritativeEvent.code },
           { status: authoritativeEvent.status }
@@ -776,6 +785,16 @@ export async function POST(request: NextRequest) {
         error,
       })
       return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    if (validation.type === 'objection') {
+      logger.info('Online versus objection inserted', {
+        roomId,
+        matchNumber: room.match_number,
+        player,
+        sessionId: session.sessionId,
+        payload: authoritativePayload,
+      })
     }
 
     return NextResponse.json({ ok: true, type: validation.type, payload: authoritativePayload })

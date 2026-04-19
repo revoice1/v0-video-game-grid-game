@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildObjectionDataset,
   extractGeminiText,
+  hasGeminiEmptyContent,
   normalizeObjectionResponse,
   OBJECTION_SYSTEM_PROMPT,
 } from '@/lib/objection'
@@ -140,6 +141,38 @@ describe('extractGeminiText', () => {
   })
 })
 
+describe('hasGeminiEmptyContent', () => {
+  it('detects grounded responses that stop without any text parts', () => {
+    expect(
+      hasGeminiEmptyContent({
+        candidates: [
+          {
+            content: {
+              role: 'model',
+            },
+            finishReason: 'STOP',
+          },
+        ],
+      })
+    ).toBe(true)
+  })
+
+  it('returns false for normal text responses', () => {
+    expect(
+      hasGeminiEmptyContent({
+        candidates: [
+          {
+            content: {
+              parts: [{ text: 'hello' }],
+            },
+            finishReason: 'STOP',
+          },
+        ],
+      })
+    ).toBe(false)
+  })
+})
+
 describe('normalizeObjectionResponse', () => {
   it('parses a valid JSON response', () => {
     expect(
@@ -191,6 +224,27 @@ describe('normalizeObjectionResponse', () => {
       confidence: 'medium',
       explanation:
         'Cloning Clyde is a side-scrolling platformer. The game was released on Xbox 360. The perspective is side-view. The verdict is sustained. The game is a side-scrolling platformer, confirming the "Side view" perspective.',
+      suspectedMissingMetadata: null,
+    })
+  })
+
+  it('prefers labeled explanation text over a huge mixed narrative blob', () => {
+    expect(
+      normalizeObjectionResponse(
+        [
+          'Some long grounded explanation about GameCube and fan mods.',
+          '**Verdict**: overruled',
+          '**Confidence**: high',
+          '**Explanation**: The game was officially released on the GameCube, not the Wii. It is a racing game.',
+          '**Suspected Missing Metadata**: null',
+          'Then the model rambles for another paragraph about unofficial mods and rowCategory and colCategory.',
+        ].join(' ')
+      )
+    ).toEqual({
+      verdict: 'overruled',
+      confidence: 'high',
+      explanation:
+        'The game was officially released on the GameCube, not the Wii. It is a racing game.',
       suspectedMissingMetadata: null,
     })
   })

@@ -1830,6 +1830,16 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
               : undefined,
         })
 
+        console.info('[GG] Online objection send result', {
+          ok: onlineResult.ok,
+          code: onlineResult.code ?? null,
+          type: onlineResult.type ?? null,
+          payload: onlineResult.payload ?? null,
+          verdict: payload.verdict,
+          isSteal: pendingVersusObjectionReview.isVersusSteal,
+          cellIndex: activeDetailCell,
+        })
+
         if (!onlineResult.ok) {
           return
         }

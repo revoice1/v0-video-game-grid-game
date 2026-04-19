@@ -48,6 +48,7 @@ interface GeminiCandidate {
   content?: {
     parts?: GeminiResponsePart[]
   }
+  finishReason?: string
 }
 
 interface GeminiPayload {
@@ -189,6 +190,20 @@ export function extractGeminiText(payload: unknown): string | null {
   return text || null
 }
 
+export function hasGeminiEmptyContent(payload: unknown): boolean {
+  if (!payload || typeof payload !== 'object') {
+    return false
+  }
+
+  const candidate = (payload as GeminiPayload).candidates?.[0]
+  if (!candidate || !candidate.content) {
+    return false
+  }
+
+  const parts = candidate.content.parts
+  return (!Array.isArray(parts) || parts.length === 0) && candidate.finishReason === 'STOP'
+}
+
 function cleanJsonResponse(text: string): string {
   return text
     .trim()
@@ -204,11 +219,41 @@ function extractJsonBlock(text: string): string | null {
   return match ? match[0] : null
 }
 
+function normalizeExtractedExplanation(text: string): string {
+  const normalized = text
+    .replace(/[*_`#>]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (normalized.length <= 240) {
+    return normalized
+  }
+
+  const truncated = normalized.slice(0, 240)
+  const lastSpace = truncated.lastIndexOf(' ')
+  return `${(lastSpace > 80 ? truncated.slice(0, lastSpace) : truncated).trim()}...`
+}
+
 function parseKeyValueFallback(text: string): ObjectionJudgment | null {
-  const verdictMatch = text.match(/verdict\s*[:=-]\s*(sustained|overruled)/i)
-  const confidenceMatch = text.match(/confidence\s*[:=-]\s*(low|medium|high)/i)
-  const explanationMatch = text.match(/explanation\s*[:=-]\s*([^\n]+)/i)
-  const missingMatch = text.match(/suspectedMissingMetadata\s*[:=-]\s*([^\n]+)/i)
+  const verdictLabel = '[*_`]*verdict[*_`]*'
+  const confidenceLabel = '[*_`]*confidence[*_`]*'
+  const explanationLabel = '[*_`]*explanation[*_`]*'
+  const missingLabel =
+    '[*_`]*suspected\\s*missing\\s*metadata[*_`]*|[*_`]*suspectedMissingMetadata[*_`]*'
+
+  const verdictMatch = text.match(
+    new RegExp(`${verdictLabel}\\s*[:=-]\\s*(sustained|overruled)`, 'i')
+  )
+  const confidenceMatch = text.match(
+    new RegExp(`${confidenceLabel}\\s*[:=-]\\s*(low|medium|high)`, 'i')
+  )
+  const explanationMatch = text.match(
+    new RegExp(
+      `${explanationLabel}\\s*[:=-]\\s*([\\s\\S]*?)(?=(?:${missingLabel}\\s*[:=-]|${verdictLabel}\\s*[:=-]|${confidenceLabel}\\s*[:=-]|$))`,
+      'i'
+    )
+  )
+  const missingMatch = text.match(new RegExp(`(?:${missingLabel})\\s*[:=-]\\s*([^\\n]+)`, 'i'))
 
   if (!verdictMatch || !confidenceMatch) {
     return null
@@ -219,10 +264,12 @@ function parseKeyValueFallback(text: string): ObjectionJudgment | null {
     confidence: confidenceMatch[1].toLowerCase() as ObjectionJudgment['confidence'],
     explanation:
       explanationMatch?.[1]?.trim() && explanationMatch[1].trim().length > 0
-        ? explanationMatch[1].trim()
+        ? normalizeExtractedExplanation(explanationMatch[1])
         : 'No explanation provided.',
     suspectedMissingMetadata:
-      missingMatch?.[1]?.trim() && missingMatch[1].trim().length > 0
+      missingMatch?.[1]?.trim() &&
+      missingMatch[1].trim().length > 0 &&
+      !missingMatch[1].trim().toLowerCase().startsWith('null')
         ? missingMatch[1].trim()
         : null,
   }
@@ -250,7 +297,7 @@ function parseNarrativeFallback(text: string): ObjectionJudgment | null {
     confidence: confidenceMatch
       ? (confidenceMatch[1].toLowerCase() as ObjectionJudgment['confidence'])
       : 'medium',
-    explanation: normalized,
+    explanation: normalizeExtractedExplanation(normalized),
     suspectedMissingMetadata: null,
   }
 }

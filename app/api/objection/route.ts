@@ -5,6 +5,7 @@ import { checkRateLimit } from '@/lib/rate-limit'
 import {
   buildObjectionDataset,
   extractGeminiText,
+  hasGeminiEmptyContent,
   normalizeObjectionResponse,
   OBJECTION_SYSTEM_PROMPT,
 } from '@/lib/objection'
@@ -274,7 +275,9 @@ export async function POST(request: NextRequest) {
 
         let response: Response | null = null
         const maxAttempts = requestVariant.label === 'grounded' ? GROUNDED_MAX_ATTEMPTS : 1
+        let lastAttempt = 0
         for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+          lastAttempt = attempt
           const controller = new AbortController()
           const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS)
           try {
@@ -330,6 +333,7 @@ export async function POST(request: NextRequest) {
         if (response.ok) {
           const payload = (await response.json()) as unknown
           const extractedText = extractGeminiText(payload)
+          const hasEmptyContent = hasGeminiEmptyContent(payload)
           const parsedJudgment = extractedText ? normalizeObjectionResponse(extractedText) : null
           if (
             !parsedJudgment?.verdict ||
@@ -341,9 +345,25 @@ export async function POST(request: NextRequest) {
             logger.warn('Gemini objection response was not parseable', {
               model,
               variant: requestVariant.label,
+              emptyContent: hasEmptyContent,
               extractedTextPreview: extractedText ? extractedText.slice(0, 500) : null,
               ...(IS_DEV ? { payload } : {}),
             })
+            if (
+              requestVariant.label === 'grounded' &&
+              hasEmptyContent &&
+              lastAttempt < maxAttempts
+            ) {
+              logger.warn('Gemini grounded response had empty content; retrying request', {
+                model,
+                variant: requestVariant.label,
+                attempt: lastAttempt,
+                maxAttempts,
+              })
+              response = null
+              await sleep(250)
+              continue
+            }
             response = null
             continue
           }
