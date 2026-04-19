@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 
-const { createAdminClientMock, resolveAnonymousSessionMock } = vi.hoisted(() => ({
-  createAdminClientMock: vi.fn(),
-  resolveAnonymousSessionMock: vi.fn(),
-}))
+const { createAdminClientMock, resolveAnonymousSessionMock, createRequestLoggerMock } = vi.hoisted(
+  () => ({
+    createAdminClientMock: vi.fn(),
+    resolveAnonymousSessionMock: vi.fn(),
+    createRequestLoggerMock: vi.fn(),
+  })
+)
 
 vi.mock('@/lib/supabase/admin', () => ({
   createAdminClient: createAdminClientMock,
@@ -12,6 +15,10 @@ vi.mock('@/lib/supabase/admin', () => ({
 
 vi.mock('@/lib/server-session', () => ({
   resolveAnonymousSession: resolveAnonymousSessionMock,
+}))
+
+vi.mock('@/lib/logging', () => ({
+  createRequestLogger: createRequestLoggerMock,
 }))
 
 import { POST } from '@/app/api/versus/room/[code]/continue/route'
@@ -85,6 +92,12 @@ function buildSupabaseMock() {
 describe('/api/versus/room/[code]/continue route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    createRequestLoggerMock.mockReturnValue({
+      requestId: 'test',
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    })
     resolveAnonymousSessionMock.mockReturnValue({
       sessionId: 'session-1',
       shouldSetCookie: false,
@@ -113,12 +126,17 @@ describe('/api/versus/room/[code]/continue route', () => {
         status: 'active',
         puzzle_id: null,
         puzzle_data: null,
-        state_data: null,
+        state_data: {
+          roleAssignments: {
+            xSessionId: 'session-1',
+            oSessionId: 'session-2',
+          },
+        },
       })
     )
   })
 
-  it('lets the O winner continue and swaps host and guest for the next match', async () => {
+  it('lets the O winner continue and records the next x/o assignment without swapping host ownership', async () => {
     const { supabase, room, updatePayloads, updatedRoom } = buildSupabaseMock()
     room.state_data = { winner: 'o' }
     resolveAnonymousSessionMock.mockReturnValue({
@@ -141,8 +159,12 @@ describe('/api/versus/room/[code]/continue route', () => {
     expect(updatePayloads).toHaveLength(1)
     expect(updatePayloads[0]).toEqual(
       expect.objectContaining({
-        host_session_id: 'session-2',
-        guest_session_id: 'session-1',
+        state_data: {
+          roleAssignments: {
+            xSessionId: 'session-2',
+            oSessionId: 'session-1',
+          },
+        },
       })
     )
   })

@@ -96,6 +96,12 @@ const SnapshotSchema = z.object({
   }),
   turnDeadlineAt: z.string().datetime().nullable(),
   turnDurationSeconds: z.number().int().positive().nullable(),
+  roleAssignments: z
+    .object({
+      xSessionId: z.string(),
+      oSessionId: z.string().nullable(),
+    })
+    .optional(),
 })
 
 export async function POST(

@@ -118,14 +118,15 @@ import { useDailyArchive } from '@/hooks/use-daily-archive'
 import { useVersusMatchState } from '@/hooks/use-versus-match-state'
 import { useVersusSetupState } from '@/hooks/use-versus-setup-state'
 import { useVersusTurnTimer } from '@/hooks/use-versus-turn-timer'
-import type {
-  OnlineVersusClaimPayload,
+import {
+  isOnlineVersusSnapshot,
+  type OnlineVersusClaimPayload,
   OnlineVersusEventType,
   OnlineVersusEventSource,
-  OnlineVersusMissPayload,
-  OnlineVersusObjectionPayload,
-  OnlineVersusSnapshot,
-  OnlineVersusStealPayload,
+  type OnlineVersusMissPayload,
+  type OnlineVersusObjectionPayload,
+  type OnlineVersusSnapshot,
+  type OnlineVersusStealPayload,
 } from '@/lib/versus-room'
 import {
   resolveStealOutcome,
@@ -583,7 +584,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     setShowVersusStartOptions(false)
     setShowOnlineLobby(false)
 
-    const roomSnapshot = room.state_data
+    const roomSnapshot = isOnlineVersusSnapshot(room.state_data) ? room.state_data : null
     const roomMatchKey = `${room.id}:${room.match_number}`
     const roomPrepKey = `${roomMatchKey}:${room.puzzle_id ?? 'pending'}`
     const roomSnapshotSignature = roomSnapshot ? JSON.stringify(roomSnapshot) : null
@@ -638,7 +639,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       setLoadingStage(
         myRole === 'x'
           ? 'Preparing the shared board...'
-          : 'Waiting for the host to finish preparing the board...'
+          : 'Waiting for the X player to finish preparing the board...'
       )
     }
 
@@ -673,8 +674,8 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     }
 
     if (myRole === 'x' && room.puzzle_id === null && needsFreshRoomPrep) {
-      // Host generates the puzzle; after generation, the host should call
-      // onlineVersus.setPuzzle() to push it to the room for the guest to load
+      // X generates the puzzle; after generation, that player should call
+      // onlineVersus.setPuzzle() to push it to the room for the opponent to load
       skipNextVersusAutoLoadRef.current = true
       loadPuzzle('versus', categoryFilters, undefined, minimumValidOptionsOverride ?? null)
     }
@@ -774,9 +775,9 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     [onlineVersus.saveSnapshot]
   )
 
-  // Host-only: once the puzzle is generated and loaded locally, publish it to the room once.
+  // X-only: once the puzzle is generated and loaded locally, publish it to the room once.
   // Guards:
-  //   - must be the host (myRole === 'x')
+  //   - must be the current X player (myRole === 'x')
   //   - room must be active with no puzzle yet (room.puzzle_id null = not yet published)
   //   - puzzle must be fully loaded locally
   //   - ref prevents re-firing if this effect re-runs (e.g. strict mode double-invoke)
@@ -838,6 +839,12 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       objectionsUsed: versusObjectionsUsed,
       turnDeadlineAt,
       turnDurationSeconds: typeof versusTimerOption === 'number' ? versusTimerOption : null,
+      roleAssignments:
+        onlineVersus.room?.state_data &&
+        typeof onlineVersus.room.state_data === 'object' &&
+        'roleAssignments' in onlineVersus.room.state_data
+          ? onlineVersus.room.state_data.roleAssignments
+          : undefined,
     }
 
     if (onlineVersus.myRole !== 'x') {
@@ -3655,7 +3662,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       setLoadingStage(
         canContinueOnlineRoom
           ? 'Preparing the shared board...'
-          : 'Waiting for the host to finish preparing the board...'
+          : 'Waiting for the X player to finish preparing the board...'
       )
       setPendingVersusObjectionReview(null)
       clearAllCelebrations()
@@ -3938,7 +3945,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
         description:
           onlineVersus.myRole === 'x'
             ? 'Preparing the shared board for your online match.'
-            : 'Waiting for the host to finish preparing the shared board.',
+            : 'Waiting for the X player to finish preparing the shared board.',
         showProgress: onlineVersus.myRole === 'x',
         showAttempts: onlineVersus.myRole === 'x',
       }
@@ -3967,7 +3974,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     if (hasActiveOnlineRoom && (!onlineVersus.room?.puzzle_id || !onlineVersus.room?.puzzle_data)) {
       return onlineVersus.myRole === 'x'
         ? 'Preparing the shared board...'
-        : 'Waiting for the host to finish preparing the board...'
+        : 'Waiting for the X player to finish preparing the board...'
     }
 
     return 'Syncing match state...'

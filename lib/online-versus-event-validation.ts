@@ -157,6 +157,12 @@ const SnapshotSchema = z.object({
     x: z.number().int().min(0),
     o: z.number().int().min(0),
   }),
+  roleAssignments: z
+    .object({
+      xSessionId: z.string(),
+      oSessionId: z.string().nullable(),
+    })
+    .optional(),
 })
 
 export type ClaimPayload = z.infer<typeof ClaimPayloadSchema>

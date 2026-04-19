@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveAnonymousSession } from '@/lib/server-session'
 import { createRequestLogger } from '@/lib/logging'
+import { getOnlineVersusRoleAssignments } from '@/lib/versus-room'
 
 export async function POST(
   request: NextRequest,
@@ -40,9 +41,23 @@ export async function POST(
       ? room.state_data.winner
       : null
 
-  const canContinue =
-    room.host_session_id === session.sessionId ||
-    (snapshotWinner === 'o' && room.guest_session_id === session.sessionId)
+  const currentAssignments = getOnlineVersusRoleAssignments(
+    room.state_data,
+    room.host_session_id,
+    room.guest_session_id
+  )
+  const nextAssignments = {
+    xSessionId:
+      snapshotWinner === 'o' && currentAssignments.oSessionId
+        ? currentAssignments.oSessionId
+        : currentAssignments.xSessionId,
+    oSessionId:
+      snapshotWinner === 'o' && currentAssignments.oSessionId
+        ? currentAssignments.xSessionId
+        : currentAssignments.oSessionId,
+  }
+
+  const canContinue = nextAssignments.xSessionId === session.sessionId
 
   if (!canContinue) {
     logger.error('[versus.room.continue] not host', {
@@ -63,21 +78,14 @@ export async function POST(
     return NextResponse.json({ error: 'The room is not ready for another match.' }, { status: 409 })
   }
 
-  const nextHostSessionId =
-    snapshotWinner === 'o' && room.guest_session_id ? room.guest_session_id : room.host_session_id
-  const nextGuestSessionId =
-    snapshotWinner === 'o' && room.guest_session_id ? room.host_session_id : room.guest_session_id
-
   const { data: updated, error: updateError } = await supabase
     .from('versus_rooms')
     .update({
-      host_session_id: nextHostSessionId,
-      guest_session_id: nextGuestSessionId,
       match_number: room.match_number + 1,
       status: 'active',
       puzzle_id: null,
       puzzle_data: null,
-      state_data: null,
+      state_data: { roleAssignments: nextAssignments },
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     })
     .eq('id', room.id)
@@ -96,7 +104,7 @@ export async function POST(
     return NextResponse.json({ error: 'Failed to continue the room.' }, { status: 500 })
   }
 
-  const role = nextHostSessionId === session.sessionId ? 'x' : 'o'
+  const role = nextAssignments.xSessionId === session.sessionId ? 'x' : 'o'
 
   return NextResponse.json({ room: updated, role })
 }

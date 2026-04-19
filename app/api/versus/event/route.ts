@@ -13,7 +13,11 @@ import {
 import { resolveAnonymousSession } from '@/lib/server-session'
 import { createRequestLogger } from '@/lib/logging'
 import type { CellGuess, Puzzle } from '@/lib/types'
-import type { OnlineVersusEventType, RoomPlayer } from '@/lib/versus-room'
+import {
+  getOnlineVersusRoleAssignments,
+  type OnlineVersusEventType,
+  type RoomPlayer,
+} from '@/lib/versus-room'
 import { resolveStealOutcome } from '@/hooks/use-versus-steal'
 
 const MAX_CLIENT_EVENT_ID_LENGTH = 100
@@ -571,7 +575,12 @@ export async function POST(request: NextRequest) {
 
     if (!room) return NextResponse.json({ error: 'Room not found.' }, { status: 404 })
 
-    const expectedSession = player === 'x' ? room.host_session_id : room.guest_session_id
+    const assignments = getOnlineVersusRoleAssignments(
+      room.state_data,
+      room.host_session_id,
+      room.guest_session_id
+    )
+    const expectedSession = player === 'x' ? assignments.xSessionId : assignments.oSessionId
 
     if (expectedSession !== session.sessionId) {
       return NextResponse.json({ error: 'Not authorized for that player slot.' }, { status: 403 })

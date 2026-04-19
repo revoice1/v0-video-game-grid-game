@@ -13,6 +13,15 @@ export type RoomStatus = 'waiting' | 'active' | 'finished'
 export type RoomPlayer = 'x' | 'o'
 export type OnlineVersusEventSource = 'live' | 'history' | 'live-catchup'
 
+export interface OnlineVersusRoleAssignments {
+  xSessionId: string
+  oSessionId: string | null
+}
+
+export interface OnlineVersusRoleAssignmentState {
+  roleAssignments: OnlineVersusRoleAssignments
+}
+
 export interface RoomSettings {
   categoryFilters: VersusCategoryFilters
   stealRule: VersusStealRule
@@ -39,6 +48,7 @@ export interface OnlineVersusSnapshot {
   }
   turnDeadlineAt: string | null
   turnDurationSeconds: number | null
+  roleAssignments?: OnlineVersusRoleAssignments
 }
 
 /**
@@ -56,7 +66,45 @@ export interface VersusRoom {
   settings: RoomSettings
   puzzle_id: string | null
   puzzle_data: Puzzle | null
-  state_data: OnlineVersusSnapshot | null
+  state_data: OnlineVersusSnapshot | OnlineVersusRoleAssignmentState | null
+}
+
+export function isOnlineVersusSnapshot(
+  state: VersusRoom['state_data']
+): state is OnlineVersusSnapshot {
+  return Boolean(
+    state &&
+    typeof state === 'object' &&
+    'guesses' in state &&
+    Array.isArray((state as { guesses?: unknown }).guesses)
+  )
+}
+
+export function getOnlineVersusRoleAssignments(
+  state: VersusRoom['state_data'],
+  hostSessionId: string,
+  guestSessionId: string | null
+): OnlineVersusRoleAssignments {
+  if (
+    state &&
+    typeof state === 'object' &&
+    'roleAssignments' in state &&
+    state.roleAssignments &&
+    typeof state.roleAssignments === 'object' &&
+    typeof state.roleAssignments.xSessionId === 'string' &&
+    (typeof state.roleAssignments.oSessionId === 'string' ||
+      state.roleAssignments.oSessionId === null)
+  ) {
+    return {
+      xSessionId: state.roleAssignments.xSessionId,
+      oSessionId: state.roleAssignments.oSessionId,
+    }
+  }
+
+  return {
+    xSessionId: hostSessionId,
+    oSessionId: guestSessionId,
+  }
 }
 
 /**

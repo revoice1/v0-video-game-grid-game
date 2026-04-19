@@ -117,6 +117,27 @@ describe('/api/versus/room/[code]/join route', () => {
     expect(body.room.host_session_id).toBeUndefined()
   })
 
+  it('returns the rematch-assigned role when a guest re-joins as the next X', async () => {
+    resolveAnonymousSessionMock.mockReturnValue({ sessionId: 'guest-s' })
+    const room = makeRoom({
+      status: 'active',
+      guest_session_id: 'guest-s',
+      state_data: {
+        roleAssignments: {
+          xSessionId: 'guest-s',
+          oSessionId: 'host-s',
+        },
+      },
+    })
+    createAdminClientMock.mockReturnValue(makeSupabase(room))
+
+    const res = await POST(makeRequest(), { params: Promise.resolve({ code: 'TSTRM' }) })
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.role).toBe('x')
+  })
+
   it('new guest joins a waiting room, room transitions to active', async () => {
     resolveAnonymousSessionMock.mockReturnValue({ sessionId: 'new-guest' })
     const room = makeRoom()

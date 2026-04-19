@@ -255,6 +255,68 @@ describe('/api/versus/event route', () => {
     expect(insertMock).not.toHaveBeenCalled()
   })
 
+  it('authorizes the rematch-assigned guest as player x', async () => {
+    resolveAnonymousSessionMock.mockReturnValue({
+      sessionId: 'session-2',
+      shouldSetCookie: false,
+    })
+    const { supabase, insertMock } = buildSupabaseMock({
+      room: {
+        host_session_id: 'session-1',
+        guest_session_id: 'session-2',
+        match_number: 3,
+        status: 'active',
+        settings: {
+          categoryFilters: {},
+          stealRule: 'lower',
+          timerOption: 'none',
+          disableDraws: false,
+          objectionRule: 'one',
+        },
+        puzzle_id: 'puzzle-1',
+        puzzle_data: null,
+        state_data: {
+          roleAssignments: {
+            xSessionId: 'session-2',
+            oSessionId: 'session-1',
+          },
+        },
+      },
+    })
+    createAdminClientMock.mockReturnValue(supabase)
+    validateOnlineVersusEventMock.mockReturnValue({
+      ok: false,
+      error: 'It is not your turn.',
+      code: 'wrong_turn',
+      status: 409,
+    })
+
+    const request = new NextRequest('http://localhost/api/versus/event', {
+      method: 'POST',
+      body: JSON.stringify({
+        roomId: 'room-1',
+        matchNumber: 3,
+        player: 'x',
+        type: 'claim',
+        payload: { cellIndex: 0 },
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+
+    const response = await POST(request)
+    const payload = await response.json()
+
+    expect(response.status).toBe(409)
+    expect(payload).toEqual({
+      error: 'It is not your turn.',
+      code: 'wrong_turn',
+    })
+    expect(validateOnlineVersusEventMock).toHaveBeenCalled()
+    expect(insertMock).not.toHaveBeenCalled()
+  })
+
   it('treats repeated clientEventId submissions as idempotent successes', async () => {
     const existingClaimPayload = {
       cellIndex: 1,

@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveAnonymousSession } from '@/lib/server-session'
 import { createRequestLogger } from '@/lib/logging'
 import type { Puzzle } from '@/lib/types'
-import type { OnlineVersusSnapshot } from '@/lib/versus-room'
+import { getOnlineVersusRoleAssignments, type OnlineVersusSnapshot } from '@/lib/versus-room'
 
 export async function POST(
   request: NextRequest,
@@ -18,7 +18,9 @@ export async function POST(
 
   const { data: room, error: fetchError } = await supabase
     .from('versus_rooms')
-    .select('id, host_session_id, match_number, status, puzzle_id, settings')
+    .select(
+      'id, host_session_id, guest_session_id, match_number, status, puzzle_id, settings, state_data'
+    )
     .eq('code', upperCode)
     .single()
 
@@ -30,13 +32,14 @@ export async function POST(
     })
     return NextResponse.json({ error: 'Room not found.' }, { status: 404 })
   }
-  if (room.host_session_id !== session.sessionId) {
+  const assignments = getOnlineVersusRoleAssignments(room.state_data, room.host_session_id, null)
+  if (assignments.xSessionId !== session.sessionId) {
     logger.error('[versus.room.puzzle] not host', {
       code: upperCode,
       roomId: room.id,
       sessionId: session.sessionId,
     })
-    return NextResponse.json({ error: 'Only the host can set the puzzle.' }, { status: 403 })
+    return NextResponse.json({ error: 'Only the X player can set the puzzle.' }, { status: 403 })
   }
   if (room.status !== 'active') {
     return NextResponse.json({ error: 'Room is not active.' }, { status: 409 })
@@ -91,6 +94,7 @@ export async function POST(
         ? new Date(Date.now() + turnDurationSeconds * 1000).toISOString()
         : null,
     turnDurationSeconds,
+    roleAssignments: assignments,
   }
 
   const { data: updated, error: updateError } = await supabase

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveAnonymousSession, applyAnonymousSessionCookie } from '@/lib/server-session'
 import { createRequestLogger } from '@/lib/logging'
+import { getOnlineVersusRoleAssignments } from '@/lib/versus-room'
 
 // Columns safe to return to the client — session IDs are never exposed
 const SAFE_ROOM_COLUMNS =
@@ -60,13 +61,25 @@ export async function POST(
 
   // Host rejoining their own room
   if (room.host_session_id === session.sessionId) {
-    const response = NextResponse.json({ room: safeRoom, role: 'x' })
+    const assignments = getOnlineVersusRoleAssignments(
+      room.state_data,
+      room.host_session_id,
+      room.guest_session_id
+    )
+    const role = assignments.xSessionId === session.sessionId ? 'x' : 'o'
+    const response = NextResponse.json({ room: safeRoom, role })
     return applyAnonymousSessionCookie(response, session, request)
   }
 
   // Guest rejoining
   if (room.guest_session_id === session.sessionId) {
-    const response = NextResponse.json({ room: safeRoom, role: 'o' })
+    const assignments = getOnlineVersusRoleAssignments(
+      room.state_data,
+      room.host_session_id,
+      room.guest_session_id
+    )
+    const role = assignments.xSessionId === session.sessionId ? 'x' : 'o'
+    const response = NextResponse.json({ room: safeRoom, role })
     return applyAnonymousSessionCookie(response, session, request)
   }
 
