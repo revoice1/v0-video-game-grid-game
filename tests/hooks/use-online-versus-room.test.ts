@@ -157,6 +157,25 @@ describe('useOnlineVersusRoom', () => {
     expect(localStorage.getItem('gg_online_versus_room')).toBeNull()
   })
 
+  it('auto-resume clears stale local storage when the server returns no role', async () => {
+    localStorage.setItem('gg_online_versus_room', JSON.stringify({ code: 'ABCD', role: 'o' }))
+    vi.spyOn(global, 'fetch').mockResolvedValue(
+      makeJsonResponse({
+        room: makeActiveRoom(),
+      })
+    )
+
+    const { result } = renderHook(() => useOnlineVersusRoom())
+
+    await waitFor(() => {
+      expect(result.current.phase).toBe('active')
+    })
+
+    expect(result.current.myRole).toBeNull()
+    expect(result.current.isHost).toBe(false)
+    expect(localStorage.getItem('gg_online_versus_room')).toBeNull()
+  })
+
   describe('createRoom', () => {
     it('transitions to lobby phase and saves room entry on success', async () => {
       vi.spyOn(global, 'fetch').mockResolvedValue(makeJsonResponse({ room: makeRoom() }))
