@@ -556,7 +556,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
 
   // When the online room becomes active, apply authoritative settings and reset board state
   useEffect(() => {
-    const { room, myRole } = onlineVersus
+    const { room } = onlineVersus
     if (!hasActiveOnlineRoom || !room || !shouldForegroundOnlineSession) return
 
     // Apply room.settings as the authoritative rules for this match.
@@ -599,7 +599,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       preparedOnlineRoomKeyRef.current !== roomPrepKey && !hasMatchingLocalPuzzle
     const shouldHydrateRoomSnapshot =
       Boolean(roomSnapshot) &&
-      (myRole === 'o' ||
+      (!onlineVersus.isHost ||
         needsFreshRoomPrep ||
         isSwitchingToDifferentPuzzle ||
         !hasMatchingLocalPuzzle) &&
@@ -637,9 +637,9 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       setLoadingProgress(8)
       setLoadingAttempts([])
       setLoadingStage(
-        myRole === 'x'
+        onlineVersus.isHost
           ? 'Preparing the shared board...'
-          : 'Waiting for the X player to finish preparing the board...'
+          : 'Waiting for the host to finish preparing the board...'
       )
     }
 
@@ -673,8 +673,8 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       return
     }
 
-    if (myRole === 'x' && room.puzzle_id === null && needsFreshRoomPrep) {
-      // X generates the puzzle; after generation, that player should call
+    if (onlineVersus.isHost && room.puzzle_id === null && needsFreshRoomPrep) {
+      // Host generates the puzzle; after generation, that player should call
       // onlineVersus.setPuzzle() to push it to the room for the opponent to load
       skipNextVersusAutoLoadRef.current = true
       loadPuzzle('versus', categoryFilters, undefined, minimumValidOptionsOverride ?? null)
@@ -775,18 +775,18 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     [onlineVersus.saveSnapshot]
   )
 
-  // X-only: once the puzzle is generated and loaded locally, publish it to the room once.
+  // Host-only: once the puzzle is generated and loaded locally, publish it to the room once.
   // Guards:
-  //   - must be the current X player (myRole === 'x')
+  //   - must be the host for this room
   //   - room must be active with no puzzle yet (room.puzzle_id null = not yet published)
   //   - puzzle must be fully loaded locally
   //   - ref prevents re-firing if this effect re-runs (e.g. strict mode double-invoke)
   useEffect(() => {
-    const { room, myRole } = onlineVersus
+    const { room, isHost } = onlineVersus
     if (
       !isOnlineRoomActive ||
       !room ||
-      myRole !== 'x' ||
+      !isHost ||
       room.puzzle_id !== null || // room already has a puzzle — do not overwrite
       !puzzle ||
       loadedPuzzleMode !== 'versus' ||
@@ -811,7 +811,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
   }, [
     isOnlineRoomActive,
     onlineVersus.room?.puzzle_id,
-    onlineVersus.myRole,
+    onlineVersus.isHost,
     puzzle,
     loadedPuzzleMode,
   ])
@@ -3661,7 +3661,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
       setLoadingStage(
         canContinueOnlineRoom
           ? 'Preparing the shared board...'
-          : 'Waiting for the X player to finish preparing the board...'
+          : 'Waiting for the host to finish preparing the board...'
       )
       setPendingVersusObjectionReview(null)
       clearAllCelebrations()
@@ -3753,7 +3753,7 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     }
 
     if (onlineVersus.myRole) {
-      if (winner !== null && onlineVersus.myRole === 'x') {
+      if (winner !== null && onlineVersus.isHost) {
         handleContinueOnlineRoom()
       } else {
         handleStartFreshOnlineMatch()
@@ -3941,12 +3941,11 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     if (hasActiveOnlineRoom && (!onlineVersus.room?.puzzle_id || !onlineVersus.room?.puzzle_data)) {
       return {
         title: 'Waiting For Board',
-        description:
-          onlineVersus.myRole === 'x'
-            ? 'Preparing the shared board for your online match.'
-            : 'Waiting for the X player to finish preparing the shared board.',
-        showProgress: onlineVersus.myRole === 'x',
-        showAttempts: onlineVersus.myRole === 'x',
+        description: onlineVersus.isHost
+          ? 'Preparing the shared board for your online match.'
+          : 'Waiting for the host to finish preparing the shared board.',
+        showProgress: onlineVersus.isHost,
+        showAttempts: onlineVersus.isHost,
       }
     }
 
@@ -3971,9 +3970,9 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
     }
 
     if (hasActiveOnlineRoom && (!onlineVersus.room?.puzzle_id || !onlineVersus.room?.puzzle_data)) {
-      return onlineVersus.myRole === 'x'
+      return onlineVersus.isHost
         ? 'Preparing the shared board...'
-        : 'Waiting for the X player to finish preparing the board...'
+        : 'Waiting for the host to finish preparing the board...'
     }
 
     return 'Syncing match state...'
