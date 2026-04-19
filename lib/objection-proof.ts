@@ -1,8 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import type { Category } from './types'
 
-const OBJECTION_PROOF_SECRET =
-  process.env.OBJECTION_PROOF_SECRET ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
+const OBJECTION_PROOF_SECRET = process.env.OBJECTION_PROOF_SECRET ?? process.env.CRON_SECRET ?? ''
 const OBJECTION_PROOF_TTL_MS = 10 * 60 * 1000
 
 interface ObjectionProofPayload {
