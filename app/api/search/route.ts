@@ -53,6 +53,7 @@ async function getPuzzleCategoryTypes(puzzleId: string | null): Promise<Set<Cate
 
 export async function GET(request: NextRequest) {
   const logger = createRequestLogger()
+  const searchStart = Date.now()
   const searchParams = request.nextUrl.searchParams
   const query = searchParams.get('q')
   const puzzleId = searchParams.get('puzzleId')
@@ -77,6 +78,14 @@ export async function GET(request: NextRequest) {
         : await getPuzzleCategoryTypes(puzzleId)
     const games = await searchIGDBGames(query, {
       allowUnratedFallback: mode !== 'versus' || versusStealsEnabled === false,
+      onDebugEvent: (event) => {
+        logger.info('Search phase', {
+          mode,
+          versusStealsEnabled,
+          categoryTypes: Array.from(categoryTypes),
+          ...event,
+        })
+      },
     })
     const duplicateTitleKeys = new Set(
       Object.entries(
@@ -111,6 +120,15 @@ export async function GET(request: NextRequest) {
         disambiguationPlatform: isDuplicateTitle ? (g.originalPlatformName ?? null) : null,
         disambiguationYear: isDuplicateTitle && g.released ? g.released.slice(0, 4) : null,
       }
+    })
+
+    logger.info('Search completed', {
+      query,
+      mode,
+      versusStealsEnabled,
+      categoryTypes: Array.from(categoryTypes),
+      resultCount: safeResults.length,
+      durationMs: Date.now() - searchStart,
     })
 
     return NextResponse.json({ results: safeResults })

@@ -82,12 +82,17 @@ describe('GET /api/search', () => {
     searchIGDBGamesMock.mockResolvedValue([makeGame()])
     const res = await GET(makeRequest({ q: 'half-life' }))
     const body = await res.json()
-    expect(searchIGDBGamesMock).toHaveBeenCalledWith('half-life', {
-      allowUnratedFallback: false,
-    })
+    expect(searchIGDBGamesMock).toHaveBeenCalledWith(
+      'half-life',
+      expect.objectContaining({
+        allowUnratedFallback: false,
+        onDebugEvent: expect.any(Function),
+      })
+    )
     expect(body.results).toHaveLength(1)
     expect(body.results[0].id).toBe(1)
     expect(body.results[0].name).toBe('Half-Life')
+    expect(logger.info).toHaveBeenCalledWith('Search completed', expect.any(Object))
   })
 
   it('enables unrated fallback for daily search mode', async () => {
@@ -95,9 +100,13 @@ describe('GET /api/search', () => {
 
     await GET(makeRequest({ q: 'lunacy', mode: 'daily' }))
 
-    expect(searchIGDBGamesMock).toHaveBeenCalledWith('lunacy', {
-      allowUnratedFallback: true,
-    })
+    expect(searchIGDBGamesMock).toHaveBeenCalledWith(
+      'lunacy',
+      expect.objectContaining({
+        allowUnratedFallback: true,
+        onDebugEvent: expect.any(Function),
+      })
+    )
   })
 
   it('keeps rated-only search for versus mode', async () => {
@@ -105,9 +114,13 @@ describe('GET /api/search', () => {
 
     await GET(makeRequest({ q: 'lunacy', mode: 'versus' }))
 
-    expect(searchIGDBGamesMock).toHaveBeenCalledWith('lunacy', {
-      allowUnratedFallback: false,
-    })
+    expect(searchIGDBGamesMock).toHaveBeenCalledWith(
+      'lunacy',
+      expect.objectContaining({
+        allowUnratedFallback: false,
+        onDebugEvent: expect.any(Function),
+      })
+    )
   })
 
   it('allows unrated fallback for versus mode when steals are disabled', async () => {
@@ -115,9 +128,13 @@ describe('GET /api/search', () => {
 
     await GET(makeRequest({ q: 'lunacy', mode: 'versus', versusStealsEnabled: 'false' }))
 
-    expect(searchIGDBGamesMock).toHaveBeenCalledWith('lunacy', {
-      allowUnratedFallback: true,
-    })
+    expect(searchIGDBGamesMock).toHaveBeenCalledWith(
+      'lunacy',
+      expect.objectContaining({
+        allowUnratedFallback: true,
+        onDebugEvent: expect.any(Function),
+      })
+    )
   })
 
   it('scrubs platform data when categoryTypes includes platform', async () => {
