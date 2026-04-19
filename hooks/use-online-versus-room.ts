@@ -602,12 +602,15 @@ export function useOnlineVersusRoom(): UseOnlineVersusRoomReturn {
         return { ok: false, error: json.error ?? 'Failed to continue match.' }
       }
       const continuedRoom = json.room as VersusRoom | undefined
+      const nextRole =
+        json.role === 'x' || json.role === 'o' ? (json.role as RoomPlayer) : myRoleRef.current
       if (continuedRoom) {
         setRoom(continuedRoom)
         setPhase('active')
         setOpponentReady(true)
-        if (myRoleRef.current) {
-          saveRoomEntry(continuedRoom.code, myRoleRef.current)
+        if (nextRole) {
+          setMyRole(nextRole)
+          saveRoomEntry(continuedRoom.code, nextRole)
         }
       }
       setEvents([])

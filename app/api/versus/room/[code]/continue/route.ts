@@ -30,15 +30,6 @@ export async function POST(
     return NextResponse.json({ error: 'Room not found.' }, { status: 404 })
   }
 
-  if (room.host_session_id !== session.sessionId) {
-    logger.error('[versus.room.continue] not host', {
-      code: upperCode,
-      roomId: room.id,
-      sessionId: session.sessionId,
-    })
-    return NextResponse.json({ error: 'Only the host can continue the room.' }, { status: 403 })
-  }
-
   const snapshotWinner =
     room.state_data &&
     typeof room.state_data === 'object' &&
@@ -49,15 +40,39 @@ export async function POST(
       ? room.state_data.winner
       : null
 
+  const canContinue =
+    room.host_session_id === session.sessionId ||
+    (snapshotWinner === 'o' && room.guest_session_id === session.sessionId)
+
+  if (!canContinue) {
+    logger.error('[versus.room.continue] not host', {
+      code: upperCode,
+      roomId: room.id,
+      sessionId: session.sessionId,
+      winner: snapshotWinner,
+    })
+    return NextResponse.json(
+      { error: 'Only the player who opens the next match can continue the room.' },
+      { status: 403 }
+    )
+  }
+
   const isReadyForContinue = room.status === 'finished' || snapshotWinner !== null
 
   if (!isReadyForContinue) {
     return NextResponse.json({ error: 'The room is not ready for another match.' }, { status: 409 })
   }
 
+  const nextHostSessionId =
+    snapshotWinner === 'o' && room.guest_session_id ? room.guest_session_id : room.host_session_id
+  const nextGuestSessionId =
+    snapshotWinner === 'o' && room.guest_session_id ? room.host_session_id : room.guest_session_id
+
   const { data: updated, error: updateError } = await supabase
     .from('versus_rooms')
     .update({
+      host_session_id: nextHostSessionId,
+      guest_session_id: nextGuestSessionId,
       match_number: room.match_number + 1,
       status: 'active',
       puzzle_id: null,
@@ -81,5 +96,7 @@ export async function POST(
     return NextResponse.json({ error: 'Failed to continue the room.' }, { status: 500 })
   }
 
-  return NextResponse.json({ room: updated })
+  const role = nextHostSessionId === session.sessionId ? 'x' : 'o'
+
+  return NextResponse.json({ room: updated, role })
 }
