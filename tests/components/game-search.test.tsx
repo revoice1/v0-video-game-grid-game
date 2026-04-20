@@ -99,6 +99,7 @@ describe('GameSearch', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.useRealTimers()
   })
 
   it('submits immediately when confirm is disabled', async () => {
@@ -187,6 +188,156 @@ describe('GameSearch', () => {
     await waitFor(() => {
       expect(onSelect).toHaveBeenCalledWith(fakeGame)
     })
+  })
+
+  it('submits only once when Enter is mashed during the confirm step', async () => {
+    const onSelect = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <GameSearch
+        isOpen
+        confirmBeforeSelect
+        rowCategory={rowCategory}
+        colCategory={colCategory}
+        onSelect={onSelect}
+        onClose={() => {}}
+      />
+    )
+
+    await user.type(screen.getByPlaceholderText('Search for a video game...'), 'wo')
+
+    await screen.findByText('World of Warcraft')
+    await user.click(screen.getByRole('button', { name: /World of Warcraft/i }))
+
+    expect(screen.getByText('Confirm this answer?')).toBeInTheDocument()
+
+    fireEvent.keyDown(window, { key: 'Enter' })
+    fireEvent.keyDown(window, { key: 'Enter' })
+    fireEvent.keyDown(window, { key: 'Enter' })
+
+    await waitFor(() => {
+      expect(onSelect).toHaveBeenCalledTimes(1)
+      expect(onSelect).toHaveBeenCalledWith(fakeGame)
+    })
+  })
+
+  it('ignores Enter while a newer search request is still loading', async () => {
+    vi.useFakeTimers()
+    const onSelect = vi.fn()
+    const firstResults = [fakeGame]
+    let resolveSecondSearch: ((value: { results: Game[] }) => void) | null = null
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        json: async () => ({ results: firstResults }),
+      })
+      .mockResolvedValueOnce({
+        json: async () =>
+          await new Promise<{ results: Game[] }>((resolve) => {
+            resolveSecondSearch = resolve
+          }),
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <GameSearch
+        isOpen
+        rowCategory={rowCategory}
+        colCategory={colCategory}
+        onSelect={onSelect}
+        onClose={() => {}}
+      />
+    )
+
+    const input = screen.getByPlaceholderText('Search for a video game...')
+    fireEvent.change(input, { target: { value: 'wo' } })
+
+    await act(async () => {
+      vi.advanceTimersByTime(450)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(screen.getByText('World of Warcraft')).toBeInTheDocument()
+
+    fireEvent.change(input, { target: { value: 'wor' } })
+
+    await act(async () => {
+      vi.advanceTimersByTime(450)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(onSelect).not.toHaveBeenCalled()
+
+    await act(async () => {
+      resolveSecondSearch?.({ results: firstResults })
+      await Promise.resolve()
+    })
+  })
+
+  it('ignores Enter during the debounce gap after the query changes', async () => {
+    vi.useFakeTimers()
+    const onSelect = vi.fn()
+    const fetchMock = vi.fn().mockResolvedValue({
+      json: async () => ({ results: [fakeGame] }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <GameSearch
+        isOpen
+        rowCategory={rowCategory}
+        colCategory={colCategory}
+        onSelect={onSelect}
+        onClose={() => {}}
+      />
+    )
+
+    const input = screen.getByPlaceholderText('Search for a video game...')
+    fireEvent.change(input, { target: { value: 'wo' } })
+
+    await act(async () => {
+      vi.advanceTimersByTime(450)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(screen.getByText('World of Warcraft')).toBeInTheDocument()
+
+    fireEvent.change(input, { target: { value: 'wor' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    expect(onSelect).not.toHaveBeenCalled()
+  })
+
+  it('submits only once when Enter is mashed after results settle', async () => {
+    const onSelect = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <GameSearch
+        isOpen
+        rowCategory={rowCategory}
+        colCategory={colCategory}
+        onSelect={onSelect}
+        onClose={() => {}}
+      />
+    )
+
+    await user.type(screen.getByPlaceholderText('Search for a video game...'), 'wo')
+
+    await screen.findByText('World of Warcraft')
+    const input = screen.getByPlaceholderText('Search for a video game...')
+
+    fireEvent.keyDown(input, { key: 'Enter' })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    expect(onSelect).toHaveBeenCalledTimes(1)
+    expect(onSelect).toHaveBeenCalledWith(fakeGame)
   })
 
   it('renders shared short labels for duplicate titles and same-name port families', async () => {
