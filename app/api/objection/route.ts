@@ -312,9 +312,15 @@ export async function POST(request: NextRequest) {
 
         let response: Response | null = null
         const maxAttempts = requestVariant.label === 'grounded' ? GROUNDED_MAX_ATTEMPTS : 1
-        let lastAttempt = 0
+        let parsedPayload: unknown = null
+        let parsedText: string | null = null
+        let parsedJudgment: {
+          verdict: 'sustained' | 'overruled'
+          confidence: 'low' | 'medium' | 'high'
+          explanation: string
+          suspectedMissingMetadata: string | null
+        } | null = null
         for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-          lastAttempt = attempt
           const controller = new AbortController()
           const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS)
           try {
@@ -353,26 +359,82 @@ export async function POST(request: NextRequest) {
           }
           clearTimeout(timeoutId)
 
-          if (response.status !== 429 || attempt === maxAttempts) {
+          if (response.status === 429 && attempt < maxAttempts) {
+            const retryAfterHeader = response.headers.get('retry-after')
+            const retryAfterSeconds = retryAfterHeader ? Number.parseFloat(retryAfterHeader) : NaN
+            const retryDelayMs =
+              Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+                ? Math.ceil(retryAfterSeconds * 1000)
+                : 500
+
+            logger.warn('Gemini grounded request rate-limited; retrying request', {
+              model,
+              variant: requestVariant.label,
+              attempt,
+              maxAttempts,
+              retryAfterHeader: retryAfterHeader ?? null,
+              retryDelayMs,
+            })
+            await sleep(retryDelayMs)
+            continue
+          }
+
+          if (!response.ok) {
             break
           }
 
-          const retryAfterHeader = response.headers.get('retry-after')
-          const retryAfterSeconds = retryAfterHeader ? Number.parseFloat(retryAfterHeader) : NaN
-          const retryDelayMs =
-            Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
-              ? Math.ceil(retryAfterSeconds * 1000)
-              : 500
+          parsedPayload = (await response.json()) as unknown
+          parsedText = extractGeminiText(parsedPayload)
+          const hasEmptyContent = hasGeminiEmptyContent(parsedPayload)
+          parsedJudgment = parsedText ? normalizeObjectionResponse(parsedText) : null
 
-          logger.warn('Gemini grounded request rate-limited; retrying request', {
+          if (parsedJudgment?.verdict && parsedJudgment.confidence && parsedJudgment.explanation) {
+            break
+          }
+
+          lastErrorText = parsedText ?? ''
+          lastErrorMessage = 'Gemini objection response was not parseable'
+          if (
+            shouldActivateFallbackCooldown({
+              model,
+              primaryModel: GEMINI_MODEL,
+              status: response.status,
+              message: hasEmptyContent ? 'empty_content' : lastErrorMessage,
+              emptyContent: hasEmptyContent,
+            })
+          ) {
+            shouldSetPrimaryFallback = true
+            primaryFallbackReason = hasEmptyContent ? 'empty_content' : lastErrorMessage
+          }
+          logger.warn('Gemini objection response was not parseable', {
             model,
             variant: requestVariant.label,
-            attempt,
-            maxAttempts,
-            retryAfterHeader: retryAfterHeader ?? null,
-            retryDelayMs,
+            emptyContent: hasEmptyContent,
+            extractedTextPreview: parsedText ? parsedText.slice(0, 500) : null,
+            ...(IS_DEV ? { payload: parsedPayload } : {}),
           })
-          await sleep(retryDelayMs)
+
+          if (requestVariant.label === 'grounded' && attempt < maxAttempts) {
+            logger.warn('Gemini grounded response was unusable; retrying request', {
+              model,
+              variant: requestVariant.label,
+              attempt,
+              maxAttempts,
+              emptyContent: hasEmptyContent,
+            })
+            response = null
+            parsedPayload = null
+            parsedText = null
+            parsedJudgment = null
+            await sleep(250)
+            continue
+          }
+
+          response = null
+          parsedPayload = null
+          parsedText = null
+          parsedJudgment = null
+          break
         }
 
         if (!response) {
@@ -380,54 +442,8 @@ export async function POST(request: NextRequest) {
         }
 
         if (response.ok) {
-          const payload = (await response.json()) as unknown
-          const extractedText = extractGeminiText(payload)
-          const hasEmptyContent = hasGeminiEmptyContent(payload)
-          const parsedJudgment = extractedText ? normalizeObjectionResponse(extractedText) : null
-          if (
-            !parsedJudgment?.verdict ||
-            !parsedJudgment.confidence ||
-            !parsedJudgment.explanation
-          ) {
-            lastErrorText = extractedText ?? ''
-            lastErrorMessage = 'Gemini objection response was not parseable'
-            if (
-              shouldActivateFallbackCooldown({
-                model,
-                primaryModel: GEMINI_MODEL,
-                status: response.status,
-                message: hasEmptyContent ? 'empty_content' : lastErrorMessage,
-                emptyContent: hasEmptyContent,
-              })
-            ) {
-              shouldSetPrimaryFallback = true
-              primaryFallbackReason = hasEmptyContent ? 'empty_content' : lastErrorMessage
-            }
-            logger.warn('Gemini objection response was not parseable', {
-              model,
-              variant: requestVariant.label,
-              emptyContent: hasEmptyContent,
-              extractedTextPreview: extractedText ? extractedText.slice(0, 500) : null,
-              ...(IS_DEV ? { payload } : {}),
-            })
-            if (
-              requestVariant.label === 'grounded' &&
-              hasEmptyContent &&
-              lastAttempt < maxAttempts
-            ) {
-              logger.warn('Gemini grounded response had empty content; retrying request', {
-                model,
-                variant: requestVariant.label,
-                attempt: lastAttempt,
-                maxAttempts,
-              })
-              response = null
-              await sleep(250)
-              continue
-            }
-            response = null
-            continue
-          }
+          const payload = parsedPayload
+          const extractedText = parsedText
           if (IS_DEV) {
             logger.info('Gemini objection raw response', {
               model,

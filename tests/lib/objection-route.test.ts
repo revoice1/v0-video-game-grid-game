@@ -438,8 +438,8 @@ describe('/api/objection route', () => {
     const { POST } = await import('@/app/api/objection/route')
     const response = await POST(buildRequest())
 
-    expect(response.status).toBe(502)
-    expect(fetchMock.mock.calls.length).toBeLessThanOrEqual(3)
+    expect(response.status).toBe(200)
+    expect(fetchMock.mock.calls.length).toBe(3)
     expect(
       fetchMock.mock.calls.every((call) => String(call[1]?.body ?? '').includes('"tools"'))
     ).toBe(true)
@@ -447,6 +447,50 @@ describe('/api/objection route', () => {
       primaryModel: 'gemini-flash-lite-latest',
       cooldownMs: 1_200_000,
       reason: 'empty_content',
+    })
+  })
+
+  it('retries fallback grounded once when its first response is unusable', async () => {
+    process.env.GEMINI_MODEL = 'gemini-flash-lite-latest'
+    process.env.GEMINI_FALLBACK_MODEL = 'gemini-2.5-flash-lite'
+    process.env.GEMINI_OBJECTION_ENABLE_SEARCH_GROUNDING = '1'
+    process.env.GEMINI_OBJECTION_THINKING_LEVEL = 'minimal'
+
+    const buildEmptyGroundedResponse = () =>
+      new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: { role: 'model' },
+              finishReason: 'STOP',
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
+
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('This operation was aborted'))
+      .mockResolvedValueOnce(buildEmptyGroundedResponse())
+      .mockResolvedValueOnce(buildGeminiResponse())
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { POST } = await import('@/app/api/objection/route')
+    const response = await POST(buildRequest())
+
+    expect(response.status).toBe(200)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(
+      fetchMock.mock.calls.every((call) => String(call[1]?.body ?? '').includes('"tools"'))
+    ).toBe(true)
+    expect(activateGeminiPrimaryFallbackMock).toHaveBeenCalledWith({
+      primaryModel: 'gemini-flash-lite-latest',
+      cooldownMs: 1_200_000,
+      reason: 'This operation was aborted',
     })
   })
 })
