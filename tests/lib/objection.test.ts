@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   buildObjectionDataset,
   extractGeminiText,
+  getObjectionSystemPrompt,
   hasGeminiEmptyContent,
   normalizeObjectionResponse,
-  OBJECTION_SYSTEM_PROMPT,
+  OBJECTION_SYSTEM_PROMPT_GEMINI_25,
+  OBJECTION_SYSTEM_PROMPT_GEMINI_3,
 } from '@/lib/objection'
 import type { Category, CellGuess } from '@/lib/types'
 
@@ -84,38 +86,58 @@ describe('buildObjectionDataset', () => {
   })
 })
 
-describe('OBJECTION_SYSTEM_PROMPT', () => {
-  it('describes the required structured response', () => {
-    expect(OBJECTION_SYSTEM_PROMPT).toContain('Return JSON only')
-    expect(OBJECTION_SYSTEM_PROMPT).toContain('"verdict":"sustained|overruled"')
-    expect(OBJECTION_SYSTEM_PROMPT).toContain('familyNames')
-    expect(OBJECTION_SYSTEM_PROMPT).toContain(
+describe('objection system prompts', () => {
+  it('keeps the richer guardrails for Gemini 3.x models', () => {
+    expect(OBJECTION_SYSTEM_PROMPT_GEMINI_3).toContain('Return JSON only')
+    expect(OBJECTION_SYSTEM_PROMPT_GEMINI_3).toContain('"verdict":"sustained|overruled"')
+    expect(OBJECTION_SYSTEM_PROMPT_GEMINI_3).toContain('familyNames')
+    expect(OBJECTION_SYSTEM_PROMPT_GEMINI_3).toContain(
       'Every game in the payload is a real, official game title'
     )
-    expect(OBJECTION_SYSTEM_PROMPT).toContain(
+    expect(OBJECTION_SYSTEM_PROMPT_GEMINI_3).toContain(
       'Use the category validation questions as the main standard'
     )
-    expect(OBJECTION_SYSTEM_PROMPT).toContain(
+    expect(OBJECTION_SYSTEM_PROMPT_GEMINI_3).toContain(
       'The appMetadata block is useful but known to be incomplete, imperfect, or mismapped'
     )
-    expect(OBJECTION_SYSTEM_PROMPT).toContain(
+    expect(OBJECTION_SYSTEM_PROMPT_GEMINI_3).toContain(
       'If model grounding/search evidence is available, prefer that evidence'
     )
-    expect(OBJECTION_SYSTEM_PROMPT).toContain(
+    expect(OBJECTION_SYSTEM_PROMPT_GEMINI_3).toContain(
       'If the selected game or any clearly related family variant directly fits both categories'
     )
-    expect(OBJECTION_SYSTEM_PROMPT).toContain(
+    expect(OBJECTION_SYSTEM_PROMPT_GEMINI_3).toContain(
       'If a clearly related family edition or expansion officially adds the disputed category fit'
     )
-    expect(OBJECTION_SYSTEM_PROMPT).toContain('Do not require every variant to match')
-    expect(OBJECTION_SYSTEM_PROMPT).toContain(
+    expect(OBJECTION_SYSTEM_PROMPT_GEMINI_3).toContain('Do not require every variant to match')
+    expect(OBJECTION_SYSTEM_PROMPT_GEMINI_3).toContain(
       'do not require the perspective to be the default camera'
     )
-    expect(OBJECTION_SYSTEM_PROMPT).toContain(
+    expect(OBJECTION_SYSTEM_PROMPT_GEMINI_3).toContain(
       'Do not overrule only because a qualifying fit is optional, post-launch, less commonly used'
     )
-    expect(OBJECTION_SYSTEM_PROMPT).toContain(
+    expect(OBJECTION_SYSTEM_PROMPT_GEMINI_3).toContain(
       'Do not sustain based on loose association, technicalities, indirect relationships'
+    )
+  })
+
+  it('uses a flatter lite prompt for Gemini 2.5 models', () => {
+    expect(OBJECTION_SYSTEM_PROMPT_GEMINI_25).toContain(
+      'Search/grounding is the strongest evidence when available.'
+    )
+    expect(OBJECTION_SYSTEM_PROMPT_GEMINI_25).toContain('If unsure, overrule.')
+    expect(OBJECTION_SYSTEM_PROMPT_GEMINI_25).not.toContain('EVIDENCE HIERARCHY (MANDATORY)')
+  })
+
+  it('selects prompts by model family', () => {
+    expect(getObjectionSystemPrompt('gemini-3.1-flash-lite-preview')).toBe(
+      OBJECTION_SYSTEM_PROMPT_GEMINI_3
+    )
+    expect(getObjectionSystemPrompt('gemini-flash-lite-latest')).toBe(
+      OBJECTION_SYSTEM_PROMPT_GEMINI_3
+    )
+    expect(getObjectionSystemPrompt('gemini-2.5-flash-lite')).toBe(
+      OBJECTION_SYSTEM_PROMPT_GEMINI_25
     )
   })
 })

@@ -3,26 +3,32 @@ import { getIGDBFamilyNames } from '@/lib/igdb'
 import { createRequestLogger } from '@/lib/logging'
 import { checkRateLimit } from '@/lib/rate-limit'
 import {
+  activateGeminiPrimaryFallback,
+  getGeminiObjectionModels,
+  getGeminiPrimaryFallbackState,
+} from '@/lib/gemini-primary-health'
+import {
   buildObjectionDataset,
   extractGeminiText,
+  getObjectionSystemPrompt,
   hasGeminiEmptyContent,
   normalizeObjectionResponse,
-  OBJECTION_SYSTEM_PROMPT,
 } from '@/lib/objection'
 import { createObjectionProof } from '@/lib/objection-proof'
 import type { Category, CellGuess } from '@/lib/types'
 
 const GEMINI_KEY = process.env.GEMINI_KEY
-const GEMINI_MODEL = (process.env.GEMINI_MODEL ?? 'gemini-3.1-flash-lite-preview')
+const GEMINI_MODEL = (process.env.GEMINI_MODEL ?? 'gemini-flash-lite-latest')
   .replace(/^models\//, '')
   .trim()
-const GEMINI_FALLBACK_MODEL = (process.env.GEMINI_FALLBACK_MODEL ?? '')
+const GEMINI_FALLBACK_MODEL = (process.env.GEMINI_FALLBACK_MODEL ?? 'gemini-2.5-flash-lite')
   .replace(/^models\//, '')
   .trim()
-const GEMINI_MODELS = Array.from(
-  new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL].filter((model) => model.length > 0))
-)
 const GEMINI_TIMEOUT_MS = 10_000
+const GEMINI_PRIMARY_FAILURE_COOLDOWN_MS = Number.parseInt(
+  process.env.GEMINI_PRIMARY_FAILURE_COOLDOWN_MS ?? `${20 * 60 * 1000}`,
+  10
+)
 const IS_DEV = process.env.NODE_ENV !== 'production'
 const GROUNDED_MAX_ATTEMPTS = 2
 const DEFAULT_THINKING_LEVEL = 'HIGH'
@@ -116,6 +122,29 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+function shouldActivateFallbackCooldown(options: {
+  model: string
+  primaryModel: string
+  status: number | null
+  message: string | null
+  emptyContent: boolean
+}): boolean {
+  if (options.model !== options.primaryModel) {
+    return false
+  }
+
+  if (options.emptyContent) {
+    return true
+  }
+
+  if (typeof options.status === 'number' && options.status >= 500) {
+    return true
+  }
+
+  const normalizedMessage = options.message?.toLowerCase() ?? ''
+  return normalizedMessage.includes('aborted') || normalizedMessage.includes('timeout')
+}
+
 // 10 objection requests per IP per minute
 const OBJECTION_RATE_LIMIT = { limit: 10, windowMs: 60_000 }
 
@@ -133,6 +162,21 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    let fallbackState = null
+    try {
+      fallbackState = await getGeminiPrimaryFallbackState()
+    } catch (error) {
+      logger.warn('Failed to load Gemini objection primary fallback state', {
+        error: error instanceof Error ? error.message : 'unknown_error',
+      })
+    }
+
+    const geminiModels = getGeminiObjectionModels({
+      primaryModel: GEMINI_MODEL,
+      fallbackModel: GEMINI_FALLBACK_MODEL || null,
+      healthState: fallbackState,
+    })
+
     const body = (await request.json()) as {
       guess?: CellGuess | null
       rowCategory?: Category | null
@@ -178,19 +222,24 @@ export async function POST(request: NextRequest) {
       groundingEnabled: ENABLE_SEARCH_GROUNDING,
       thinkingConfig: getGeminiThinkingConfig(GEMINI_MODEL, THINKING_LEVEL),
       fallbackModel: GEMINI_FALLBACK_MODEL || null,
+      geminiModels,
+      primaryFallback: fallbackState,
     })
 
     let geminiResponse: Response | null = null
     let lastErrorText = ''
     let lastErrorMessage = ''
     let lastModelUsed = GEMINI_MODEL
-    for (const model of GEMINI_MODELS) {
+    let shouldSetPrimaryFallback = false
+    let primaryFallbackReason: string | null = null
+    for (const model of geminiModels) {
       lastModelUsed = model
       let modelProducedValidJudgment = false
       const baseThinkingConfig = getGeminiThinkingConfig(model, THINKING_LEVEL)
+      const systemPrompt = getObjectionSystemPrompt(model)
       const requestBodyBase = {
         systemInstruction: {
-          parts: [{ text: OBJECTION_SYSTEM_PROMPT }],
+          parts: [{ text: systemPrompt }],
         },
         contents: [
           {
@@ -293,6 +342,18 @@ export async function POST(request: NextRequest) {
           } catch (error) {
             lastErrorText = ''
             lastErrorMessage = error instanceof Error ? error.message : String(error)
+            if (
+              shouldActivateFallbackCooldown({
+                model,
+                primaryModel: GEMINI_MODEL,
+                status: null,
+                message: lastErrorMessage,
+                emptyContent: false,
+              })
+            ) {
+              shouldSetPrimaryFallback = true
+              primaryFallbackReason = lastErrorMessage
+            }
             logger.warn('Gemini objection request failed', {
               model,
               variant: requestVariant.label,
@@ -343,6 +404,18 @@ export async function POST(request: NextRequest) {
           ) {
             lastErrorText = extractedText ?? ''
             lastErrorMessage = 'Gemini objection response was not parseable'
+            if (
+              shouldActivateFallbackCooldown({
+                model,
+                primaryModel: GEMINI_MODEL,
+                status: response.status,
+                message: hasEmptyContent ? 'empty_content' : lastErrorMessage,
+                emptyContent: hasEmptyContent,
+              })
+            ) {
+              shouldSetPrimaryFallback = true
+              primaryFallbackReason = hasEmptyContent ? 'empty_content' : lastErrorMessage
+            }
             logger.warn('Gemini objection response was not parseable', {
               model,
               variant: requestVariant.label,
@@ -416,6 +489,18 @@ export async function POST(request: NextRequest) {
           }
         }
         lastErrorMessage = parsedMessage ?? ''
+        if (
+          shouldActivateFallbackCooldown({
+            model,
+            primaryModel: GEMINI_MODEL,
+            status: response.status,
+            message: parsedMessage ?? lastErrorText ?? null,
+            emptyContent: false,
+          })
+        ) {
+          shouldSetPrimaryFallback = true
+          primaryFallbackReason = parsedMessage ?? lastErrorText ?? null
+        }
         logger.warn('Gemini objection request failed', {
           model,
           variant: requestVariant.label,
@@ -430,6 +515,23 @@ export async function POST(request: NextRequest) {
 
       if (modelProducedValidJudgment && geminiResponse?.ok) {
         break
+      }
+    }
+
+    if (shouldSetPrimaryFallback && GEMINI_FALLBACK_MODEL) {
+      try {
+        const fallbackState = await activateGeminiPrimaryFallback({
+          primaryModel: GEMINI_MODEL,
+          cooldownMs: GEMINI_PRIMARY_FAILURE_COOLDOWN_MS,
+          reason: primaryFallbackReason,
+        })
+        logger.warn('Activated Gemini primary fallback cooldown', {
+          ...fallbackState,
+        })
+      } catch (error) {
+        logger.warn('Failed to activate Gemini primary fallback cooldown', {
+          error: error instanceof Error ? error.message : 'unknown_error',
+        })
       }
     }
 

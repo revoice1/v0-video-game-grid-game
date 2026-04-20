@@ -61,23 +61,25 @@ to `ALLOWED_DEV_ORIGINS` in `.env.local`.
 
 ## Environment Variables
 
-| Variable                                   | Required | Description                                                                                                                                             |
-| ------------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`                 | Yes      | Supabase project URL                                                                                                                                    |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY`            | Yes      | Supabase anon key                                                                                                                                       |
-| `SUPABASE_SERVICE_ROLE_KEY`                | Yes      | Supabase service-role key, used only in server routes for privileged daily persistence updates                                                          |
-| `TWITCH_IGDB_CLIENT_ID`                    | Yes      | IGDB API client ID via the Twitch developer console                                                                                                     |
-| `TWITCH_IGDB_CLIENT_SECRET`                | Yes      | IGDB API client secret                                                                                                                                  |
-| `GEMINI_KEY`                               | No       | Gemini API key used by `/api/objection` for objection review judgments                                                                                  |
-| `GEMINI_MODEL`                             | No       | Gemini model name override for objections (default: `gemini-flash-lite-latest`; `models/` prefix is normalized)                                         |
-| `GEMINI_OBJECTION_THINKING_LEVEL`          | No       | Thinking level for objection review requests, one of `MINIMAL`, `LOW`, `MEDIUM`, or `HIGH` (default: `HIGH`)                                            |
-| `GEMINI_OBJECTION_ENABLE_SEARCH_GROUNDING` | No       | Set to `1` to enable grounded Google Search objection requests (default disabled); grounded calls may require billing access                            |
-| `OBJECTION_PROOF_SECRET`                   | No       | Optional HMAC secret for signed sustained-objection proofs in online versus. Falls back to `CRON_SECRET`; if neither is set, proof signing is disabled. |
-| `PUZZLE_MIN_VALID_OPTIONS`                 | No       | Minimum valid answers per cell, default `3`                                                                                                             |
-| `PUZZLE_GENERATION_MAX_ATTEMPTS`           | No       | Max candidate grids to try before failing, default `12`                                                                                                 |
-| `PUZZLE_VALIDATION_SAMPLE_SIZE`            | No       | IGDB matches sampled when validating each cell, default `40`                                                                                            |
-| `CRON_SECRET`                              | No       | Bearer token Vercel sends with cron requests. Required in production; without it, cron routes reject all requests.                                      |
-| `ALLOWED_DEV_ORIGINS`                      | No       | Comma-separated extra dev origins for remote local testing, for example `http://your-hostname:3000,http://your-local-ip:3000`                           |
+| Variable                                   | Required | Description                                                                                                                                                                         |
+| ------------------------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`                 | Yes      | Supabase project URL                                                                                                                                                                |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY`            | Yes      | Supabase anon key                                                                                                                                                                   |
+| `SUPABASE_SERVICE_ROLE_KEY`                | Yes      | Supabase service-role key, used only in server routes for privileged daily persistence updates                                                                                      |
+| `TWITCH_IGDB_CLIENT_ID`                    | Yes      | IGDB API client ID via the Twitch developer console                                                                                                                                 |
+| `TWITCH_IGDB_CLIENT_SECRET`                | Yes      | IGDB API client secret                                                                                                                                                              |
+| `GEMINI_KEY`                               | No       | Gemini API key used by `/api/objection` for objection review judgments                                                                                                              |
+| `GEMINI_MODEL`                             | No       | Primary Gemini model for objections (default: `gemini-flash-lite-latest`; `models/` prefix is normalized).                                                                          |
+| `GEMINI_FALLBACK_MODEL`                    | No       | Fallback Gemini model for objections (default: `gemini-2.5-flash-lite`). Used immediately when the primary request fails and can also be preferred during a short runtime cooldown. |
+| `GEMINI_OBJECTION_THINKING_LEVEL`          | No       | Thinking level for objection review requests, one of `MINIMAL`, `LOW`, `MEDIUM`, or `HIGH` (default: `HIGH`)                                                                        |
+| `GEMINI_OBJECTION_ENABLE_SEARCH_GROUNDING` | No       | Set to `1` to enable grounded Google Search objection requests (default disabled); grounded calls may require billing access                                                        |
+| `GEMINI_PRIMARY_FAILURE_COOLDOWN_MS`       | No       | How long objection requests should prefer the fallback model after the primary times out, returns `5xx`, or produces empty grounded content (default: `1200000`).                   |
+| `OBJECTION_PROOF_SECRET`                   | No       | Optional HMAC secret for signed sustained-objection proofs in online versus. Falls back to `CRON_SECRET`; if neither is set, proof signing is disabled.                             |
+| `PUZZLE_MIN_VALID_OPTIONS`                 | No       | Minimum valid answers per cell, default `3`                                                                                                                                         |
+| `PUZZLE_GENERATION_MAX_ATTEMPTS`           | No       | Max candidate grids to try before failing, default `12`                                                                                                                             |
+| `PUZZLE_VALIDATION_SAMPLE_SIZE`            | No       | IGDB matches sampled when validating each cell, default `40`                                                                                                                        |
+| `CRON_SECRET`                              | No       | Bearer token Vercel sends with cron requests. Required in production; without it, cron routes reject all requests.                                                                  |
+| `ALLOWED_DEV_ORIGINS`                      | No       | Comma-separated extra dev origins for remote local testing, for example `http://your-hostname:3000,http://your-local-ip:3000`                                                       |
 
 ## Devcontainer LAN Access
 
@@ -156,6 +158,7 @@ for live room/event updates, so the tables must be published for clients to stay
 - Daily puzzles are stored and reused after generation.
 - Daily progress is tied to an anonymous browser session so archived boards can reopen your saved
   state on the same device/browser.
+- Objection review tries `GEMINI_MODEL` first and falls back to `GEMINI_FALLBACK_MODEL` on live request failures. When the primary times out, returns `5xx`, or produces empty grounded content, the app stores a short-lived runtime flag so subsequent objection requests temporarily try the fallback model first.
 - Daily guess inserts and objection verdict metadata are updated server-side with the Supabase
   service-role key, so the database does not need public `INSERT` or `UPDATE` policies on
   `guesses`.

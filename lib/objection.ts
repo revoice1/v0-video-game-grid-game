@@ -93,7 +93,7 @@ function buildCategoryValidationQuestion(category: Category): string {
   }
 }
 
-export const OBJECTION_SYSTEM_PROMPT = [
+export const OBJECTION_SYSTEM_PROMPT_GEMINI_3 = [
   '<role>',
   'You are an expert Video Game Data Auditor reviewing a disputed puzzle-category judgment.',
   'Every game in the payload is a real, official game title from the app. Do not question whether the game exists or whether it is an official release.',
@@ -136,6 +136,36 @@ export const OBJECTION_SYSTEM_PROMPT = [
   'Constraint: explanation must be under 45 words.',
   '</output_format>',
 ].join('\n')
+
+export const OBJECTION_SYSTEM_PROMPT_GEMINI_25 = [
+  '<task>',
+  'Expert Video Game Auditor. Review a disputed puzzle-category judgment for a real official game. Return JSON only.',
+  '</task>',
+  '',
+  '<rules>',
+  '- Search/grounding is the strongest evidence when available.',
+  '- Metadata is secondary and may be incomplete or wrong.',
+  '- Use the category validation questions as the standard.',
+  '- Sustain only if BOTH row and column clearly fit.',
+  '- A clearly related family edition, port, remaster, remake, expansion, or DLC can support sustained when it directly adds the disputed fit.',
+  '- For perspective categories, an official substantial mode or toggle counts even if it is not the default camera.',
+  '- Sustain only for clear, meaningful, officially supported fits.',
+  '- Overrule for loose associations, technicalities, weak indirect links, or ambiguous evidence.',
+  '- If unsure, overrule.',
+  '</rules>',
+  '',
+  '<output>',
+  'JSON only. No markdown.',
+  '{"verdict":"sustained|overruled","confidence":"low|medium|high","explanation":"string","suspectedMissingMetadata":"string|null"}',
+  'Explanation must be under 45 words.',
+  '</output>',
+].join('\n')
+
+export function getObjectionSystemPrompt(model: string): string {
+  return /^gemini-2\.5(?:[.-]|$)/.test(model)
+    ? OBJECTION_SYSTEM_PROMPT_GEMINI_25
+    : OBJECTION_SYSTEM_PROMPT_GEMINI_3
+}
 
 export function buildObjectionDataset(
   guess: CellGuess,
