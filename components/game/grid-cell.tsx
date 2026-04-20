@@ -1,6 +1,6 @@
 'use client'
 
-import { Armchair } from 'lucide-react'
+import { Armchair, Gavel } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePulse } from '@/hooks/use-pulse'
 import { cn } from '@/lib/utils'
@@ -12,6 +12,8 @@ interface GridCellProps {
   index: number
   guess: CellGuess | null
   metadata?: PuzzleCellMetadata
+  showGuessDetailsHint?: boolean
+  showObjectionAvailable?: boolean
   isSelected: boolean
   isAvailable?: boolean
   availableTone?: 'x' | 'o' | null
@@ -51,6 +53,8 @@ export function GridCell({
   index,
   guess,
   metadata,
+  showGuessDetailsHint = false,
+  showObjectionAvailable = false,
   isSelected,
   isAvailable = false,
   availableTone = null,
@@ -99,7 +103,13 @@ export function GridCell({
       : `${metadata.validOptionCount}`
     : null
   const possibleTitle = metadata ? `${metadata.validOptionCount} possible answers` : null
-  const cellTitle = !hasGuess && possibleTitle ? possibleTitle : undefined
+  const cellTitle = hasGuess
+    ? showGuessDetailsHint
+      ? showObjectionAvailable
+        ? 'Click for details. Objection available.'
+        : 'Click for details.'
+      : undefined
+    : (possibleTitle ?? undefined)
   const difficultyMarker = metadata ? difficultyEmoji[metadata.difficulty] : null
   const alarmStyle =
     cellAlarmState === 'steal'
@@ -196,6 +206,15 @@ export function GridCell({
           {showRevealedShowdownScore && (
             <div className="absolute bottom-1 left-1 z-2 rounded-md border border-black/35 bg-black/72 px-1.5 py-0.5 text-[10px] font-black tabular-nums text-white/95 shadow-[0_2px_8px_rgba(0,0,0,0.28)]">
               {revealedShowdownMetricValue}
+            </div>
+          )}
+          {showObjectionAvailable && (
+            <div
+              className="absolute left-1 top-1 z-3 flex h-6 w-6 items-center justify-center rounded-full border border-[#f59e0b]/80 bg-[#f59e0b] text-white shadow-[0_0_0_1px_rgba(245,158,11,0.25),0_4px_12px_rgba(245,158,11,0.28)]"
+              aria-label="Objection available"
+              title="Objection available"
+            >
+              <Gavel className="h-3.5 w-3.5" />
             </div>
           )}
           {!guess.isCorrect && (

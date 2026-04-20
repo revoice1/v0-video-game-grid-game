@@ -13,6 +13,8 @@ interface GameGridProps {
   colCategories: Category[]
   guesses: (CellGuess | null)[]
   cellMetadata?: PuzzleCellMetadata[]
+  objectionAvailableCells?: number[]
+  showGuessDetailsHints?: boolean
   selectedCell: number | null
   isGameOver: boolean
   score?: number
@@ -84,6 +86,8 @@ export function GameGrid({
   colCategories,
   guesses,
   cellMetadata,
+  objectionAvailableCells = [],
+  showGuessDetailsHints = false,
   selectedCell,
   isGameOver,
   score = 0,
@@ -105,6 +109,10 @@ export function GameGrid({
   const cellMetadataByIndex = useMemo(
     () => new Map((cellMetadata ?? []).map((cell) => [cell.cellIndex, cell])),
     [cellMetadata]
+  )
+  const objectionAvailableCellSet = useMemo(
+    () => new Set(objectionAvailableCells),
+    [objectionAvailableCells]
   )
   const isStealPossible = alarmsEnabled && !isGameOver && stealableCell !== null
   const hasFinalStealFocus = !isGameOver && finalStealCell !== null
@@ -332,6 +340,8 @@ export function GameGrid({
                   index={cellIndex}
                   guess={guess}
                   metadata={cellMetadataByIndex.get(cellIndex)}
+                  showGuessDetailsHint={showGuessDetailsHints && guess !== null}
+                  showObjectionAvailable={objectionAvailableCellSet.has(cellIndex)}
                   isSelected={selectedCell === cellIndex}
                   isAvailable={isAvailable}
                   availableTone={displayToneForPlayer(currentPlayer)}

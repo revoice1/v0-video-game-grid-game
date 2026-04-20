@@ -48,4 +48,40 @@ describe('GridCell showdown badge', () => {
     expect(screen.getByText('88')).toBeInTheDocument()
     expect(screen.queryByText('4321')).not.toBeInTheDocument()
   })
+
+  it('shows an objection marker for rejected cells that can still be challenged', () => {
+    render(
+      <GridCell
+        index={0}
+        guess={buildGuess({ isCorrect: false, objectionUsed: false })}
+        showGuessDetailsHint
+        showObjectionAvailable
+        isSelected={false}
+        isDisabled={false}
+        onClick={() => {}}
+      />
+    )
+
+    expect(screen.getByLabelText('Objection available')).toBeInTheDocument()
+    expect(screen.getByTestId('grid-cell-0')).toHaveAttribute(
+      'title',
+      'Click for details. Objection available.'
+    )
+  })
+
+  it('shows a click-for-details hover hint on completed non-versus cells', () => {
+    render(
+      <GridCell
+        index={0}
+        guess={buildGuess()}
+        showGuessDetailsHint
+        isSelected={false}
+        isDisabled={false}
+        onClick={() => {}}
+      />
+    )
+
+    expect(screen.getByTestId('grid-cell-0')).toHaveAttribute('title', 'Click for details.')
+    expect(screen.queryByLabelText('Objection available')).not.toBeInTheDocument()
+  })
 })

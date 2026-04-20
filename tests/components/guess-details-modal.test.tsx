@@ -67,11 +67,6 @@ describe('GuessDetailsModal', () => {
       />
     )
 
-    expect(screen.getByText('Why this counts')).toBeInTheDocument()
-    expect(
-      screen.getByText('Matched First person via IGDB metadata: First person.')
-    ).toBeInTheDocument()
-    expect(screen.getByText('Matched Square Enix via company alias: Square.')).toBeInTheDocument()
     expect(screen.queryByText('Objection')).not.toBeInTheDocument()
   })
 
@@ -124,9 +119,6 @@ describe('GuessDetailsModal', () => {
     )
 
     expect(screen.getByText('This pick counted for the cell after review.')).toBeInTheDocument()
-    expect(screen.getByText('Original validation')).toBeInTheDocument()
-    expect(screen.getByText('Did not match First person.')).toBeInTheDocument()
-    expect(screen.getByText('Family Resolution')).toBeInTheDocument()
     expect(screen.getByText('Objection sustained')).toBeDisabled()
     expect(screen.getByText('Sustained')).toBeInTheDocument()
     expect(screen.getByText(/Royal Edition adds a first-person mode/i)).toBeInTheDocument()
@@ -190,7 +182,6 @@ describe('GuessDetailsModal', () => {
     )
 
     expect(screen.getByText('This pick was rejected for the cell.')).toBeInTheDocument()
-    expect(screen.getByText('Why this was rejected')).toBeInTheDocument()
     expect(screen.getByText('Overruled')).toBeInTheDocument()
     expect(screen.getByText(/not published by Square Enix/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Objection overruled' })).toBeDisabled()

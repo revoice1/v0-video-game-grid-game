@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { GameHeader } from './game-header'
 import { GameGrid } from './game-grid'
@@ -3896,6 +3896,15 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
   )
     ? (minimumCellOptions ?? null)
     : null
+  const objectionAvailableCells = useMemo(
+    () =>
+      mode === 'versus'
+        ? []
+        : guesses.flatMap((guess, index) =>
+            guess && !guess.isCorrect && !guess.objectionUsed ? [index] : []
+          ),
+    [guesses, mode]
+  )
   const turnTimerLabel =
     isVersusMode && turnTimeLeft !== null
       ? `Turn: ${Math.floor(turnTimeLeft / 60)}:${String(turnTimeLeft % 60).padStart(2, '0')}`
@@ -4216,6 +4225,8 @@ export function GameClient({ minimumValidOptionsDefault }: { minimumValidOptions
           colCategories={puzzle.col_categories}
           guesses={guesses}
           cellMetadata={puzzle.cell_metadata}
+          objectionAvailableCells={objectionAvailableCells}
+          showGuessDetailsHints={!isVersusMode}
           selectedCell={selectedCell}
           stealableCell={isVersusMode ? stealableCell : null}
           finalStealCell={isVersusMode ? (pendingFinalSteal?.cellIndex ?? null) : null}

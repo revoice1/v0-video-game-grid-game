@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import type { Category, CategoryMatchExplanation, CellGuess } from '@/lib/types'
+import type { Category, CellGuess } from '@/lib/types'
 import Image from 'next/image'
 
 interface GuessDetailsModalProps {
@@ -46,68 +46,6 @@ function formatCategoryType(type: Category['type'] | undefined) {
   return type.replace(/_/g, ' ')
 }
 
-function formatMatchedValues(values: string[]) {
-  if (values.length === 0) {
-    return ''
-  }
-
-  if (values.length === 1) {
-    return values[0] ?? ''
-  }
-
-  if (values.length === 2) {
-    return `${values[0]} and ${values[1]}`
-  }
-
-  return `${values.slice(0, -1).join(', ')}, and ${values.at(-1)}`
-}
-
-function describeMatchSource(source: CategoryMatchExplanation['matchSource']) {
-  switch (source) {
-    case 'direct-id':
-      return 'direct category ID'
-    case 'alias-name':
-      return 'title alias'
-    case 'merged-platform-bucket':
-      return 'merged platform bucket'
-    case 'release-date-family':
-      return 'release-family date'
-    case 'company-id':
-      return 'company credit'
-    case 'company-alias':
-      return 'company alias'
-    case 'company-prefix':
-      return 'company prefix'
-    case 'igdb-array':
-      return 'IGDB metadata'
-    case 'no-match':
-      return null
-    default:
-      return null
-  }
-}
-
-function buildExplanationMessage(explanation: CategoryMatchExplanation) {
-  if (!explanation.matched) {
-    if (explanation.categoryType === 'decade') {
-      return `No qualifying release date landed in ${explanation.categoryName}.`
-    }
-
-    if (explanation.categoryType === 'company') {
-      return `No matching company credit satisfied ${explanation.categoryName}.`
-    }
-
-    return `Did not match ${explanation.categoryName}.`
-  }
-
-  const sourceLabel = describeMatchSource(explanation.matchSource)
-  const matchedValues = formatMatchedValues(explanation.matchedValues)
-  const sourceFragment = sourceLabel ? ` via ${sourceLabel}` : ''
-  const valueFragment = matchedValues ? `: ${matchedValues}` : ''
-
-  return `Matched ${explanation.categoryName}${sourceFragment}${valueFragment}.`
-}
-
 export function GuessDetailsModal({
   isOpen,
   onClose,
@@ -132,11 +70,6 @@ export function GuessDetailsModal({
     isSustainedObjection && guess.objectionOriginalMatchedRow === false && Boolean(guess.matchedRow)
   const colCorrectedByObjection =
     isSustainedObjection && guess.objectionOriginalMatchedCol === false && Boolean(guess.matchedCol)
-  const validationSectionTitle = isSustainedObjection
-    ? 'Original validation'
-    : guess.isCorrect
-      ? 'Why this counts'
-      : 'Why this was rejected'
   const matchTextClass = (matched: boolean, correctedByObjection: boolean) =>
     matched ? (correctedByObjection ? 'text-[#fb923c]' : 'text-primary') : 'text-destructive'
   const objectionButtonLabel = objectionPending
@@ -214,59 +147,6 @@ export function GuessDetailsModal({
               </p>
             </div>
           </div>
-
-          {guess.validationExplanation && (
-            <div className="rounded-xl border border-border bg-secondary/20 p-4">
-              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                {validationSectionTitle}
-              </p>
-              {isSustainedObjection && (
-                <p className="mt-1 text-sm text-muted-foreground">
-                  These were the original automated checks before objection review changed the
-                  result.
-                </p>
-              )}
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground/80">
-                    Row
-                  </p>
-                  <p className="mt-1 text-sm text-foreground">
-                    {buildExplanationMessage(guess.validationExplanation.row)}
-                  </p>
-                  {guess.validationExplanation.row.note && (
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {guess.validationExplanation.row.note}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground/80">
-                    Column
-                  </p>
-                  <p className="mt-1 text-sm text-foreground">
-                    {buildExplanationMessage(guess.validationExplanation.col)}
-                  </p>
-                  {guess.validationExplanation.col.note && (
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {guess.validationExplanation.col.note}
-                    </p>
-                  )}
-                </div>
-              </div>
-              {guess.validationExplanation.familyResolution.used && (
-                <div className="mt-3 rounded-lg border border-border/70 bg-background/60 px-3 py-3">
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground/80">
-                    Family Resolution
-                  </p>
-                  <p className="mt-1 text-sm text-foreground">
-                    {guess.validationExplanation.familyResolution.note ??
-                      `Validated against merged family metadata for ${guess.validationExplanation.familyResolution.selectedGameName}.`}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
 
           {shouldShowObjectionPanel && (
             <div className="rounded-2xl border border-[#f5b94e]/28 bg-[linear-gradient(180deg,rgba(245,185,78,0.12),rgba(245,185,78,0.04))] px-4 py-4">
