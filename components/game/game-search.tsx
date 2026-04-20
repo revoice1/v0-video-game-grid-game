@@ -159,6 +159,8 @@ export function GameSearch({
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResultGame[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [settledQuery, setSettledQuery] = useState<string | null>(null)
+  const [selectionLocked, setSelectionLocked] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [pendingConfirmationId, setPendingConfirmationId] = useState<number | null>(null)
   const [previewGame, setPreviewGame] = useState<Game | null>(null)
@@ -166,12 +168,21 @@ export function GameSearch({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const searchAbortRef = useRef<AbortController | null>(null)
   const searchRequestIdRef = useRef(0)
+  const selectionLockedRef = useRef(false)
   const resultRefs = useRef<Array<HTMLDivElement | null>>([])
   const activeCategoryTypesKey = [...activeCategoryTypes].sort().join(',')
   const pendingConfirmationGame =
     pendingConfirmationId !== null
       ? (results.find((game) => game.id === pendingConfirmationId) ?? null)
       : null
+  const normalizedQuery = query.trim().toLocaleLowerCase()
+  const canSelectSearchResults =
+    !selectionLockedRef.current &&
+    !selectionLocked &&
+    !isLoading &&
+    results.length > 0 &&
+    settledQuery !== null &&
+    settledQuery === normalizedQuery
   const duplicateTitleKeys = useMemo(() => {
     return new Set(
       Object.entries(
@@ -210,6 +221,9 @@ export function GameSearch({
       searchAbortRef.current?.abort()
       setQuery(initialQuery ?? '')
       setResults([])
+      setSettledQuery(null)
+      selectionLockedRef.current = false
+      setSelectionLocked(false)
       setSelectedIndex(0)
       setPendingConfirmationId(null)
       setPreviewGame(null)
@@ -230,6 +244,9 @@ export function GameSearch({
         searchAbortRef.current?.abort()
         setIsLoading(false)
         setResults([])
+        setSettledQuery(searchQuery.trim().toLocaleLowerCase())
+        selectionLockedRef.current = false
+        setSelectionLocked(false)
         return
       }
 
@@ -272,6 +289,9 @@ export function GameSearch({
         }
 
         setResults(data.results || [])
+        setSettledQuery(searchQuery.trim().toLocaleLowerCase())
+        selectionLockedRef.current = false
+        setSelectionLocked(false)
         setSelectedIndex(0)
         setPendingConfirmationId(null)
       } catch (error) {
@@ -285,6 +305,9 @@ export function GameSearch({
 
         console.error('Search error:', error)
         setResults([])
+        setSettledQuery(searchQuery.trim().toLocaleLowerCase())
+        selectionLockedRef.current = false
+        setSelectionLocked(false)
         setPendingConfirmationId(null)
       } finally {
         if (requestId === searchRequestIdRef.current) {
@@ -335,14 +358,20 @@ export function GameSearch({
 
   const handleSelect = useCallback(
     (game: Game) => {
+      if (!canSelectSearchResults) {
+        return
+      }
+
       if (!confirmBeforeSelect) {
+        selectionLockedRef.current = true
+        setSelectionLocked(true)
         onSelect(game)
         return
       }
 
       setPendingConfirmationId(game.id)
     },
-    [confirmBeforeSelect, onSelect]
+    [canSelectSearchResults, confirmBeforeSelect, onSelect]
   )
 
   const handleConfirm = useCallback(() => {
@@ -350,6 +379,8 @@ export function GameSearch({
       return
     }
 
+    selectionLockedRef.current = true
+    setSelectionLocked(true)
     onSelect(pendingConfirmationGame)
   }, [onSelect, pendingConfirmationGame])
 
@@ -393,7 +424,7 @@ export function GameSearch({
         setPendingConfirmationId(null)
       }
       setSelectedIndex((i) => Math.max(i - 1, 0))
-    } else if (e.key === 'Enter' && results[selectedIndex]) {
+    } else if (e.key === 'Enter' && canSelectSearchResults && results[selectedIndex]) {
       e.preventDefault()
       if (pendingConfirmationGame?.id === results[selectedIndex].id) {
         handleConfirm()
@@ -493,6 +524,7 @@ export function GameSearch({
             value={query}
             onChange={(e) => {
               setQuery(e.target.value)
+              setSettledQuery(null)
               onQueryChange?.(e.target.value)
             }}
             onKeyDown={handleKeyDown}
