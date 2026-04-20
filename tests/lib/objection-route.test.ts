@@ -406,7 +406,7 @@ describe('/api/objection route', () => {
     })
   })
 
-  it('activates fallback cooldown when grounded primary responses are empty before fallback succeeds', async () => {
+  it('activates fallback cooldown when grounded primary responses are empty without retrying standard mode', async () => {
     process.env.GEMINI_MODEL = 'gemini-flash-lite-latest'
     process.env.GEMINI_FALLBACK_MODEL = 'gemini-2.5-flash-lite'
     process.env.GEMINI_OBJECTION_ENABLE_SEARCH_GROUNDING = '1'
@@ -432,12 +432,6 @@ describe('/api/objection route', () => {
       .fn()
       .mockResolvedValueOnce(buildEmptyGroundedResponse())
       .mockResolvedValueOnce(buildEmptyGroundedResponse())
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: { message: 'Primary standard failed.' } }), {
-          status: 503,
-          headers: { 'Content-Type': 'application/json' },
-        })
-      )
       .mockResolvedValueOnce(buildGeminiResponse())
     vi.stubGlobal('fetch', fetchMock)
 
@@ -445,7 +439,10 @@ describe('/api/objection route', () => {
     const response = await POST(buildRequest())
 
     expect(response.status).toBe(502)
-    expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(3)
+    expect(fetchMock.mock.calls.length).toBeLessThanOrEqual(3)
+    expect(
+      fetchMock.mock.calls.every((call) => String(call[1]?.body ?? '').includes('"tools"'))
+    ).toBe(true)
     expect(activateGeminiPrimaryFallbackMock).toHaveBeenCalledWith({
       primaryModel: 'gemini-flash-lite-latest',
       cooldownMs: 1_200_000,

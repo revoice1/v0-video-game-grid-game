@@ -252,9 +252,9 @@ export async function POST(request: NextRequest) {
       const requestVariants: Array<{
         label: 'grounded' | 'standard'
         body: Record<string, unknown>
-      }> = ENABLE_SEARCH_GROUNDING
-        ? [
-            {
+      }> = [
+        ENABLE_SEARCH_GROUNDING
+          ? {
               label: 'grounded',
               body: {
                 ...requestBodyBase,
@@ -265,8 +265,8 @@ export async function POST(request: NextRequest) {
                   thinkingConfig: baseThinkingConfig,
                 },
               },
-            },
-            {
+            }
+          : {
               label: 'standard',
               body: {
                 ...requestBodyBase,
@@ -277,20 +277,7 @@ export async function POST(request: NextRequest) {
                 },
               },
             },
-          ]
-        : [
-            {
-              label: 'standard',
-              body: {
-                ...requestBodyBase,
-                generationConfig: {
-                  temperature: 0.1,
-                  responseMimeType: 'application/json',
-                  thinkingConfig: baseThinkingConfig,
-                },
-              },
-            },
-          ]
+      ]
 
       for (const requestVariant of requestVariants) {
         if (IS_DEV) {
